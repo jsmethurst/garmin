@@ -31,7 +31,7 @@ function balanced(src) {
   await new Promise(r => server.listen(0, r));
   const url = 'http://localhost:' + server.address().port + '/';
   const browser = await chromium.launch(); const page = await browser.newPage();
-  const errors = []; page.on('pageerror', e => errors.push(e.message)); page.on('console', m => m.type() === 'error' && errors.push(m.text()));
+  const errors = []; page.on('pageerror', e => errors.push(e.message)); page.on('console', m => m.type() === 'error' && !/Failed to load resource/.test(m.text()) && errors.push(m.text())); // /api/* does not exist on the static test server
   await page.goto(url); await page.waitForSelector('html.ready');
   const ids = await page.evaluate(() => GW.PRESETS.map(p => p.id));
   const helpers = await page.evaluate(() => Object.keys(GW.MC_HELPERS));
