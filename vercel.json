@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm install --omit=dev",
+  "buildCommand": null,
+  "outputDirectory": "site",
+  "functions": {
+    "api/*.js": { "maxDuration": 300 }
+  },
+  "headers": [
+    { "source": "/(.*)", "headers": [{ "key": "X-Content-Type-Options", "value": "nosniff" }] }
+  ]
+}

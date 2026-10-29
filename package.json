@@ -1,10 +1,14 @@
 {
   "name": "garmin-watchface-studio",
   "private": true,
-  "description": "Design, preview and export Garmin fenix 6X Pro watchfaces as ready-to-build Connect IQ projects.",
+  "type": "module",
+  "description": "Design, preview, build and export Garmin fenix 6X Pro watchfaces.",
   "scripts": {
     "start": "python3 -m http.server 8080 -d site",
-    "test": "node tests/smoke.js"
+    "test": "node tests/smoke.cjs"
+  },
+  "dependencies": {
+    "@vercel/sandbox": "^1.0.0"
   },
   "devDependencies": {
     "playwright": "^1.48.0"

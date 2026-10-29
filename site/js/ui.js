@@ -624,6 +624,56 @@
     modal('Start from a preset', h('div', {}, [h('p', { class: 'muted', text: 'Everything is editable afterwards. Presets replace your current design (Ctrl+Z brings it back).' }), grid]));
   };
 
+  // ---- one-click cloud build (only on the Vercel deployment) ----
+  function b64(data) {
+    if (typeof data === 'string') data = new TextEncoder().encode(data);
+    var s = '', CH = 0x8000;
+    for (var i = 0; i < data.length; i += CH) s += String.fromCharCode.apply(null, data.subarray(i, i + CH));
+    return btoa(s);
+  }
+  function api(path, opts) {
+    return fetch(path, opts).then(function (r) {
+      return r.text().then(function (t) { var j = null; try { j = JSON.parse(t); } catch (e) { } return { status: r.status, json: j }; });
+    });
+  }
+  function builderBox(res) {
+    var box = h('div', { class: 'card', style: 'margin:14px 0;border-color:#17556b;background:#0c1c26' });
+    var msg = h('div', { class: 'muted small', text: 'Checking the cloud builder…' });
+    var logBox = h('div', { class: 'code', style: 'display:none;margin-top:10px;max-height:200px' });
+    var btn = h('button', { class: 'btn primary', style: 'font-size:15px;padding:11px 20px', text: '⚙ Build my watchface (.prg)', disabled: true });
+    var setup = h('button', { class: 'btn', text: 'Set up the builder (one time, ~2 min)', style: 'display:none;margin-left:8px' });
+    function say(t, log) { msg.textContent = t; if (log != null) { logBox.style.display = log ? '' : 'none'; logBox.textContent = log; } }
+    btn.addEventListener('click', function () {
+      btn.disabled = true; say('Compiling with Garmin’s compiler…', '');
+      api('/api/build', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+        name: res.name, files: res.files.map(function (f) { return { path: f.path, data: b64(f.data) }; }) }) })
+        .then(function (r) {
+          btn.disabled = false; var j = r.json || {};
+          if (j.ok) {
+            var bin = atob(j.prg), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+            GW.download(new Blob([u], { type: 'application/octet-stream' }), j.name);
+            say('Built ' + j.name + ' (' + Math.round(u.length / 1024) + ' KB). Copy it into GARMIN/APPS on the watch.', j.log && j.log.replace(/exit=0/, '').trim());
+          } else say((j.message || 'Build failed.'), j.log || '');
+        }).catch(function (e) { btn.disabled = false; say('Build failed: ' + e.message); });
+    });
+    setup.addEventListener('click', function () {
+      setup.disabled = true; say('Setting up Garmin’s toolchain in the cloud… this takes a couple of minutes, keep this window open.', '');
+      api('/api/setup', { method: 'POST' }).then(function (r) {
+        var j = r.json || {}; setup.disabled = false;
+        if (j.ok) { setup.style.display = 'none'; btn.disabled = false; say('Builder ready. Press the build button.', ''); }
+        else say(j.message || 'Setup failed.', j.log || '');
+      }).catch(function (e) { setup.disabled = false; say('Setup failed: ' + e.message); });
+    });
+    box.appendChild(h('div', { style: 'display:flex;align-items:center;flex-wrap:wrap;gap:6px' }, [btn, setup]));
+    box.appendChild(msg); box.appendChild(logBox);
+    api('/api/status').then(function (r) {
+      if (!r.json) { box.style.display = 'none'; return; } // static hosting: no backend
+      if (r.json.ready) { btn.disabled = false; say('Cloud builder ready: one click gives you the finished .prg.'); }
+      else { setup.style.display = ''; say(r.json.message); }
+    }).catch(function () { box.style.display = 'none'; });
+    return box;
+  }
+
   GW.openExport = function () {
     var body = h('div', {}, [h('p', { class: 'muted', text: 'Building your project…' })]);
     var m = modal('Get it on your watch', body);
@@ -649,6 +699,8 @@
         h('span', { class: 'muted small', text: res.files.length + ' files · ' + Math.round(blob.size / 1024) + ' KB · for ' + GW.DEVICE.name })
       ]));
       body.appendChild(warns);
+      body.appendChild(builderBox(res));
+      body.appendChild(h('h4', { style: 'margin:18px 0 8px', class: 'muted small', text: 'OR BUILD IT YOURSELF' }));
       body.appendChild(h('ol', { class: 'steps' }, [
         h('li', {}, [h('div', {}, [h('h5', { text: 'Unzip the download' }), h('p', { html: 'It is a complete Garmin Connect IQ project with a step-by-step <span class="kbd">README.md</span> inside.' })])]),
         h('li', {}, [h('div', {}, [h('h5', { text: 'One-time setup' }), h('p', { html: 'Install the <a href="https://developer.garmin.com/connect-iq/sdk/" target="_blank" rel="noopener">Connect IQ SDK</a> (via its SDK Manager, also download the <b>fēnix 6X Pro</b> device) and <a href="https://marketplace.visualstudio.com/items?itemName=garmin.monkeyc" target="_blank" rel="noopener">VS Code with Garmin’s Monkey C extension</a>.' })])]),

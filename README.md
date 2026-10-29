@@ -42,10 +42,22 @@ npm test           # exports every preset and sanity-checks the generated Connec
 
 The tool also works when `site/index.html` is opened straight from disk.
 
-## Hosting
+## Hosting and one-click builds (Vercel)
 
-`.github/workflows/pages.yml` publishes `site/` to **GitHub Pages** on every push to `main`.
-One-time setup: repository **Settings → Pages → Build and deployment → Source: GitHub Actions**. Any static host works too (Netlify, Vercel, S3…): publish the `site/` folder.
+The repo is a Vercel project: `site/` is served as static files and `api/` holds the backend.
+
+* `api/build` compiles the exported project with Garmin's real compiler inside a persistent **Vercel Sandbox** and returns the finished `.prg`, so you can skip the manual SDK/VS Code steps. The export dialog has a **Build my watchface (.prg)** button.
+* `api/setup` prepares that sandbox once: it downloads the Connect IQ SDK, the fēnix 6X Pro device files and creates a signing key. Garmin only releases device files to a logged-in Garmin account, so it needs these Vercel environment variables (Project → Settings → Environment Variables, mark the password *Sensitive*):
+
+| Name | Value |
+| --- | --- |
+| `GARMIN_USERNAME` | your Garmin account email |
+| `GARMIN_PASSWORD` | your Garmin account password (use an account without 2-factor sign-in) |
+| `GARMIN_SDK_AGREEMENT` | `accept` (you accept Garmin's Connect IQ SDK licence) |
+
+After redeploying, open the site → **Get it on my watch** → **Set up the builder**. This is a personal tool: keep Vercel's deployment protection on so only you can reach `/api/*`.
+
+The site still works as plain static hosting; without the backend the build button simply hides and you use the ZIP + README flow.
 
 ## How it is put together
 
@@ -69,7 +81,7 @@ Each element is drawn by its own generated method (`drawEl0`, `drawEl1`, …) an
 ## Limitations worth knowing
 
 * **Preview fidelity.** Garmin’s built-in fonts are approximated (Rajdhani, calibrated against a fēnix 6). Positions of built-in-font text can be a few pixels off on the real watch; bitmap fonts are exact because they are rasterised by the tool.
-* **The generated Monkey C is not compiled in this repo’s CI** (that needs Garmin’s SDK and a Garmin login). `npm test` checks structure only. If the compiler reports something, the README in the export has a troubleshooting section, and issues are welcome.
+* `npm test` checks the generated project's structure only; the real compile happens in the cloud builder (or on your machine).
 * **Memory.** Watchfaces have a small memory budget. Large images and many big bitmap fonts can make a face fail to load; the export warns about the obvious cases.
 * Seconds (text or hand) only update while the wrist is raised; in low-power mode the watch redraws once a minute.
 * Only the fēnix 6X Pro / 6X Solar / Sapphire (`fenix6xpro`) is targeted.
