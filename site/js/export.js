@@ -142,6 +142,36 @@
     });
   };
 
+  // ---- tilt versions: the Big Data face can be exported at several rotations, each as its own app ----
+  GW.rotatable = function (design) { return design.elements.some(function (e) { return e.type === 'bigdata' && !e.hidden; }); };
+  GW.faceAngle = function (design) {
+    var e = design.elements.filter(function (x) { return x.type === 'bigdata'; })[0];
+    return e ? e.angle : 0;
+  };
+  GW.tiltList = function (design) {
+    if (!GW.rotatable(design)) return null;
+    var t = (design.tilts && design.tilts.length) ? design.tilts.slice() : [GW.faceAngle(design)];
+    t = t.map(function (a) { return ((Math.round(a) % 360) + 360) % 360; });
+    return t.filter(function (a, i) { return t.indexOf(a) === i; }).sort(function (a, b) { return a - b; });
+  };
+  // Resolves to an array of project results (one per tilt; a single normal project otherwise).
+  GW.buildVariants = function (design) {
+    var tl = GW.tiltList(design);
+    if (!tl || tl.length < 2) return GW.buildProject(design).then(function (r) { return [r]; });
+    design.appIds = design.appIds || {};
+    var out = [];
+    return tl.reduce(function (p, a) {
+      return p.then(function () {
+        var d = GW.clone(design);
+        d.name = design.name + ' ' + a + '\u00b0';
+        d.elements.forEach(function (e) { if (e.type === 'bigdata') e.angle = a; });
+        var id = design.appIds[a]; if (!/^[0-9a-f]{32}$/.test(id || '')) id = uuid32();
+        design.appIds[a] = id; d.appId = id;
+        return GW.buildProject(d).then(function (r) { r.tilt = a; out.push(r); });
+      });
+    }, Promise.resolve()).then(function () { return out; });
+  };
+
   GW.download = function (blob, filename) {
     var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();

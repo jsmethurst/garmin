@@ -420,6 +420,20 @@
     p.appendChild(h('div', { class: 'note warn', text: 'Full-screen images are the quickest way to run out of watch memory. Shapes and gauges cost almost nothing.' }));
     p.appendChild(h('h4', { text: 'Target' }));
     p.appendChild(h('div', { class: 'note', text: GW.DEVICE.name + ' · ' + GW.SIZE + '×' + GW.SIZE + ' round MIP · 64 colours · device id ' + GW.DEVICE.id }));
+    if (GW.rotatable(d)) {
+      p.appendChild(h('h4', { text: 'Rotate whole face' }));
+      var ang = GW.faceAngle(d);
+      function setAngle(v) { d.elements.forEach(function (e) { if (e.type === 'bigdata') e.angle = v; }); }
+      var rr = h('input', { type: 'range', min: 0, max: 359, step: 1, value: ang, 'aria-label': 'Rotation' });
+      var nn = h('input', { type: 'number', min: 0, max: 359, step: 1, value: ang });
+      function live(v) { setAngle(v); rr.value = v; nn.value = v; GW.touch(false); }
+      rr.addEventListener('input', function () { live(parseFloat(rr.value)); });
+      nn.addEventListener('input', function () { var v = parseFloat(nn.value); if (!isNaN(v)) live(((Math.round(v) % 360) + 360) % 360); });
+      rr.addEventListener('change', function () { GW.commit(true); }); nn.addEventListener('change', function () { GW.commit(true); });
+      p.appendChild(field('Which way the top of the face points', h('div', { class: 'rng' }, [rr, nn])));
+      p.appendChild(segCtl([[0, '0°'], [30, '1 o’clock'], [60, '2 (red)'], [90, '3']], ang, function (v) { setAngle(v); GW.commit(true); }));
+      p.appendChild(h('div', { class: 'note', text: 'To export several rotations at once (for example 0° and 30°), pick them in the export dialog.' }));
+    }
     p.appendChild(h('h4', { text: 'Saved in this browser' }));
     var nameIn = h('input', { type: 'text', value: d.name, maxlength: 40, 'aria-label': 'Snapshot name' });
     p.appendChild(h('div', { class: 'row' }, [nameIn, h('button', { class: 'btn', style: 'flex:none', text: 'Save snapshot', onclick: function () {
@@ -637,25 +651,35 @@
       return r.text().then(function (t) { var j = null; try { j = JSON.parse(t); } catch (e) { } return { status: r.status, json: j }; });
     });
   }
-  function builderBox(res) {
+  function builderBox(results) {
     var box = h('div', { class: 'card', style: 'margin:14px 0;border-color:#17556b;background:#0c1c26' });
     var msg = h('div', { class: 'muted small', text: 'Checking the cloud builder…' });
     var logBox = h('div', { class: 'code', style: 'display:none;margin-top:10px;max-height:200px' });
-    var btn = h('button', { class: 'btn primary', style: 'font-size:15px;padding:11px 20px', text: '⚙ Build my watchface (.prg)', disabled: true });
+    var many = results.length > 1;
+    var btn = h('button', { class: 'btn primary', style: 'font-size:15px;padding:11px 20px', text: many ? '⚙ Build all ' + results.length + ' versions (.prg)' : '⚙ Build my watchface (.prg)', disabled: true });
     var setup = h('button', { class: 'btn', text: 'Set up the builder (one time, ~2 min)', style: 'display:none;margin-left:8px' });
     function say(t, log) { msg.textContent = t; if (log != null) { logBox.style.display = log ? '' : 'none'; logBox.textContent = log; } }
+    function buildOne(res) {
+      return api('/api/build', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+        name: res.name, files: res.files.map(function (f) { return { path: f.path, data: b64(f.data) }; }) }) }).then(function (r) { return r.json || {}; });
+    }
     btn.addEventListener('click', function () {
-      btn.disabled = true; say('Compiling with Garmin’s compiler…', '');
-      api('/api/build', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-        name: res.name, files: res.files.map(function (f) { return { path: f.path, data: b64(f.data) }; }) }) })
-        .then(function (r) {
-          btn.disabled = false; var j = r.json || {};
-          if (j.ok) {
-            var bin = atob(j.prg), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
-            GW.download(new Blob([u], { type: 'application/octet-stream' }), j.name);
-            say('Built ' + j.name + ' (' + Math.round(u.length / 1024) + ' KB). Copy it into GARMIN/APPS on the watch.', j.log && j.log.replace(/exit=0/, '').trim());
-          } else say((j.message || 'Build failed.'), j.log || '');
+      btn.disabled = true; var done = [], log = '';
+      (function next(i) {
+        if (i >= results.length) {
+          btn.disabled = false;
+          say('Built ' + done.join(', ') + '. Copy ' + (done.length > 1 ? 'them' : 'it') + ' into GARMIN/APPS on the watch.', log.replace(/exit=0/g, '').trim());
+          return;
+        }
+        say('Compiling ' + (i + 1) + ' of ' + results.length + ' with Garmin’s compiler…', '');
+        buildOne(results[i]).then(function (j) {
+          if (!j.ok) { btn.disabled = false; say((j.message || 'Build failed.') + (many ? ' (' + results[i].name + ')' : ''), j.log || ''); return; }
+          var bin = atob(j.prg), u = new Uint8Array(bin.length); for (var k = 0; k < bin.length; k++) u[k] = bin.charCodeAt(k);
+          GW.download(new Blob([u], { type: 'application/octet-stream' }), j.name);
+          done.push(j.name + ' (' + Math.round(u.length / 1024) + ' KB)'); log += (j.log || '') + '\n';
+          setTimeout(function () { next(i + 1); }, 400); // let the browser start each download
         }).catch(function (e) { btn.disabled = false; say('Build failed: ' + e.message); });
+      })(0);
     });
     setup.addEventListener('click', function () {
       setup.disabled = true; say('Setting up Garmin’s toolchain in the cloud… this takes a couple of minutes, keep this window open.', '');
@@ -669,55 +693,91 @@
     box.appendChild(msg); box.appendChild(logBox);
     api('/api/status').then(function (r) {
       if (!r.json) { box.style.display = 'none'; return; } // static hosting: no backend
-      if (r.json.ready) { btn.disabled = false; say('Cloud builder ready: one click gives you the finished .prg.'); }
+      if (r.json.ready) { btn.disabled = false; say('Cloud builder ready: one click gives you the finished .prg' + (many ? ' files.' : '.')); }
       else { setup.style.display = ''; say(r.json.message); }
     }).catch(function () { box.style.display = 'none'; });
     return box;
   }
 
+  // Chips to pick which rotations (tilts) to export, e.g. 0° and 30° side by side.
+  function tiltPicker(onChange) {
+    var tl = GW.tiltList(GW.design) || [], wrap = h('div', { class: 'card', style: 'margin:0 0 14px' });
+    var PRESETS = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
+    function set(list) { GW.design.tilts = list.length ? list : [GW.faceAngle(GW.design)]; GW.history.commit(); onChange(); }
+    wrap.appendChild(h('h4', { style: 'margin:0 0 6px', class: 'muted small', text: 'ROTATION VERSIONS TO EXPORT' }));
+    var chips = h('div', { class: 'chips' });
+    var shown = PRESETS.concat(tl.filter(function (a) { return PRESETS.indexOf(a) < 0; })).sort(function (a, b) { return a - b; });
+    shown.forEach(function (a) {
+      var on = tl.indexOf(a) >= 0;
+      chips.appendChild(h('button', { class: 'chip' + (on ? ' on' : ''), 'aria-pressed': on ? 'true' : 'false', text: a + '°', onclick: function () {
+        set(on ? tl.filter(function (x) { return x !== a; }) : tl.concat([a]));
+      } }));
+    });
+    var custom = h('input', { type: 'number', min: 0, max: 359, placeholder: 'other °', style: 'width:84px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:inherit' });
+    custom.addEventListener('change', function () { var v = parseInt(custom.value, 10); if (!isNaN(v)) set(tl.concat([((v % 360) + 360) % 360])); });
+    chips.appendChild(custom);
+    wrap.appendChild(chips);
+    wrap.appendChild(h('div', { class: 'muted small', style: 'margin-top:6px', text: tl.length > 1 ? 'Each rotation becomes its own watchface (named with its angle), so you can keep several on the watch.' : '0° = upright, 30° = points at 1 o’clock, 60° = 2 o’clock (the red button). Pick more than one to export several at once.' }));
+    return wrap;
+  }
+
   GW.openExport = function () {
     var body = h('div', {}, [h('p', { class: 'muted', text: 'Building your project…' })]);
-    var m = modal('Get it on your watch', body);
-    GW.buildProject(GW.design).then(function (res) {
-      GW.design.appId = res.appId; GW.history.commit();
-      var zipName = res.name + '-fenix6x.zip';
-      var blob = GW.zip(res.files.map(function (f) { return { path: res.name + '/' + f.path, data: f.data, exec: f.exec }; }));
-      body.innerHTML = '';
-      var textFiles = res.files.filter(function (f) { return typeof f.data === 'string' && !/design\.json$|\.fnt$|\.gitignore$|launch\.json$/.test(f.path); });
-      var codeBox = h('div', { class: 'code', text: '' }), cur = textFiles.filter(function (f) { return /View\.mc$/.test(f.path); })[0] || textFiles[0];
-      var tabs = h('div', { class: 'codetabs' });
-      function show(f) {
-        cur = f; codeBox.textContent = f.data;
-        Array.prototype.forEach.call(tabs.children, function (b) { b.classList.toggle('primary', b.dataset.p === f.path); });
-      }
-      textFiles.forEach(function (f) { tabs.appendChild(h('button', { class: 'btn sm', 'data-p': f.path, text: f.path.split('/').pop(), onclick: function () { show(f); } })); });
-      show(cur);
+    modal('Get it on your watch', body);
+    function render() {
+      GW.buildVariants(GW.design).then(function (results) {
+        var first = results[0], many = results.length > 1;
+        if (!many) GW.design.appId = first.appId; GW.history.commit();
+        var zipName = (many ? GW.slug(GW.design.name) + '-versions' : first.name) + '-fenix6x.zip';
+        var all = []; results.forEach(function (r) { r.files.forEach(function (f) { all.push({ path: r.name + '/' + f.path, data: f.data, exec: f.exec }); }); });
+        var blob = GW.zip(all), nFiles = all.length;
+        body.innerHTML = '';
+        if (GW.rotatable(GW.design)) body.appendChild(tiltPicker(function () { body.innerHTML = ''; body.appendChild(h('p', { class: 'muted', text: 'Building your project…' })); render(); }));
 
-      var warns = h('div', { class: 'warns' }, res.warnings.map(function (w) { return h('div', { class: 'note warn', text: '⚠ ' + w }); }));
+        var cur = null, codeBox = h('div', { class: 'code', text: '' }), tabs = h('div', { class: 'codetabs' }), vsel = null;
+        function textFilesOf(r) { return r.files.filter(function (f) { return typeof f.data === 'string' && !/design\.json$|\.fnt$|\.gitignore$|launch\.json$/.test(f.path); }); }
+        function show(f) {
+          cur = f; codeBox.textContent = f.data;
+          Array.prototype.forEach.call(tabs.children, function (b) { b.classList.toggle('primary', b.dataset.p === f.path); });
+        }
+        function loadTabs(r) {
+          tabs.innerHTML = ''; var tf = textFilesOf(r);
+          tf.forEach(function (f) { tabs.appendChild(h('button', { class: 'btn sm', 'data-p': f.path, text: f.path.split('/').pop(), onclick: function () { show(f); } })); });
+          show(tf.filter(function (f) { return /View\.mc$/.test(f.path); })[0] || tf[0]);
+        }
 
-      body.appendChild(h('div', { class: 'row', style: 'align-items:center;margin-bottom:14px;gap:14px;flex-wrap:wrap' }, [
-        h('button', { class: 'btn primary', style: 'font-size:15px;padding:11px 20px', text: '⬇ Download project (' + zipName + ')', onclick: function () { GW.download(blob, zipName); GW.toast('Downloaded ' + zipName); } }),
-        h('span', { class: 'muted small', text: res.files.length + ' files · ' + Math.round(blob.size / 1024) + ' KB · for ' + GW.DEVICE.name })
-      ]));
-      body.appendChild(warns);
-      body.appendChild(builderBox(res));
-      body.appendChild(h('h4', { style: 'margin:18px 0 8px', class: 'muted small', text: 'OR BUILD IT YOURSELF' }));
-      body.appendChild(h('ol', { class: 'steps' }, [
-        h('li', {}, [h('div', {}, [h('h5', { text: 'Unzip the download' }), h('p', { html: 'It is a complete Garmin Connect IQ project with a step-by-step <span class="kbd">README.md</span> inside.' })])]),
-        h('li', {}, [h('div', {}, [h('h5', { text: 'One-time setup' }), h('p', { html: 'Install the <a href="https://developer.garmin.com/connect-iq/sdk/" target="_blank" rel="noopener">Connect IQ SDK</a> (via its SDK Manager, also download the <b>fēnix 6X Pro</b> device) and <a href="https://marketplace.visualstudio.com/items?itemName=garmin.monkeyc" target="_blank" rel="noopener">VS Code with Garmin’s Monkey C extension</a>.' })])]),
-        h('li', {}, [h('div', {}, [h('h5', { text: 'Build' }), h('p', { html: 'Open the folder in VS Code → <span class="kbd">Ctrl/Cmd+Shift+P</span> → <b>Monkey C: Build for Device</b> → <b>fenix6xpro</b>. Press <span class="kbd">F5</span> to try it in Garmin’s simulator first. Prefer a terminal? Run <span class="kbd">./build.sh</span> (or <span class="kbd">build.bat</span>).' })])]),
-        h('li', {}, [h('div', {}, [h('h5', { text: 'Copy to the watch' }), h('p', { html: 'Connect the watch by USB and copy <span class="kbd">' + res.name + '.prg</span> into <span class="kbd">GARMIN/APPS</span>. Unplug, then on the watch: hold UP → Watch Face → pick it.' })])])
-      ]));
-      body.appendChild(h('h4', { style: 'margin:20px 0 8px', class: 'muted small', text: 'GENERATED CODE' }));
-      body.appendChild(tabs); body.appendChild(codeBox);
-      body.appendChild(h('div', { class: 'row', style: 'margin-top:10px' }, [
-        h('button', { class: 'btn sm', text: 'Copy this file', onclick: function () { navigator.clipboard.writeText(cur.data).then(function () { GW.toast('Copied ' + cur.path); }); } }),
-        h('button', { class: 'btn sm', text: 'Save design.json (to edit later)', onclick: function () { GW.saveFile(); } })
-      ]));
-    }).catch(function (e) {
-      console.error(e); body.innerHTML = ''; body.appendChild(h('div', { class: 'note warn', text: 'Export failed: ' + e.message }));
-    });
-    void m;
+        var warns = {}; results.forEach(function (r) { r.warnings.forEach(function (w) { warns[w] = 1; }); });
+        body.appendChild(h('div', { class: 'row', style: 'align-items:center;margin-bottom:14px;gap:14px;flex-wrap:wrap' }, [
+          h('button', { class: 'btn primary', style: 'font-size:15px;padding:11px 20px', text: '⬇ Download ' + (many ? results.length + ' projects' : 'project') + ' (' + zipName + ')', onclick: function () { GW.download(blob, zipName); GW.toast('Downloaded ' + zipName); } }),
+          h('span', { class: 'muted small', text: nFiles + ' files · ' + Math.round(blob.size / 1024) + ' KB · for ' + GW.DEVICE.name })
+        ]));
+        body.appendChild(h('div', { class: 'warns' }, Object.keys(warns).map(function (w) { return h('div', { class: 'note warn', text: '⚠ ' + w }); })));
+        body.appendChild(builderBox(results));
+        body.appendChild(h('h4', { style: 'margin:18px 0 8px', class: 'muted small', text: 'OR BUILD IT YOURSELF' }));
+        body.appendChild(h('ol', { class: 'steps' }, [
+          h('li', {}, [h('div', {}, [h('h5', { text: 'Unzip the download' }), h('p', { html: 'It is a complete Garmin Connect IQ project' + (many ? ' per version' : '') + ' with a step-by-step <span class="kbd">README.md</span> inside.' })])]),
+          h('li', {}, [h('div', {}, [h('h5', { text: 'One-time setup' }), h('p', { html: 'Install the <a href="https://developer.garmin.com/connect-iq/sdk/" target="_blank" rel="noopener">Connect IQ SDK</a> (via its SDK Manager, also download the <b>fēnix 6X Pro</b> device) and <a href="https://marketplace.visualstudio.com/items?itemName=garmin.monkeyc" target="_blank" rel="noopener">VS Code with Garmin’s Monkey C extension</a>.' })])]),
+          h('li', {}, [h('div', {}, [h('h5', { text: 'Build' }), h('p', { html: 'Open the folder in VS Code → <span class="kbd">Ctrl/Cmd+Shift+P</span> → <b>Monkey C: Build for Device</b> → <b>fenix6xpro</b>. Press <span class="kbd">F5</span> to try it in Garmin’s simulator first. Prefer a terminal? Run <span class="kbd">./build.sh</span> (or <span class="kbd">build.bat</span>).' })])]),
+          h('li', {}, [h('div', {}, [h('h5', { text: 'Copy to the watch' }), h('p', { html: 'Connect the watch by USB and copy the <span class="kbd">.prg</span> ' + (many ? 'files' : 'file') + ' into <span class="kbd">GARMIN/APPS</span>. Unplug, then on the watch: hold UP → Watch Face → pick it.' })])])
+        ]));
+        body.appendChild(h('h4', { style: 'margin:20px 0 8px', class: 'muted small', text: 'GENERATED CODE' }));
+        if (many) {
+          vsel = h('select', { style: 'margin-bottom:8px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:5px 8px;color:inherit' },
+            results.map(function (r, i) { return h('option', { value: i, text: r.name + ' (' + r.tilt + '°)' }); }));
+          vsel.addEventListener('change', function () { loadTabs(results[parseInt(vsel.value, 10)]); });
+          body.appendChild(vsel);
+        }
+        loadTabs(first);
+        body.appendChild(tabs); body.appendChild(codeBox);
+        body.appendChild(h('div', { class: 'row', style: 'margin-top:10px' }, [
+          h('button', { class: 'btn sm', text: 'Copy this file', onclick: function () { navigator.clipboard.writeText(cur.data).then(function () { GW.toast('Copied ' + cur.path); }); } }),
+          h('button', { class: 'btn sm', text: 'Save design.json (to edit later)', onclick: function () { GW.saveFile(); } })
+        ]));
+      }).catch(function (e) {
+        console.error(e); body.innerHTML = ''; body.appendChild(h('div', { class: 'note warn', text: 'Export failed: ' + e.message }));
+      });
+    }
+    render();
   };
 
   GW.saveFile = function () {

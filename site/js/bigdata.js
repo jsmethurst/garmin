@@ -36,7 +36,7 @@
     var s = env.sim, days = s.batteryDays;
     return {
       date: DAYS[env.dow] + ' ' + env.day + ' ' + MONTHS[env.mo - 1],
-      temp: Math.round(s.temp) + '°C',
+      temp: Math.round(s.temp) + '°',
       hr: String(Math.round(s.hr)), steps: String(Math.round(s.steps)),
       bat: (days < 10 ? days.toFixed(1) : String(Math.round(days))) + 'G',
       batColor: days < 3 ? C.RED : (days < 7 ? C.AMBER : C.GREEN),
@@ -175,7 +175,7 @@
     // "you are here" marker: drawn right after the map, so all text sits on top of it
     var vx = x0 + (env.sim.lon + 180) / 360 * COLS * pitch, vy = y0 + (75 - env.sim.lat) / 5 * pitch;
     var mx = Math.trunc(R.rx(vx, vy)), my = Math.trunc(R.ry(vx, vy));
-    [[10, C.BLACK], [8, C.YELLOW], [4, C.BLACK], [2, C.YELLOW]].forEach(function (c) {
+    [[5, C.BLACK], [4, C.YELLOW]].forEach(function (c) {
       ctx.fillStyle = q(c[1]); ctx.beginPath(); ctx.arc(mx, my, c[0], 0, 7); ctx.fill();
     });
 

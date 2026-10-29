@@ -54,6 +54,7 @@ button { cursor: pointer; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { background: var(--panel2); border: 1px solid var(--line2); border-radius: 999px; padding: 4px 10px; font-size: 12px; }
 .chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip.on { background: #0f2c3a; border-color: var(--accent); color: var(--accent); }
 .addgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .addbtn { display: flex; align-items: center; gap: 8px; text-align: left; padding: 8px; background: var(--panel2); border: 1px solid var(--line2); border-radius: 8px; font-size: 12.5px; }
 .addbtn:hover { border-color: var(--accent); }
