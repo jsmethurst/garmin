@@ -1,0 +1,367 @@
+//@members
+    const F_BLACK = 0x000000;
+    const F_WHITE = 0xFFFFFF;
+    const F_CYAN = 0x00FFFF;
+    const F_LGREY = 0xAAAAAA;
+    const F_TRAIL = 0x0055AA;
+    const F_YELLOW = 0xFFFF00;
+    const F_GREEN = 0x55FF55;
+    const F_ZBRIGHT = [0xAAAAAA, 0x00AAFF, 0x55FF55, 0xFFAA00, 0xFF0000];
+    const F_ZDIM = [0x555555, 0x000055, 0x005500, 0x555500, 0x550000];
+    private var _fHr = null;
+    private var _fTimer = 0;
+    private var _fDist = 0.0;
+    private var _fPrevTimer = 0;
+    private var _fPrevDist = 0.0;
+    private var _fLapT0 = 0;
+    private var _fLapD0 = 0.0;
+    private var _fLapNo = 1;
+    private var _fLastLap = -1.0;
+    private var _fVirtT = -100000;
+    private var _fZones = null;
+    private var _fLat = null;
+    private var _fLon = null;
+    private var _fN = 0;
+    private var _fStep = 15.0;
+    private var _fHereLa = 0.0;
+    private var _fHereLo = 0.0;
+    private var _fHave = false;
+    private var _fK = 1.0;
+    private var _fOx = 0.0;
+    private var _fOy = 0.0;
+    private var _fMLa = 0.0;
+    private var _fMLo = 0.0;
+    private var _fMCl = 1.0;
+    private var _fMSc = 1.0;
+//@code
+    // ===== Run field: heart-rate zone, timer, distance, average / lap / last-lap pace, optional route trail =====
+
+    function fldInit() as Void {
+        _fZones = [95, 114, 133, 152, 171, 190];
+        var z = UserProfile.getHeartRateZones(UserProfile.HR_ZONE_SPORT_RUNNING);
+        if (z != null && z.size() >= 6) { _fZones = z; }
+        if (FLD_MAP) {
+            _fLat = new [160];
+            _fLon = new [160];
+        }
+    }
+
+    function fldReset() as Void {
+        _fTimer = 0;
+        _fDist = 0.0;
+        _fPrevTimer = 0;
+        _fPrevDist = 0.0;
+        _fLapT0 = 0;
+        _fLapD0 = 0.0;
+        _fLapNo = 1;
+        _fLastLap = -1.0;
+        _fVirtT = -100000;
+        _fN = 0;
+        _fStep = 15.0;
+        _fHave = false;
+    }
+
+    // called every second with the activity data
+    function fldCompute(info as Activity.Info) as Void {
+        _fHr = info.currentHeartRate;
+        var t = (info.timerTime != null) ? info.timerTime : 0;
+        var d = (info.elapsedDistance != null) ? info.elapsedDistance : 0.0;
+        if (FLD_AUTO && d >= _fLapD0 + FLD_LAP_M && d > _fPrevDist) {
+            // crossed a lap mark since the previous second: interpolate the exact crossing time
+            var mark = _fLapD0 + FLD_LAP_M;
+            var f = (mark - _fPrevDist) / (d - _fPrevDist);
+            var tc = _fPrevTimer + (f * (t - _fPrevTimer)).toNumber();
+            fldEndLap(tc, mark);
+            _fVirtT = t;
+        }
+        _fTimer = t;
+        _fDist = d;
+        _fPrevTimer = t;
+        _fPrevDist = d;
+        if (FLD_MAP) { fldTrack(info); }
+    }
+
+    // Lap button (or the watch's own Auto Lap)
+    function fldLap() as Void {
+        if (_fTimer - _fVirtT < 3000) { return; }   // the watch lapped right after our own auto lap: ignore the duplicate
+        fldEndLap(_fTimer, _fDist);
+    }
+
+    function fldEndLap(tEnd as Number, dEnd as Float) as Void {
+        var dist = dEnd - _fLapD0;
+        if (dist >= 20.0) {
+            _fLastLap = ((tEnd - _fLapT0) / 1000.0) / (dist / 1000.0);
+        }
+        _fLapT0 = tEnd;
+        _fLapD0 = dEnd;
+        _fLapNo += 1;
+    }
+
+    private function fldLapPace() as Float {
+        var d = _fDist - _fLapD0;
+        if (d < 20.0) { return -1.0; }
+        return ((_fTimer - _fLapT0) / 1000.0) / (d / 1000.0);
+    }
+
+    private function fldAvgPace() as Float {
+        if (_fDist < 20.0) { return -1.0; }
+        return (_fTimer / 1000.0) / (_fDist / 1000.0);
+    }
+
+    private function fldPace(secPerKm as Float) as String {
+        if (secPerKm < 0.0 || secPerKm > 3599.0) { return "--:--"; }
+        var s = secPerKm.toNumber();
+        return (s / 60).format("%d") + ":" + (s % 60).format("%02d");
+    }
+
+    private function fldTime(ms as Number) as String {
+        var s = ms / 1000;
+        var h = s / 3600;
+        var m = (s % 3600) / 60;
+        var sec = s % 60;
+        if (h > 0) { return h.format("%d") + ":" + m.format("%02d") + ":" + sec.format("%02d"); }
+        return m.format("%02d") + ":" + sec.format("%02d");
+    }
+
+    // 0 = below zone 1, 1..5 = zones
+    private function fldZone(hr) as Number {
+        if (hr == null || _fZones == null) { return 0; }
+        var z = 0;
+        for (var i = 0; i < 5; i++) {
+            if (hr >= _fZones[i]) { z = i + 1; }
+        }
+        return z;
+    }
+
+    private function fldAng(a as Number) as Number {
+        a = a % 360;
+        if (a < 0) { a += 360; }
+        return a;
+    }
+
+    private function fx(x as Float) as Float { return _fOx + x * _fK; }
+    private function fy(y as Float) as Float { return _fOy + y * _fK; }
+
+    // ---------- stroke text (8 x 12 glyph box, y down) ----------
+
+    private function fldWidth(s as String, u as Float) as Float {
+        var chars = s.toCharArray();
+        var tot = 0;
+        for (var i = 0; i < chars.size(); i++) {
+            var c = chars[i];
+            if (c == ' ') { tot += FieldGlyphs.SPACE; continue; }
+            var g = FieldGlyphs.DATA[c];
+            tot += ((g == null) ? 8 : g[0]) + FieldGlyphs.GAP;
+        }
+        return (tot - FieldGlyphs.GAP) * u;
+    }
+
+    private function fldPen(u as Float) as Number {
+        var p = (u * 1.5).toNumber();
+        return (p < 2) ? 2 : p;
+    }
+
+    // align 0 left / 1 centre / 2 right; y = top of the glyph box; halo = black outline (for text over the map)
+    private function fldText(dc as Dc, s as String, x as Float, y as Float, u as Float, color as Number, align as Number, halo as Boolean) as Void {
+        var chars = s.toCharArray();
+        var pen = fldPen(u);
+        var ox = x;
+        if (align == 1) { ox = x - fldWidth(s, u) / 2.0; }
+        else if (align == 2) { ox = x - fldWidth(s, u); }
+        for (var pass = halo ? 0 : 1; pass < 2; pass++) {
+            var p = (pass == 0) ? pen + 4 : pen;
+            dc.setColor((pass == 0) ? F_BLACK : color, Graphics.COLOR_TRANSPARENT);
+            dc.setPenWidth(p);
+            var round = (pass == 1 && pen >= 4);
+            var gx0 = ox;
+            for (var i = 0; i < chars.size(); i++) {
+                var c = chars[i];
+                if (c == ' ') { gx0 += FieldGlyphs.SPACE * u; continue; }
+                var g = FieldGlyphs.DATA[c];
+                if (g == null) { gx0 += (8 + FieldGlyphs.GAP) * u; continue; }
+                fldStrokes(dc, g, gx0, y, u, p, round);
+                gx0 += (g[0] + FieldGlyphs.GAP) * u;
+            }
+        }
+        dc.setPenWidth(1);
+    }
+
+    private function fldStrokes(dc as Dc, arr as Array, bx as Float, by as Float, u as Float, pen as Number, round as Boolean) as Void {
+        var n = arr.size();
+        var have = false;
+        var psx = 0.0;
+        var psy = 0.0;
+        var r = (pen + 1) / 2;
+        for (var i = 1; i + 1 < n; i += 2) {
+            var gx = arr[i];
+            if (gx == 99) { have = false; continue; }
+            var gy = arr[i + 1];
+            var sx = bx + gx * u;
+            var sy = by + gy * u;
+            if (have) {
+                dc.drawLine(psx, psy, sx, sy);
+                if (!round && psx == sx && psy == sy) { dc.fillCircle(sx, sy, r); }
+            }
+            if (round) { dc.fillCircle(sx, sy, r); }
+            psx = sx;
+            psy = sy;
+            have = true;
+        }
+    }
+
+    // ---------- heart-rate zone ring ----------
+
+    private function fldRing(dc as Dc, zone as Number) as Void {
+        var cx = fx(140.0).toNumber();
+        var cy = fy(140.0).toNumber();
+        var r = (133.0 * _fK).toNumber();
+        for (var i = 0; i < 5; i++) {
+            var on = (zone == i + 1);
+            var start = 210 + i * 61;
+            dc.setPenWidth(on ? (9.0 * _fK).toNumber() : (4.0 * _fK).toNumber());
+            dc.setColor(on ? F_ZBRIGHT[i] : F_ZDIM[i], Graphics.COLOR_TRANSPARENT);
+            dc.drawArc(cx, cy, r, Graphics.ARC_CLOCKWISE, fldAng(90 - start), fldAng(90 - (start + 56)));
+        }
+        dc.setPenWidth(1);
+    }
+
+    // ---------- route trail ----------
+
+    private function fldTrack(info as Activity.Info) as Void {
+        var loc = info.currentLocation;
+        if (loc == null) { return; }
+        var deg = loc.toDegrees();
+        var la = deg[0].toFloat();
+        var lo = deg[1].toFloat();
+        if (la == 0.0 && lo == 0.0) { return; }
+        _fHereLa = la;
+        _fHereLo = lo;
+        _fHave = true;
+        if (_fN > 0) {
+            var dy = (la - _fLat[_fN - 1]) * 111320.0;
+            var dx = (lo - _fLon[_fN - 1]) * 111320.0 * Math.cos(Math.toRadians(la));
+            if (dx * dx + dy * dy < _fStep * _fStep) { return; }
+        }
+        if (_fN >= 158) { fldThin(); }
+        _fLat[_fN] = la;
+        _fLon[_fN] = lo;
+        _fN += 1;
+    }
+
+    // keep every second point and double the spacing, so a long run still fits
+    private function fldThin() as Void {
+        var m = _fN / 2;
+        for (var i = 0; i < m; i++) {
+            _fLat[i] = _fLat[i * 2];
+            _fLon[i] = _fLon[i * 2];
+        }
+        _fN = m;
+        _fStep = _fStep * 2.0;
+    }
+
+    private function fldDrawMap(dc as Dc) as Void {
+        if (_fN < 1 || !_fHave) { return; }
+        var minLa = _fHereLa;
+        var maxLa = _fHereLa;
+        var minLo = _fHereLo;
+        var maxLo = _fHereLo;
+        for (var i = 0; i < _fN; i++) {
+            var a = _fLat[i];
+            var o = _fLon[i];
+            if (a < minLa) { minLa = a; }
+            if (a > maxLa) { maxLa = a; }
+            if (o < minLo) { minLo = o; }
+            if (o > maxLo) { maxLo = o; }
+        }
+        var midLa = (minLa + maxLa) / 2.0;
+        var midLo = (minLo + maxLo) / 2.0;
+        var cl = Math.cos(Math.toRadians(midLa));
+        // farthest point from the middle decides the zoom, so everything stays inside the circle
+        var far = 0.0000001;
+        for (var i = 0; i < _fN; i++) {
+            var ex = (_fLon[i] - midLo) * cl;
+            var ey = _fLat[i] - midLa;
+            var e = Math.sqrt(ex * ex + ey * ey);
+            if (e > far) { far = e; }
+        }
+        var ex2 = (_fHereLo - midLo) * cl;
+        var ey2 = _fHereLa - midLa;
+        var e2 = Math.sqrt(ex2 * ex2 + ey2 * ey2);
+        if (e2 > far) { far = e2; }
+        var sc = (108.0 * _fK) / far;
+        _fMLa = midLa;
+        _fMLo = midLo;
+        _fMCl = cl;
+        _fMSc = sc;
+        var cx = fx(140.0);
+        var cy = fy(140.0);
+        dc.setColor(F_TRAIL, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(3);
+        var px = 0.0;
+        var py = 0.0;
+        for (var i = 0; i < _fN; i++) {
+            var x = cx + (_fLon[i] - midLo) * cl * sc;
+            var y = cy - (_fLat[i] - midLa) * sc;
+            if (i > 0) { dc.drawLine(px, py, x, y); }
+            px = x;
+            py = y;
+        }
+        dc.drawLine(px, py, cx + (_fHereLo - midLo) * cl * sc, cy - (_fHereLa - midLa) * sc);
+        dc.setPenWidth(1);
+        // start (green)
+        dc.setColor(F_GREEN, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(cx + (_fLon[0] - midLo) * cl * sc, cy - (_fLat[0] - midLa) * sc, 4);
+    }
+
+    // you (yellow): drawn last, on top of the numbers
+    private function fldDrawHere(dc as Dc) as Void {
+        if (!_fHave || _fN < 1) { return; }
+        var hx = fx(140.0) + (_fHereLo - _fMLo) * _fMCl * _fMSc;
+        var hy = fy(140.0) - (_fHereLa - _fMLa) * _fMSc;
+        dc.setColor(F_BLACK, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(hx, hy, 7);
+        dc.setColor(F_YELLOW, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(hx, hy, 5);
+    }
+
+    // ---------- the screen ----------
+
+    function fldDraw(dc as Dc) as Void {
+        var w = dc.getWidth();
+        var h = dc.getHeight();
+        _fK = ((w < h) ? w : h) / 280.0;
+        _fOx = w / 2.0 - 140.0 * _fK;
+        _fOy = h / 2.0 - 140.0 * _fK;
+        var halo = FLD_MAP;
+        var k = _fK;
+
+        var zone = fldZone(_fHr);
+        fldRing(dc, zone);
+        if (FLD_MAP) { fldDrawMap(dc); }
+
+        // timer, top centre (shrinks if it passes an hour)
+        var ts = fldTime(_fTimer);
+        var tu = 2.4 * k;
+        var tw = fldWidth(ts, tu);
+        if (tw > 130.0 * k) { tu = tu * 130.0 * k / tw; }
+        fldText(dc, ts, fx(140.0), fy(40.0), tu, F_WHITE, 1, halo);
+
+        // heart rate (zone colour) and distance
+        var zc = (zone >= 1) ? F_ZBRIGHT[zone - 1] : F_LGREY;
+        fldText(dc, (zone >= 1) ? "HR Z" + zone.format("%d") : "HR", fx(84.0), fy(76.0), 1.0 * k, zc, 1, halo);
+        fldText(dc, (_fHr == null) ? "--" : _fHr.format("%d"), fx(84.0), fy(90.0), 2.7 * k, zc, 1, halo);
+        fldText(dc, "KM", fx(196.0), fy(76.0), 1.0 * k, F_LGREY, 1, halo);
+        fldText(dc, (_fDist / 1000.0).format("%.2f"), fx(196.0), fy(90.0), 1.8 * k, F_WHITE, 1, halo);
+
+        // current lap pace: the big one
+        var lapLabel = "LAP " + _fLapNo.format("%d") + "  " + ((_fDist - _fLapD0) / 1000.0).format("%.2f") + " KM";
+        fldText(dc, lapLabel, fx(140.0), fy(130.0), 1.0 * k, F_LGREY, 1, halo);
+        fldText(dc, fldPace(fldLapPace()), fx(140.0), fy(143.0), 3.5 * k, F_CYAN, 1, halo);
+
+        // average pace and last lap pace
+        fldText(dc, "AVG", fx(105.0), fy(196.0), 1.0 * k, F_LGREY, 1, halo);
+        fldText(dc, fldPace(fldAvgPace()), fx(105.0), fy(208.0), 1.7 * k, F_WHITE, 1, halo);
+        fldText(dc, "LAST", fx(175.0), fy(196.0), 1.0 * k, F_LGREY, 1, halo);
+        fldText(dc, fldPace(_fLastLap), fx(175.0), fy(208.0), 1.7 * k, F_WHITE, 1, halo);
+        if (FLD_MAP) { fldDrawHere(dc); }
+    }

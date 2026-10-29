@@ -567,7 +567,9 @@
     ['intMins', 'Intensity min (week)', 0, 400, 5], ['distance', 'Distance (km)', 0, 40, 0.1], ['hr', 'Heart rate', 35, 200, 1], ['bodyBat', 'Body Battery', 0, 100, 1],
     ['stress', 'Stress', 0, 100, 1], ['spo2', 'SpO2 %', 80, 100, 1], ['resp', 'Respiration', 4, 40, 1], ['battery', 'Battery %', 0, 100, 1], ['batteryDays', 'Battery days', 0, 14, 0.1],
     ['notif', 'Notifications', 0, 20, 1], ['temp', 'Temperature °C', -20, 45, 1], ['altitude', 'Altitude m', -50, 4000, 10], ['moveBar', 'Move bar', 0, 5, 1],
-    ['lastKm', 'Last activity km', 0, 50, 0.1], ['paceSec', 'Pace (sec per km)', 180, 600, 5]
+    ['lastKm', 'Last activity km', 0, 50, 0.1], ['paceSec', 'Pace (sec per km)', 180, 600, 5],
+    ['runHr', 'RUN: heart rate', 60, 200, 1], ['runKm', 'RUN: distance (km)', 0, 42, 0.01], ['runAvg', 'RUN: average pace (s/km)', 180, 600, 1],
+    ['lapKm', 'RUN: lap distance (km)', 0, 1, 0.01], ['lapPace', 'RUN: lap pace (s/km)', 180, 600, 1], ['lastLap', 'RUN: last lap pace (s/km)', 180, 600, 1]
   ];
   function numSim(label, k, mn, mx) {
     var i = h('input', { type: 'number', min: mn, max: mx, step: 0.1, value: GW.sim[k] });
@@ -633,7 +635,7 @@
       else thumb = GW.thumb(p.build(), 140);
       var card = h('button', { class: 'pcard', onclick: function () {
         GW.applyPreset(p.id, function () { GW.fontsReady().then(function () { GW.touch(true); closeModal(); GW.toast(p.name + ' loaded. Ctrl+Z undoes it.'); GW.history.commit(); }); });
-      } }, [thumb, h('b', { text: p.name }), h('span', { text: p.blurb })]);
+      } }, [thumb, h('b', { text: p.name }), p.kind === 'datafield' ? h('span', { class: 'chip on', style: 'cursor:default', text: 'data field' }) : null, h('span', { text: p.blurb })]);
       grid.appendChild(card);
     });
     modal('Start from a preset', h('div', {}, [h('p', { class: 'muted', text: 'Everything is editable afterwards. Presets replace your current design (Ctrl+Z brings it back).' }), grid]));
@@ -764,7 +766,7 @@
           h('li', {}, [h('div', {}, [h('h5', { text: 'Unzip the download' }), h('p', { html: 'It is a complete Garmin Connect IQ project' + (many ? ' per version' : '') + ' with a step-by-step <span class="kbd">README.md</span> inside.' })])]),
           h('li', {}, [h('div', {}, [h('h5', { text: 'One-time setup' }), h('p', { html: 'Install the <a href="https://developer.garmin.com/connect-iq/sdk/" target="_blank" rel="noopener">Connect IQ SDK</a> (via its SDK Manager, also download the <b>fēnix 6X Pro</b> device) and <a href="https://marketplace.visualstudio.com/items?itemName=garmin.monkeyc" target="_blank" rel="noopener">VS Code with Garmin’s Monkey C extension</a>.' })])]),
           h('li', {}, [h('div', {}, [h('h5', { text: 'Build' }), h('p', { html: 'Open the folder in VS Code → <span class="kbd">Ctrl/Cmd+Shift+P</span> → <b>Monkey C: Build for Device</b> → <b>fenix6xpro</b>. Press <span class="kbd">F5</span> to try it in Garmin’s simulator first. Prefer a terminal? Run <span class="kbd">./build.sh</span> (or <span class="kbd">build.bat</span>).' })])]),
-          h('li', {}, [h('div', {}, [h('h5', { text: 'Copy to the watch' }), h('p', { html: 'Connect the watch by USB and copy the <span class="kbd">.prg</span> ' + (many ? 'files' : 'file') + ' into <span class="kbd">GARMIN/APPS</span>. Unplug, then on the watch: hold UP → Watch Face → pick it.' })])])
+          h('li', {}, [h('div', {}, [h('h5', { text: 'Copy to the watch' }), h('p', { html: 'Connect the watch by USB and copy the <span class="kbd">.prg</span> ' + (many ? 'files' : 'file') + ' into <span class="kbd">GARMIN/APPS</span>. Unplug, then on the watch: ' + (first.src.type === 'datafield' ? 'hold UP → Activities &amp; Apps → Run → settings → Data Screens → Add New → <b>1 field</b> → tap it → Connect IQ → pick it.' : 'hold UP → Watch Face → pick it.') })])])
         ]));
         body.appendChild(h('h4', { style: 'margin:20px 0 8px', class: 'muted small', text: 'GENERATED CODE' }));
         if (many) {

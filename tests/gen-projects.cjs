@@ -15,7 +15,7 @@ const sandbox = {
 };
 sandbox.window = sandbox; sandbox.devicePixelRatio = 1;
 vm.createContext(sandbox);
-['core', 'sources', 'fonts', 'bigdata-src', 'elements', 'bigdata', 'render', 'codegen', 'presets'].forEach((f) => {
+['core', 'sources', 'fonts', 'bigdata-src', 'runfield-src', 'elements', 'bigdata', 'runfield', 'render', 'codegen', 'presets'].forEach((f) => {
   vm.runInContext(fs.readFileSync(path.join(site, f + '.js'), 'utf8'), sandbox, { filename: f + '.js' });
 });
 const GW = sandbox.GW;
@@ -38,7 +38,7 @@ for (const p of GW.PRESETS) {
   GW.design = d;
   const src = GW.generateSource(d), dir = path.join(out, p.id);
   const w = (f, t) => { fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true }); fs.writeFileSync(path.join(dir, f), t); };
-  w('manifest.xml', `<?xml version="1.0"?>\n<iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">\n<iq:application entry="${src.name}App" id="732f1de14461d6a95adfb8d02a7458c0" launcherIcon="@Drawables.LauncherIcon" name="@Strings.AppName" type="watchface" minApiLevel="${src.minApi}">\n<iq:products><iq:product id="fenix6xpro"/></iq:products>\n<iq:permissions>${src.perms.map((x) => `<iq:uses-permission id="${x}"/>`).join('')}</iq:permissions>\n<iq:languages><iq:language>eng</iq:language></iq:languages>\n<iq:barrels/>\n</iq:application>\n</iq:manifest>\n`);
+  w('manifest.xml', `<?xml version="1.0"?>\n<iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">\n<iq:application entry="${src.name}App" id="732f1de14461d6a95adfb8d02a7458c0" launcherIcon="@Drawables.LauncherIcon" name="@Strings.AppName" type="${src.type}" minApiLevel="${src.minApi}">\n<iq:products><iq:product id="fenix6xpro"/></iq:products>\n<iq:permissions>${src.perms.map((x) => `<iq:uses-permission id="${x}"/>`).join('')}</iq:permissions>\n<iq:languages><iq:language>eng</iq:language></iq:languages>\n<iq:barrels/>\n</iq:application>\n</iq:manifest>\n`);
   w('monkey.jungle', 'project.manifest = manifest.xml\n');
   w(`source/${src.name}App.mc`, src.app); w(`source/${src.name}View.mc`, src.view);
   Object.keys(src.files).forEach((f) => w(f, src.files[f]));

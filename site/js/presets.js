@@ -15,6 +15,8 @@
   function D(name, bg, fonts, els) { var d = GW.blankDesign(); d.name = name; d.bg = bg; d.fonts = fonts; d.elements = els; return d; }
   function onCircle(deg, r) { return [140 + r * Math.sin(rad(deg)), 140 - r * Math.cos(rad(deg))]; }
 
+  function fieldDesign(name, o) { var d = D(name, '#000000', [], [E('runfield', o)]); d.kind = 'datafield'; return d; }
+
   GW.PRESETS = [
     { id: 'orbit', name: 'Orbit', blurb: 'Four nested rings: steps, battery, how much of the day and the year is gone.',
       build: function () {
@@ -134,6 +136,12 @@
       } },
     { id: 'bigdata', name: 'Big Data', blurb: 'Huge tilted time, nine readouts and a dot-matrix world map. Tilt set to 1 o\u2019clock (5-minute position).',
       build: function () { return D('Big Data', '#000000', [], [E('bigdata', { name: 'Big Data face', angle: 30 })]); } },
+    { id: 'run', name: 'Run screen', kind: 'datafield', blurb: 'Data field for runs: HR zone colour, timer, distance, average / lap / last-lap pace. Auto-laps every km.',
+      build: function () { return fieldDesign('Run Screen', { name: 'Run screen', autoLap: true, map: false }); } },
+    { id: 'runmap', name: 'Run + map', kind: 'datafield', blurb: 'The run screen with your route drawn live behind the numbers.',
+      build: function () { return fieldDesign('Run Map', { name: 'Run + map', autoLap: true, map: true }); } },
+    { id: 'race', name: 'Race screen', kind: 'datafield', blurb: 'Same numbers, but it only laps when you press Lap: for km flags on a race course.',
+      build: function () { return fieldDesign('Race Screen', { name: 'Race screen', autoLap: false, map: false }); } },
     { id: 'blank', name: 'Blank', blurb: 'Start from nothing.', build: function () { return D('My Watchface', '#000000', [], []); } }
   ];
 
