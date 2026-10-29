@@ -657,43 +657,49 @@
     var logBox = h('div', { class: 'code', style: 'display:none;margin-top:10px;max-height:200px' });
     var many = results.length > 1;
     var btn = h('button', { class: 'btn primary', style: 'font-size:15px;padding:11px 20px', text: many ? '⚙ Build all ' + results.length + ' versions (.prg)' : '⚙ Build my watchface (.prg)', disabled: true });
+    var iqBtn = h('button', { class: 'btn', style: 'padding:11px 16px', title: 'A release package for the Connect IQ developer portal (apps.garmin.com/developer)', text: many ? '📦 Download .iq files (for the store)' : '📦 Download .iq (for the store)', disabled: true });
     var setup = h('button', { class: 'btn', text: 'Set up the builder (one time, ~2 min)', style: 'display:none;margin-left:8px' });
     function say(t, log) { msg.textContent = t; if (log != null) { logBox.style.display = log ? '' : 'none'; logBox.textContent = log; } }
-    function buildOne(res) {
+    function buildOne(res, format) {
       return api('/api/build', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-        name: res.name, files: res.files.map(function (f) { return { path: f.path, data: b64(f.data) }; }) }) }).then(function (r) { return r.json || {}; });
+        name: res.name, format: format, files: res.files.map(function (f) { return { path: f.path, data: b64(f.data) }; }) }) }).then(function (r) { return r.json || {}; });
     }
-    btn.addEventListener('click', function () {
-      btn.disabled = true; var done = [], log = '';
+    function run(format) {
+      btn.disabled = true; iqBtn.disabled = true; var done = [], log = '', what = format === 'iq' ? '.iq' : '.prg';
       (function next(i) {
+        function finish() { btn.disabled = false; iqBtn.disabled = false; }
         if (i >= results.length) {
-          btn.disabled = false;
-          say('Built ' + done.join(', ') + '. Copy ' + (done.length > 1 ? 'them' : 'it') + ' into GARMIN/APPS on the watch.', log.replace(/exit=0/g, '').trim());
+          finish();
+          say(format === 'iq'
+            ? 'Built ' + done.join(', ') + '. Upload ' + (done.length > 1 ? 'each one' : 'it') + ' at apps.garmin.com/developer → Upload an App.'
+            : 'Built ' + done.join(', ') + '. Copy ' + (done.length > 1 ? 'them' : 'it') + ' into GARMIN/APPS on the watch.', log.replace(/exit=0/g, '').trim());
           return;
         }
-        say('Compiling ' + (i + 1) + ' of ' + results.length + ' with Garmin’s compiler…', '');
-        buildOne(results[i]).then(function (j) {
-          if (!j.ok) { btn.disabled = false; say((j.message || 'Build failed.') + (many ? ' (' + results[i].name + ')' : ''), j.log || ''); return; }
+        say('Compiling ' + (i + 1) + ' of ' + results.length + ' (' + what + ') with Garmin’s compiler…', '');
+        buildOne(results[i], format).then(function (j) {
+          if (!j.ok) { finish(); say((j.message || 'Build failed.') + (many ? ' (' + results[i].name + ')' : ''), j.log || ''); return; }
           var bin = atob(j.prg), u = new Uint8Array(bin.length); for (var k = 0; k < bin.length; k++) u[k] = bin.charCodeAt(k);
           GW.download(new Blob([u], { type: 'application/octet-stream' }), j.name);
           done.push(j.name + ' (' + Math.round(u.length / 1024) + ' KB)'); log += (j.log || '') + '\n';
           setTimeout(function () { next(i + 1); }, 400); // let the browser start each download
-        }).catch(function (e) { btn.disabled = false; say('Build failed: ' + e.message); });
+        }).catch(function (e) { finish(); say('Build failed: ' + e.message); });
       })(0);
-    });
+    }
+    btn.addEventListener('click', function () { run('prg'); });
+    iqBtn.addEventListener('click', function () { run('iq'); });
     setup.addEventListener('click', function () {
       setup.disabled = true; say('Setting up Garmin’s toolchain in the cloud… this takes a couple of minutes, keep this window open.', '');
       api('/api/setup', { method: 'POST' }).then(function (r) {
         var j = r.json || {}; setup.disabled = false;
-        if (j.ok) { setup.style.display = 'none'; btn.disabled = false; say('Builder ready. Press the build button.', ''); }
+        if (j.ok) { setup.style.display = 'none'; btn.disabled = false; iqBtn.disabled = false; say('Builder ready. Press the build button.', ''); }
         else say(j.message || 'Setup failed.', j.log || '');
       }).catch(function (e) { setup.disabled = false; say('Setup failed: ' + e.message); });
     });
-    box.appendChild(h('div', { style: 'display:flex;align-items:center;flex-wrap:wrap;gap:6px' }, [btn, setup]));
+    box.appendChild(h('div', { style: 'display:flex;align-items:center;flex-wrap:wrap;gap:8px' }, [btn, iqBtn, setup]));
     box.appendChild(msg); box.appendChild(logBox);
     api('/api/status').then(function (r) {
       if (!r.json) { box.style.display = 'none'; return; } // static hosting: no backend
-      if (r.json.ready) { btn.disabled = false; say('Cloud builder ready: one click gives you the finished .prg' + (many ? ' files.' : '.')); }
+      if (r.json.ready) { btn.disabled = false; iqBtn.disabled = false; say('Cloud builder ready: one click gives you the finished .prg for your watch, or an .iq for the Connect IQ developer portal.'); }
       else { setup.style.display = ''; say(r.json.message); }
     }).catch(function () { box.style.display = 'none'; });
     return box;
