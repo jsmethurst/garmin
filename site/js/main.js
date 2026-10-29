@@ -185,12 +185,38 @@
   setInterval(function () { if (GW.sim.live && !document.hidden) schedule(); }, 1000);
   window.addEventListener('beforeunload', function () { try { localStorage.setItem('gw.design.v1', JSON.stringify(GW.serialize())); } catch (e) { } });
 
+  // Garmin's picture has an opaque white backdrop: make the white that touches the image edge transparent.
+  function cutOutBackground(img) {
+    var W = img.naturalWidth, H = img.naturalHeight, c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    var x = c.getContext('2d'); x.drawImage(img, 0, 0);
+    var id = x.getImageData(0, 0, W, H), d = id.data, seen = new Uint8Array(W * H), stack = [];
+    function white(i) { return d[i * 4 + 3] < 8 || (d[i * 4] > 232 && d[i * 4 + 1] > 232 && d[i * 4 + 2] > 232); }
+    function push(px, py) { var i = py * W + px; if (!seen[i] && white(i)) { seen[i] = 1; stack.push(i); } }
+    for (var a = 0; a < W; a++) { push(a, 0); push(a, H - 1); }
+    for (var b = 0; b < H; b++) { push(0, b); push(W - 1, b); }
+    while (stack.length) {
+      var i = stack.pop(), px = i % W, py = (i - px) / W;
+      if (px > 0) push(px - 1, py); if (px < W - 1) push(px + 1, py); if (py > 0) push(px, py - 1); if (py < H - 1) push(px, py + 1);
+    }
+    for (var k = 0; k < W * H; k++) {
+      if (seen[k]) { d[k * 4 + 3] = 0; continue; }
+      // soften the light fringe next to the cut-out so there is no white halo
+      var px2 = k % W, py2 = (k - px2) / W;
+      var edge = (px2 > 0 && seen[k - 1]) || (px2 < W - 1 && seen[k + 1]) || (py2 > 0 && seen[k - W]) || (py2 < H - 1 && seen[k + W]);
+      if (edge && d[k * 4] > 170 && d[k * 4 + 1] > 170 && d[k * 4 + 2] > 170) d[k * 4 + 3] = 90;
+    }
+    x.putImageData(id, 0, 0);
+    return c;
+  }
+
   // ---------- real device picture (private: served from the builder, only exists on the Vercel deployment) ----------
   function useDevicePicture() {
     fetch('/api/device-image?meta=1').then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
       if (!m || !m.w) return;
-      var img = new Image();
-      img.onload = function () {
+      var src = new Image();
+      src.onload = function () {
+        var img = cutOutBackground(src);
         var w = document.querySelector('.watch'), g = w.querySelector('.glass');
         img.className = 'devimg'; img.alt = ''; w.insertBefore(img, g);
         w.classList.add('dev');
@@ -201,7 +227,7 @@
         g.style.width = (m.size / m.w * 100) + '%';
         schedule();
       };
-      img.src = '/api/device-image';
+      src.src = '/api/device-image';
     }).catch(function () { });
   }
 
