@@ -44,9 +44,12 @@
     var sel = GW.selected();
     if (sel && !sel.hidden) {
       outline(sel, '#ffd400', 1.5, true);
-      var p = GW.posPairs(sel)[0], x = sel[p[0]], y = sel[p[1]], s = 4 / k;
-      ctx.setLineDash([]); ctx.strokeStyle = '#ffd400'; ctx.lineWidth = 1.5 / k;
-      ctx.beginPath(); ctx.moveTo(x - s, y); ctx.lineTo(x + s, y); ctx.moveTo(x, y - s); ctx.lineTo(x, y + s); ctx.stroke();
+      var p = GW.posPairs(sel)[0];
+      if (p) {
+        var x = sel[p[0]], y = sel[p[1]], s = 4 / k;
+        ctx.setLineDash([]); ctx.strokeStyle = '#ffd400'; ctx.lineWidth = 1.5 / k;
+        ctx.beginPath(); ctx.moveTo(x - s, y); ctx.lineTo(x + s, y); ctx.moveTo(x, y - s); ctx.lineTo(x, y + s); ctx.stroke();
+      }
     }
     ctx.restore();
   }
@@ -71,6 +74,7 @@
     if (!el) { GW.select(null); return; }
     if (GW.selId !== el.id) GW.select(el.id);
     var pairs = GW.posPairs(el);
+    if (!pairs.length) return; // whole-face elements are selected but not dragged
     drag = { id: el.id, sx: p.x, sy: p.y, moved: false, orig: pairs.map(function (pr) { return [pr[0], pr[1], el[pr[0]], el[pr[1]]]; }) };
     cv.setPointerCapture(e.pointerId);
   });

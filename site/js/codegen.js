@@ -139,6 +139,7 @@
         '                vals[6 - d] = v;\n            }\n        }\n        return vals;\n    }'
     }
   };
+  if (GW.BDF_SRC) H.bdf = { code: GW.BDF_SRC.code, members: GW.BDF_SRC.members }; // the Big Data face's own methods
   GW.MC_HELPERS = H;
 
   var NEED_INIT = {
@@ -156,12 +157,17 @@
 
   // ---------- main generator ----------
   GW.generateSource = function (design) {
-    var st = { needs: {}, helpers: [], hseen: {}, imports: {}, perms: {}, fonts: [], fseen: {}, images: [], iseen: {} };
+    var st = { needs: {}, helpers: [], hseen: {}, imports: {}, perms: {}, fonts: [], fseen: {}, images: [], iseen: {}, files: {}, minApi: '3.2.0' };
     var warnings = [];
     var cg = {
       need: function (f) { st.needs[f] = 1; if (f === 'ds' || f === 'dm' || f === 'dl') { cg.imp('Toybox.Time'); cg.imp('Toybox.Time.Gregorian'); } if (f === 'wx') cg.imp('Toybox.Weather'); if (f === 'act') cg.imp('Toybox.ActivityMonitor'); },
       imp: function (s) { st.imports[s] = 1; },
       perm: function (s) { st.perms[s] = 1; },
+      file: function (path, text) { st.files[path] = text; },                 // extra source files (e.g. data modules)
+      minApi: function (v) {                                                  // raise manifest minApiLevel if needed
+        var a = v.split('.').map(Number), b = st.minApi.split('.').map(Number);
+        for (var i = 0; i < 3; i++) { if (a[i] !== b[i]) { if (a[i] > b[i]) st.minApi = v; break; } }
+      },
       helper: function (n) {
         if (st.hseen[n]) return;
         var h = H[n]; if (!h) throw new Error('Unknown helper ' + n);
@@ -261,6 +267,7 @@
     if (els.some(function (e) { return e.type === 'text' && ['weatherDesc', 'temp', 'sunrise', 'sunset', 'sunNext'].indexOf(e.source) >= 0; })) warnings.push('Weather and sun times only show data once the watch has synced weather from your phone (they read "--" until then).');
     if (!els.length) warnings.push('The design is empty.');
 
-    return { name: name, app: app, view: view, perms: perms, fonts: st.fonts, images: st.images, bg: bg, warnings: warnings };
+    if (els.some(function (e) { return e.type === 'bigdata'; })) warnings.push('Big Data face: needs Location and User Profile permissions (the watch may ask), uses about 50 KB of memory, and draws its world map in a few passes after the face first loads.');
+    return { name: name, app: app, view: view, perms: perms, fonts: st.fonts, images: st.images, bg: bg, warnings: warnings, files: st.files, minApi: st.minApi };
   };
 })(window.GW);

@@ -25,7 +25,7 @@
 
   function manifest(src, appId, device) {
     return '<?xml version="1.0"?>\n<iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">\n' +
-      '    <iq:application entry="' + src.name + 'App" id="' + appId + '" launcherIcon="@Drawables.LauncherIcon" name="@Strings.AppName" type="watchface" minApiLevel="3.2.0">\n' +
+      '    <iq:application entry="' + src.name + 'App" id="' + appId + '" launcherIcon="@Drawables.LauncherIcon" name="@Strings.AppName" type="watchface" minApiLevel="' + (src.minApi || '3.2.0') + '">\n' +
       '        <iq:products>\n            <iq:product id="' + device + '"/>\n        </iq:products>\n' +
       '        <iq:permissions>\n' + src.perms.map(function (p) { return '            <iq:uses-permission id="' + p + '"/>\n'; }).join('') + '        </iq:permissions>\n' +
       '        <iq:languages>\n            <iq:language>eng</iq:language>\n        </iq:languages>\n        <iq:barrels/>\n    </iq:application>\n</iq:manifest>\n';
@@ -53,7 +53,7 @@
       'Sideloaded faces do not show in the Connect IQ phone app; that is normal. Rebuild and copy again whenever you change the design.\n\n' +
       '## Troubleshooting\n\n' +
       '* **"Device not found" / `' + device + '` missing**: open the SDK Manager and download the device files for the ƒēnix 6X Pro / 6X Solar / Sapphire.\n' +
-      '* **API level errors**: in `manifest.xml` change `minApiLevel="3.2.0"` to the level the SDK Manager shows for the device.\n' +
+      '* **API level errors**: in `manifest.xml` change `minApiLevel="' + (src.minApi || '3.2.0') + '"` to the level the SDK Manager shows for the device.\n' +
       '* **Watchface shows "IQ!" or crashes**: out of memory. Remove the largest images / bitmap fonts in the designer and export again.\n' +
       '* Data fields showing `--`: the watch has no value yet (weather needs a phone sync; Body Battery / stress need the sensor history).\n\n' +
       (warnings.length ? '## Notes about this design\n\n' + warnings.map(function (w) { return '* ' + w; }).join('\n') + '\n\n' : '') +
@@ -90,6 +90,7 @@
     text('monkey.jungle', 'project.manifest = manifest.xml\n');
     text('source/' + n + 'App.mc', src.app);
     text('source/' + n + 'View.mc', src.view);
+    Object.keys(src.files || {}).forEach(function (p) { text(p, src.files[p]); });
     text('resources/strings/strings.xml', '<strings>\n    <string id="AppName">' + xmlEsc(design.name) + '</string>\n</strings>\n');
 
     var drawables = ['    <bitmap id="LauncherIcon" filename="launcher_icon.png"/>'];
