@@ -24,11 +24,12 @@
   function baseChar(c) { return BASE[c] || c; }
 
   // ---- data shown (same rules as refreshData() in the watch code) ----
-  function nyc(now) {
+  function nyc(now) { // { t: 'HH:MM', zone: 'EDT' | 'EST' } from New York's real daylight-saving rule
     try {
-      var p = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false }).format(now);
-      return p.replace(/^24/, '00');
-    } catch (e) { return '--:--'; }
+      var parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false, timeZoneName: 'short' }).formatToParts(now), o = {};
+      parts.forEach(function (p) { o[p.type] = p.value; });
+      return { t: pad2(parseInt(o.hour, 10) % 24) + ':' + o.minute, zone: o.timeZoneName === 'EST' ? 'EST' : 'EDT' };
+    } catch (e) { return { t: '--:--', zone: 'EDT' }; }
   }
   function mm(mins) { return pad2(Math.floor(mins / 60)) + ':' + pad2(mins % 60); }
   function data(env) {
@@ -40,7 +41,7 @@
       bat: (days < 10 ? days.toFixed(1) : String(Math.round(days))) + 'G',
       batColor: days < 3 ? C.RED : (days < 7 ? C.AMBER : C.GREEN),
       km: s.lastKm.toFixed(1), pace: Math.floor(s.paceSec / 60) + ':' + pad2(s.paceSec % 60),
-      nyc: nyc(env.now), rise: mm(s.sunrise), set: mm(s.sunset)
+      ny: nyc(env.now), rise: mm(s.sunrise), set: mm(s.sunset)
     };
   }
 
@@ -101,12 +102,12 @@
   }
 
   // ---- dot-matrix world map, baked once per angle ----
-  var pitch = 280 / 76, x0 = (280 - COLS * pitch) / 2, y0 = 280 * 0.395;
+  var pitch = 280 / 72, x0 = (280 - COLS * pitch) / 2, y0 = 280 * 0.40;
   var mapCache = {};
   function mapCanvas(angle) {
     if (mapCache[angle]) return mapCache[angle];
     var c = document.createElement('canvas'); c.width = c.height = 280;
-    var x = c.getContext('2d'), R = ctxOf(angle), maxR2 = (140 - 15) * (140 - 15);
+    var x = c.getContext('2d'), R = ctxOf(angle), maxR2 = (140 - 2) * (140 - 2);
     x.fillStyle = C.BLACK; x.fillRect(0, 0, 280, 280);
     for (var r = 0; r < ROWS; r++) {
       var dy = y0 + r * pitch - R.cy;
@@ -129,23 +130,12 @@
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(mapCanvas(angle), 0, 0, 280, 280);
 
-    // minute ring: ticks, cyan up to the current minute
-    var r = W / 2 - 2;
-    ctx.lineCap = 'butt';
-    for (var i = 0; i < 60; i++) {
-      var len = i % 5 === 0 ? 9 : 5, color = i <= env.m ? C.CYAN : C.GREY;
-      if (i === 0 || i === env.m) { len = 13; color = C.WHITE; }
-      var a = GW.rad(i * 6 + angle), sn = Math.sin(a), cs = Math.cos(a);
-      ctx.strokeStyle = q(color); ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(R.cx + r * sn, R.cy - r * cs); ctx.lineTo(R.cx + (r - len) * sn, R.cy - (r - len) * cs); ctx.stroke();
-    }
-
-    drawText(ctx, R, d.date, R.cx, H * 0.125, 1.1, 2, C.WHITE, 1, true);
+    drawText(ctx, R, d.date, R.cx, H * 0.14, 1.25, 2, C.WHITE, 1, true);
 
     // time (shadow first)
-    var u = 3.9, pen = Math.trunc(u * 1.7), hs = pad2(env.h), ms = pad2(env.m), gap = GAP * u;
+    var u = 4.3, pen = Math.trunc(u * 1.7), hs = pad2(env.h), ms = pad2(env.m), gap = GAP * u;
     var hw = strWidth(hs, u), cw = strWidth(':', u), mw = strWidth(ms, u);
-    var x = (W - (hw + cw + mw + 2 * gap)) / 2, y = H * 0.225, sh = 3;
+    var x = (W - (hw + cw + mw + 2 * gap)) / 2, y = H * 0.232, sh = 3;
     drawText(ctx, R, hs, x + sh, y + sh, u, pen, C.GREY, 0, false);
     drawText(ctx, R, ms, x + hw + cw + 2 * gap + sh, y + sh, u, pen, C.CYAN_D, 0, false);
     drawText(ctx, R, hs, x, y, u, pen, C.WHITE, 0, false);
@@ -153,36 +143,35 @@
     drawText(ctx, R, ms, x + hw + cw + 2 * gap, y, u, pen, C.CYAN, 0, false);
 
     // 2 x 3 grid of readouts
-    var xs = [W * 0.23, W * 0.5, W * 0.77], y1 = H * 0.43, y2 = H * 0.585;
+    var xs = [W * 0.2, W * 0.5, W * 0.8], y1 = H * 0.45, y2 = H * 0.614;
     function cell(cx, cy, label, value, col) {
-      drawText(ctx, R, label, cx, cy, 1, 2, C.LGREY, 1, true);
-      drawText(ctx, R, value, cx, cy + 12 + 5, 1.55, 3, col, 1, true);
+      drawText(ctx, R, label, cx, cy, 1.15, 2, C.LGREY, 1, true);
+      drawText(ctx, R, value, cx, cy + 12 * 1.15 + 5, 1.55, 3, col, 1, true);
     }
     cell(xs[0], y1, 'NABIZ', d.hr, C.RED); cell(xs[1], y1, 'ADIM', d.steps, C.WHITE); cell(xs[2], y1, 'PİL', d.bat, d.batColor);
-    cell(xs[0], y2, 'SON KM', d.km, C.WHITE); cell(xs[1], y2, 'TEMPO', d.pace, C.WHITE); cell(xs[2], y2, 'NYC', d.nyc, C.CYAN);
+    cell(xs[0], y2, 'SON KM', d.km, C.WHITE); cell(xs[1], y2, 'TEMPO', d.pace, C.WHITE); cell(xs[2], y2, d.ny.zone, d.ny.t, C.CYAN);
 
     // sunrise / temperature / sunset strip
     function sunGroup(gx, gy, text, up, col) {
-      var m = gy + 6, t = 5;
+      var m = gy + 6 * 1.05, t = 5;
       var pts = up ? [[gx, m + t], [gx + 2 * t, m + t], [gx + t, m - t]] : [[gx, m - t], [gx + 2 * t, m - t], [gx + t, m + t]];
       ctx.fillStyle = q(col); ctx.beginPath();
       pts.forEach(function (p, j) { var X = R.rx(p[0], p[1]), Y = R.ry(p[0], p[1]); j ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
       ctx.closePath(); ctx.fill();
-      drawText(ctx, R, text, gx + 14, gy, 1, 2, C.WHITE, 0, true);
+      drawText(ctx, R, text, gx + 14, gy, 1.05, 2, C.WHITE, 0, true);
     }
-    var sy = H * 0.77, gw = strWidth('00:00', 1) + 14, tw = strWidth(d.temp, 1);
+    var sy = H * 0.793, gw = strWidth('00:00', 1.05) + 14, tw = strWidth(d.temp, 1.05);
     sunGroup(R.cx - gw - 14 - tw / 2, sy, d.rise, true, C.AMBER);
-    drawText(ctx, R, d.temp, R.cx, sy, 1, 2, C.WHITE, 1, true);
+    drawText(ctx, R, d.temp, R.cx, sy, 1.05, 2, C.WHITE, 1, true);
     sunGroup(R.cx + 14 + tw / 2, sy, d.set, false, C.RED);
 
     // "you are here" marker on the map
     var lon = env.sim.lon, lat = env.sim.lat;
     var vx = x0 + (lon + 180) / 360 * COLS * pitch, vy = y0 + (75 - lat) / 5 * pitch;
     var mx = Math.trunc(R.rx(vx, vy)), my = Math.trunc(R.ry(vx, vy));
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = q(C.BLACK); ctx.beginPath(); ctx.arc(mx, my, 8, 0, 7); ctx.stroke();
-    ctx.strokeStyle = q(C.YELLOW); ctx.beginPath(); ctx.arc(mx, my, 6, 0, 7); ctx.stroke();
-    ctx.fillStyle = q(C.YELLOW); ctx.beginPath(); ctx.arc(mx, my, 3, 0, 7); ctx.fill();
+    [[10, C.BLACK], [8, C.YELLOW], [4, C.BLACK], [2, C.YELLOW]].forEach(function (c) {
+      ctx.fillStyle = q(c[1]); ctx.beginPath(); ctx.arc(mx, my, c[0], 0, 7); ctx.fill();
+    });
   }
 
   var CLOCK_POS = [[0, '12'], [30, '1'], [60, '2'], [90, '3'], [120, '4'], [150, '5']];
@@ -195,7 +184,7 @@
     hit: function (el, x, y) { return Math.hypot(x - 140, y - 140) <= 140; },
     fields: function () {
       return [
-        { t: 'note', text: 'A complete face: big time, nine readouts, minute ring and a dot-matrix world map with your position. Turkish labels. It draws over everything below it, so keep it at the bottom of the layers.' },
+        { t: 'note', text: 'A complete face: big time, six readouts, sunrise/sunset and a dot-matrix world map with your position (Istanbul until the watch has a fix). Turkish labels. It draws over everything below it, so keep it at the bottom of the layers.' },
         { k: 'angle', t: 'range', label: 'Tilt: which way the top of the face points', min: 0, max: 359 },
         { k: 'angle', t: 'seg', label: 'Quick pick (clock position)', opts: CLOCK_POS.map(function (p) { return [p[0], p[1]]; }), num: true },
         { t: 'note', text: '2 o’clock (60°) points at the red START button; 1 o’clock (30°) is the 5-minute position.' }

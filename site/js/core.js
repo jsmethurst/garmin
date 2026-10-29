@@ -59,7 +59,7 @@ window.GW = window.GW || {};
     live: true, minutes: 10 * 60 + 9, seconds: 36,
     steps: 7340, stepGoal: 10000, calories: 1180, calGoal: 2200, floors: 7, floorGoal: 10,
     battery: 78, batteryDays: 6.4, hr: 64, bodyBat: 71, stress: 28, spo2: 97, resp: 14,
-    intMins: 95, intGoal: 150, distance: 6.2, notif: 3, temp: 17, wx: 1, lat: 51.5, lon: -0.13, lastKm: 8.4, paceSec: 342,
+    intMins: 95, intGoal: 150, distance: 6.2, notif: 3, temp: 17, wx: 1, lat: 41.01, lon: 28.98, lastKm: 8.4, paceSec: 342,
     altitude: 312, moveBar: 2, sunrise: 6 * 60 + 52, sunset: 18 * 60 + 14,
     metric: true, is24: true
   };
