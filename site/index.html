@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watchface Studio · fēnix 6X</title>
+<meta name="description" content="Design, preview and export custom watchfaces for the Garmin fēnix 6X Pro. Ships a ready-to-build Connect IQ project.">
+<meta name="theme-color" content="#0b0f14">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230b0f14' stroke='%2300e5ff' stroke-width='3'/%3E%3Cpath d='M16 7v9l6 4' stroke='%23fff' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="#00e5ff" stroke-width="3"/><path d="M16 7v9l6 4" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>
+    <span>Watchface Studio</span><small>fēnix 6X Pro · 280×280</small></div>
+  <input id="designName" class="name" type="text" maxlength="40" spellcheck="false" aria-label="Watchface name" placeholder="Name your watchface">
+  <div class="spacer"></div>
+  <button id="btnPresets" class="btn" title="Start from a preset">✦ Presets</button>
+  <div class="btn-group">
+    <button id="btnUndo" class="btn icon" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+    <button id="btnRedo" class="btn icon" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↷</button>
+  </div>
+  <button id="btnOpen" class="btn hide-sm" title="Open a saved design (.json)">Open</button>
+  <button id="btnSave" class="btn hide-sm" title="Save design as .json">Save</button>
+  <button id="btnExport" class="btn primary">Get it on my watch <span aria-hidden="true">→</span></button>
+  <input id="fileOpen" type="file" accept=".json,application/json" hidden>
+</header>
+
+<main class="layout">
+  <aside class="col left" aria-label="Elements">
+    <section class="card">
+      <h3>Quick add</h3>
+      <div id="quickChips" class="chips"></div>
+      <h3 class="mt">Elements</h3>
+      <div id="addGrid" class="addgrid"></div>
+    </section>
+    <section class="card grow">
+      <h3>Layers <small>top is in front</small></h3>
+      <ul id="layers" class="layers"></ul>
+      <p id="layersEmpty" class="muted small" hidden>Nothing here yet: add an element or pick a preset.</p>
+    </section>
+  </aside>
+
+  <section class="stage" aria-label="Preview">
+    <div class="watch">
+      <i class="wbtn l1"></i><i class="wbtn l2"></i><i class="wbtn l3"></i><i class="wbtn r1"></i><i class="wbtn r2"></i>
+      <div class="bezel"><div class="glass"><canvas id="cv" aria-label="Watch face preview"></canvas></div></div>
+    </div>
+    <div class="status">
+      <span id="coords" class="mono">x – · y –</span>
+      <label class="tgl"><input id="optSnap" type="checkbox" checked> Snap</label>
+      <label class="tgl"><input id="optGrid" type="checkbox"> Grid</label>
+      <label class="tgl"><input id="optLive" type="checkbox" checked> Live clock</label>
+    </div>
+    <p class="hint small muted">Drag to move · arrows nudge (Shift = 5px) · Del removes · Ctrl+D duplicates · Colours snap to the watch’s 64-colour palette.</p>
+  </section>
+
+  <aside class="col right" aria-label="Properties">
+    <nav class="tabs" id="tabs" role="tablist">
+      <button role="tab" data-tab="inspect" class="on">Inspector</button>
+      <button role="tab" data-tab="face">Face</button>
+      <button role="tab" data-tab="fonts">Fonts</button>
+      <button role="tab" data-tab="sim">Test data</button>
+    </nav>
+    <div id="panel" class="panel"></div>
+  </aside>
+</main>
+
+<div id="modalRoot"></div>
+<div id="colorPop" class="colorpop" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="js/core.js"></script>
+<script src="js/sources.js"></script>
+<script src="js/fonts.js"></script>
+<script src="js/elements.js"></script>
+<script src="js/render.js"></script>
+<script src="js/codegen.js"></script>
+<script src="js/zip.js"></script>
+<script src="js/export.js"></script>
+<script src="js/presets.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

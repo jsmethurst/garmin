@@ -1,0 +1,143 @@
+/* Preset designs. None of these are Garmin's own faces - they lean on the extra elements (moon, binary, progress rings, bitmap fonts). */
+(function (GW) {
+  'use strict';
+  var E = GW.newElement, rad = GW.rad;
+
+  function txt(x, y, source, font, color, o) { return E('text', Object.assign({ name: (GW.sources[source] || {}).label || 'Text', x: x, y: y, source: source, font: font, color: color }, o || {})); }
+  function label(x, y, text, font, color, o) { return txt(x, y, 'custom', font, color, Object.assign({ name: 'Label ' + text, text: text }, o || {})); }
+  function ring(src, r, pen, start, sweep, color, o) {
+    return E('arc', Object.assign({ name: ((GW.sources[src] || {}).label || 'Arc'), cx: 140, cy: 140, r: r, pen: pen, start: start, sweep: sweep, source: src, color: color }, o || {}));
+  }
+  function rect(x, y, w, h, color, o) { return E('shape', Object.assign({ name: 'Box', kind: 'rect', x: x, y: y, w: w, h: h, fill: true, color: color }, o || {})); }
+  function line(x, y, x2, y2, color, pen, name) { return E('shape', { name: name || 'Line', kind: 'line', x: x, y: y, x2: x2, y2: y2, color: color, pen: pen || 1 }); }
+  function dot(x, y, r, color) { return E('shape', { name: 'Star', kind: 'circle', x: x, y: y, r: r, fill: true, color: color }); }
+  function font(id, family, weight, px, glyphs, spacing) { return { id: id, family: family, weight: weight, px: px, glyphs: glyphs, spacing: spacing || 0 }; }
+  function D(name, bg, fonts, els) { var d = GW.blankDesign(); d.name = name; d.bg = bg; d.fonts = fonts; d.elements = els; return d; }
+  function onCircle(deg, r) { return [140 + r * Math.sin(rad(deg)), 140 - r * Math.cos(rad(deg))]; }
+
+  GW.PRESETS = [
+    { id: 'orbit', name: 'Orbit', blurb: 'Four nested rings: steps, battery, how much of the day and the year is gone.',
+      build: function () {
+        return D('Orbit', '#000000', [], [
+          ring('steps', 134, 7, 0, 330, '#00ffff'),
+          ring('battery', 124, 7, 0, 330, '#55ff55'),
+          ring('dayPct', 114, 7, 0, 330, '#ff55ff'),
+          ring('yearPct', 104, 7, 0, 330, '#ffaa00'),
+          txt(140, 86, 'steps', 'FONT_TINY', '#00ffff', { suffix: ' steps', upper: true }),
+          txt(140, 130, 'time', 'FONT_NUMBER_HOT', '#ffffff'),
+          txt(140, 170, 'date', 'FONT_SMALL', '#aaaaaa', { upper: true }),
+          txt(140, 196, 'battery', 'FONT_TINY', '#55ff55', { suffix: '%' })
+        ]);
+      } },
+    { id: 'terminal', name: 'Terminal', blurb: 'Green-on-black shell prompt with a monospaced bitmap font.',
+      build: function () {
+        var F = 'f_term16', B = 'f_term52', c1 = '#00ff55', c2 = '#00aa55';
+        return D('Terminal', '#000000', [font(B, 'Share Tech Mono', 400, 52, 'digits'), font(F, 'Share Tech Mono', 400, 17, 'full')], [
+          label(46, 52, 'fenix@6x:~$ now', F, c2, { justify: 'L' }),
+          txt(46, 92, 'time', B, c1, { justify: 'L', secs: false }),
+          txt(46, 136, 'date', F, c1, { justify: 'L', prefix: 'date  ', fmt: 'ddd DD MMM' }),
+          txt(46, 158, 'battery', F, c1, { justify: 'L', prefix: 'bat   ', suffix: '%' }),
+          txt(46, 180, 'steps', F, c1, { justify: 'L', prefix: 'steps ' }),
+          txt(46, 202, 'hr', F, c1, { justify: 'L', prefix: 'hr    ', suffix: ' bpm' }),
+          txt(46, 224, 'temp', F, c1, { justify: 'L', prefix: 'temp  ', suffix: '°' }),
+          label(46, 246, '_', F, c2, { justify: 'L' })
+        ]);
+      } },
+    { id: 'pilot', name: 'Pilot', blurb: 'Classic analog: sword hands, big numerals, a date window at 3.',
+      build: function () {
+        var N = 'f_pil38';
+        return D('Pilot', '#000000', [font(N, 'Bebas Neue', 400, 40, 'nums')], [
+          E('shape', { name: 'Dial', kind: 'circle', x: 140, y: 140, r: 140, fill: true, color: '#000055', locked: true }),
+          E('ticks', { r: 137, len: 8, major: 5, majorLen: 18, majorWidth: 4, color: '#aaaaaa', majorColor: '#ffffff' }),
+          label(140, 44, '12', N, '#ffffff'), label(140, 236, '6', N, '#ffffff'), label(44, 140, '9', N, '#ffffff'),
+          E('shape', { name: 'Date window', kind: 'rect', x: 228, y: 140, w: 50, h: 30, fill: false, pen: 2, color: '#ffffff' }),
+          txt(228, 140, 'date', 'FONT_SMALL', '#ffffff', { fmt: 'DD' }),
+          txt(140, 92, 'date', 'FONT_XTINY', '#aaaaff', { fmt: 'DDDD', upper: true }),
+          txt(140, 192, 'battery', 'FONT_XTINY', '#aaaaff', { prefix: 'BAT ', suffix: '%' }),
+          E('hands', { style: 'sword', hLen: 66, hW: 12, mLen: 102, mW: 10, sColor: '#ff5500', hubColor: '#ff5500' })
+        ]);
+      } },
+    { id: 'synthwave', name: 'Synthwave', blurb: 'Striped sunset over a neon grid. Pure shapes, tiny memory cost.',
+      build: function () {
+        var T = 'f_syn48', els = [
+          E('shape', { name: 'Sun', kind: 'circle', x: 140, y: 104, r: 66, fill: true, color: '#ff5500' }),
+          rect(140, 118, 150, 2, '#000000', { name: 'Sun slit' }), rect(140, 130, 150, 3, '#000000', { name: 'Sun slit' }),
+          rect(140, 143, 150, 4, '#000000', { name: 'Sun slit' }), rect(140, 157, 150, 5, '#000000', { name: 'Sun slit' }),
+          rect(140, 225, 300, 118, '#550055', { name: 'Ground', locked: true }),
+          line(0, 167, 280, 167, '#ff55ff', 2, 'Horizon')
+        ];
+        [178, 192, 210, 234, 266].forEach(function (y) { els.push(line(0, y, 280, y, '#aa00aa', 1, 'Grid row')); });
+        for (var k = -4; k <= 4; k++) els.push(line(140, 167, 140 + k * 62, 290, '#aa00aa', 1, 'Grid col'));
+        els.push(txt(140, 82, 'time', T, '#ffffff'));
+        els.push(txt(140, 28, 'date', 'FONT_SMALL', '#00ffff', { upper: true }));
+        els.push(rect(140, 250, 124, 24, '#000000', { name: 'Plate' }));
+        els.push(txt(140, 250, 'steps', 'FONT_TINY', '#ffff55', { suffix: ' STEPS', upper: true }));
+        return D('Synthwave', '#000000', [font(T, 'Orbitron', 900, 50, 'digits')], els);
+      } },
+    { id: 'moonlight', name: 'Moonlight', blurb: 'Real moon phase drawn on the watch, with an illumination ring.',
+      build: function () {
+        var stars = [[40, 90, 1], [70, 40, 1], [210, 50, 1], [240, 100, 1], [30, 160, 1], [250, 170, 1], [100, 24, 1], [182, 24, 1], [60, 215, 1], [222, 218, 1], [225, 78, 2], [52, 128, 2], [90, 66, 1], [196, 62, 1]];
+        var els = stars.map(function (s) { return dot(s[0], s[1], s[2], '#ffffff'); });
+        els.push(ring('moonIllum', 62, 3, 0, 359, '#aaaaff', { cy: 94, round: false, track: '#0000aa' }));
+        els.push(E('moon', { x: 140, y: 94, r: 50, lit: '#ffffaa', dark: '#0000aa', rim: '#aaaaff' }));
+        els.push(txt(140, 164, 'moonName', 'FONT_XTINY', '#aaaaff', { upper: true }));
+        els.push(txt(140, 206, 'time', 'FONT_NUMBER_HOT', '#ffffff'));
+        els.push(txt(140, 249, 'date', 'FONT_TINY', '#aaaaaa', { upper: true }));
+        return D('Moonlight', '#000055', [], els);
+      } },
+    { id: 'binary', name: 'Binary', blurb: 'Read the time in dots. Digits underneath for when you give up.',
+      build: function () {
+        var M = 'f_bin26';
+        return D('Binary', '#000000', [font(M, 'Share Tech Mono', 400, 28, 'digits')], [
+          ring('battery', 134, 4, 0, 359, '#00ff55', { round: false, track: '#005500' }),
+          label(140, 38, 'BINARY', 'FONT_XTINY', '#55aa55'),
+          E('binary', { x: 140, y: 112, r: 10, gap: 7, on: '#00ff55', off: '#005500' }),
+          txt(140, 192, 'time', M, '#00aa55'),
+          txt(140, 220, 'date', 'FONT_XTINY', '#55aa55', { upper: true })
+        ]);
+      } },
+    { id: 'tactical', name: 'Tactical', blurb: 'Four bezel gauges with readouts: steps, battery, body battery, heart rate.',
+      build: function () {
+        var g = [['steps', 20, '#00ffff'], ['battery', 110, '#55ff55'], ['bodyBat', 200, '#ffaa00'], ['hr', 290, '#ff5555']], els = [];
+        g.forEach(function (a) {
+          els.push(ring(a[0], 132, 8, a[1], 70, a[2], a[0] === 'hr' ? { min: 50, max: 180 } : {}));
+          var p = onCircle(a[1] + 35, 100);
+          els.push(txt(Math.round(p[0]), Math.round(p[1]), a[0], 'FONT_TINY', a[2], {}));
+        });
+        els.push(txt(140, 94, 'date', 'FONT_TINY', '#aaaaaa', { upper: true }));
+        els.push(txt(140, 136, 'time', 'FONT_NUMBER_HOT', '#ffffff'));
+        els.push(E('wxicon', { x: 112, y: 186, size: 30 }));
+        els.push(txt(134, 186, 'temp', 'FONT_MEDIUM', '#ffff55', { suffix: '°', justify: 'L' }));
+        els.push(E('movebar', { x: 140, y: 234, w: 84, h: 6, gap: 3 }));
+        return D('Tactical', '#000000', [], els);
+      } },
+    { id: 'minimal', name: 'Minimal', blurb: 'Two huge numerals and a single thin minute ring.',
+      build: function () {
+        var B = 'f_min104';
+        return D('Minimal', '#000000', [font(B, 'Bebas Neue', 400, 112, 'nums')], [
+          ring('minute', 136, 3, 0, 359, '#ff5500', { round: false, track: '#555555' }),
+          txt(140, 96, 'hour', B, '#ffffff', { lz: false }),
+          txt(140, 186, 'minute', B, '#ff5500'),
+          txt(140, 258, 'date', 'FONT_XTINY', '#aaaaaa', { upper: true, fmt: 'ddd DD' }),
+          txt(140, 24, 'battery', 'FONT_XTINY', '#555555', { suffix: '%' })
+        ]);
+      } },
+    { id: 'pixel', name: 'Pixel LCD', blurb: 'Handheld-console nostalgia in a pixel font.',
+      build: function () {
+        var P = 'f_px32', S = 'f_px16';
+        return D('Pixel LCD', '#aaaa55', [font(P, 'Press Start 2P', 400, 32, 'digits'), font(S, 'Press Start 2P', 400, 16, 'basic')], [
+          E('shape', { name: 'Frame', kind: 'rect', x: 140, y: 140, w: 222, h: 150, rad: 10, fill: false, pen: 4, color: '#005500' }),
+          txt(140, 94, 'date', S, '#005500', { upper: true, fmt: 'ddd DD MMM' }),
+          txt(140, 140, 'time', P, '#005500'),
+          txt(140, 188, 'battery', S, '#005500', { prefix: 'BAT ', suffix: '%' })
+        ]);
+      } },
+    { id: 'blank', name: 'Blank', blurb: 'Start from nothing.', build: function () { return D('My Watchface', '#000000', [], []); } }
+  ];
+
+  GW.applyPreset = function (id, done) {
+    var p = GW.PRESETS.filter(function (x) { return x.id === id; })[0]; if (!p) return;
+    var d = p.build();
+    GW.loadFrom({ design: d, assets: {} }, done);
+  };
+})(window.GW);

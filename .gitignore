@@ -1,0 +1,4 @@
+node_modules/
+*.prg
+developer_key.*
+.DS_Store

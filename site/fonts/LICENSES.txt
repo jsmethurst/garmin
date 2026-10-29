@@ -1,0 +1,13 @@
+Bundled typefaces (all licensed under the SIL Open Font License 1.1, https://openfontlicense.org):
+
+  Rajdhani          (c) 2014 Indian Type Foundry
+  Orbitron          (c) 2018 The Orbitron Project Authors
+  Share Tech Mono   (c) 2012 Carrois Type Design
+  Bebas Neue        (c) 2019 The Bebas Neue Project Authors
+  Oxanium           (c) 2019 The Oxanium Project Authors
+  Chakra Petch      (c) 2018 The Chakra Petch Project Authors
+  Press Start 2P    (c) 2012 The Press Start 2P Project Authors
+
+Files are the Latin subsets distributed by Fontsource (https://fontsource.org).
+Bitmap fonts that the tool generates from these faces for your watchface are derivative
+works that may be used and distributed freely under the same license.
