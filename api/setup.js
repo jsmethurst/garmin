@@ -1,4 +1,4 @@
-import { getBox, sh, json, CHECK, SETUP } from './_builder.js';
+import { getBox, sh, json, CHECK, SETUP, SETUP_ROOT } from './_builder.js';
 
 // POST /api/setup  -> installs Garmin's SDK + the fenix 6X Pro device into the persistent sandbox.
 // Needs env vars: GARMIN_USERNAME, GARMIN_PASSWORD, GARMIN_SDK_AGREEMENT=accept
@@ -13,8 +13,10 @@ export default async function handler(req, res) {
   }
   try {
     const box = await getBox({ create: true });
-    const r = await sh(box, SETUP, { GARMIN_USERNAME, GARMIN_PASSWORD, GARMIN_SDK_AGREEMENT });
     const clean = (s) => String(s).split(GARMIN_PASSWORD).join('***');
+    const pre = await sh(box, SETUP_ROOT, {}, true);
+    if (pre.code !== 0) return json(res, 500, { ok: false, message: 'Could not install Java.', log: clean(pre.out + '\n' + pre.err).slice(-3000) });
+    const r = await sh(box, SETUP, { GARMIN_USERNAME, GARMIN_PASSWORD, GARMIN_SDK_AGREEMENT });
     if (r.code !== 0) return json(res, 500, { ok: false, message: 'Setup failed.', log: clean(r.out + '\n' + r.err).slice(-4000) });
     const c = await sh(box, CHECK);
     await box.stop(); // snapshot so later builds restore instantly

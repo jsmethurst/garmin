@@ -4,25 +4,22 @@ import { Sandbox } from '@vercel/sandbox';
 
 export const NAME = 'ciq-builder';
 export const DEVICE = 'fenix6xpro';
-export const ROOT = '/vercel/ciq';
+export const ROOT = '/vercel/sandbox/ciq'; // default working directory of SDK-created sandboxes (writable)
 
 export async function getBox({ create = false } = {}) {
-  try {
-    return await Sandbox.get({ name: NAME, resume: true });
-  } catch (e) {
-    if (!create) throw e;
-  }
-  return Sandbox.create({
+  if (!create) return Sandbox.get({ name: NAME, resume: true });
+  return Sandbox.getOrCreate({
     name: NAME,
     persistent: true,
     snapshotExpiration: 0, // never expire: devices are slow to re-download and need a Garmin login
     timeout: 5 * 60 * 1000,
     resources: { vcpus: 4 },
+    resume: true,
   });
 }
 
-export async function sh(box, script, env = {}) {
-  const r = await box.runCommand({ cmd: 'bash', args: ['-lc', script], env });
+export async function sh(box, script, env = {}, sudo = false) {
+  const r = await box.runCommand({ cmd: 'bash', args: ['-lc', script], env, sudo });
   return { code: r.exitCode, out: await r.stdout(), err: await r.stderr() };
 }
 
@@ -42,13 +39,20 @@ export async function readBody(req, limit = 4 * 1024 * 1024) {
 // Is the toolchain in the sandbox complete?
 export const CHECK = `test -x ${ROOT}/sdk/bin/monkeyc && test -f ${ROOT}/key.der && ls $HOME/.Garmin/ConnectIQ/Devices/${DEVICE}/compiler.json >/dev/null 2>&1 && command -v java >/dev/null`;
 
-// One-time (idempotent) setup. Garmin only gives device files to a logged-in Garmin account.
+// One-time (idempotent) setup, in two steps: system packages (root), then the Garmin toolchain (user).
+export const SETUP_ROOT = `
+set -e
+if ! command -v java >/dev/null; then
+  if command -v dnf >/dev/null; then dnf install -y -q java-17-amazon-corretto-headless unzip tar gzip
+  else apt-get update -qq && apt-get install -y -qq openjdk-17-jre-headless unzip curl; fi
+fi
+mkdir -p ${ROOT} && chmod -R a+rwX ${ROOT}
+`;
+
+// Garmin only gives device files to a logged-in Garmin account.
 export const SETUP = `
 set -e
 mkdir -p ${ROOT} && cd ${ROOT}
-if ! command -v java >/dev/null; then
-  sudo apt-get update -qq && sudo apt-get install -y -qq openjdk-17-jre-headless unzip
-fi
 if [ ! -x sdk/bin/monkeyc ]; then
   curl -fsS -m 60 -o sdks.json https://developer.garmin.com/downloads/connect-iq/sdks/sdks.json
   F=$(node -e "const j=require('./sdks.json');console.log(j[j.length-1].linux)")

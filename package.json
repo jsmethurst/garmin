@@ -8,7 +8,7 @@
     "test": "node tests/smoke.cjs"
   },
   "dependencies": {
-    "@vercel/sandbox": "^1.0.0"
+    "@vercel/sandbox": "^3.9.1"
   },
   "devDependencies": {
     "playwright": "^1.48.0"

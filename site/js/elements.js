@@ -288,7 +288,17 @@
       if (el.hub > 0) { ctx.fillStyle = q(el.hubColor); ctx.beginPath(); ctx.arc(el.cx, el.cy, el.hub, 0, Math.PI * 2); ctx.fill(); }
     },
     box: function (el) { var r = Math.max(el.mLen, el.sShow ? el.sLen : 0, 12); return { x: el.cx - r, y: el.cy - r, w: r * 2, h: r * 2 }; },
-    hit: function (el, x, y) { return Math.hypot(x - el.cx, y - el.cy) <= Math.max(el.mLen, 14) + 4; },
+    hit: function (el, x, y) {
+      // only the hands themselves (and the hub) count, so clicks pass through to things underneath
+      var env = GW.env(), hA = ((env.h % 12) * 60 + env.m) * Math.PI / 360, mA = env.m * Math.PI / 30, sA = env.sec * Math.PI / 30;
+      function near(a, len, tail, w) {
+        var dx = Math.sin(a), dy = -Math.cos(a), px = x - el.cx, py = y - el.cy;
+        var t = px * dx + py * dy, d = Math.abs(-px * dy + py * dx); // along / perpendicular distance
+        return t >= -tail - 3 && t <= len + 3 && d <= w / 2 + 5;
+      }
+      if (el.hub > 0 && Math.hypot(x - el.cx, y - el.cy) <= el.hub + 4) return true;
+      return near(hA, el.hLen, el.hLen * 0.12, el.hW) || near(mA, el.mLen, el.mLen * 0.1, el.mW) || (el.sShow && near(sA, el.sLen, el.sTail, el.sW));
+    },
     fields: function (el) {
       return [
         { k: 'style', t: 'seg', label: 'Hand style', opts: [['bar', 'Bar'], ['taper', 'Taper'], ['sword', 'Sword']] },

@@ -74,17 +74,12 @@ button { cursor: pointer; }
 
 /* stage / watch */
 .stage { display: flex; flex-direction: column; align-items: center; gap: 12px; min-width: 0; position: sticky; top: 70px; }
-.watch { position: relative; width: min(100%, 600px); aspect-ratio: 1; display: grid; place-items: center; padding: 4%; }
-.bezel { width: 100%; aspect-ratio: 1; border-radius: 50%; padding: 5.2%; position: relative;
-  background: conic-gradient(from 210deg, #5b6573, #2a313b 18%, #8a95a3 32%, #343c47 50%, #7d8896 68%, #2a313b 84%, #5b6573);
-  box-shadow: 0 0 0 2px #0a0d12, 0 24px 60px rgba(0,0,0,.65), inset 0 0 0 3px rgba(255,255,255,.07); }
-.bezel::after { content: ''; position: absolute; inset: 3.4%; border-radius: 50%; box-shadow: inset 0 0 0 2px #0a0d12, inset 0 6px 14px rgba(0,0,0,.6); pointer-events: none; }
-.glass { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: #000; position: relative; }
-.glass::after { content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; background: linear-gradient(155deg, rgba(255,255,255,.10), rgba(255,255,255,0) 35%); }
+.watch { position: relative; width: min(100%, 600px); aspect-ratio: 1; filter: drop-shadow(0 22px 30px rgba(0,0,0,.55)); }
+.frame { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* display: 1.4in of a 51mm case, so about 70% of the case diameter (case radius 38.2 of 100 -> display radius 26.5) */
+.glass { position: absolute; left: 50%; top: 50%; width: 53%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; overflow: hidden; background: #000; }
+.glass::after { content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; background: linear-gradient(155deg, rgba(255,255,255,.10), rgba(255,255,255,0) 35%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.04); }
 #cv { display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
-.wbtn { position: absolute; width: 3.2%; height: 9%; background: linear-gradient(90deg, #444c58, #8b95a3, #444c58); border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,.6); }
-.wbtn.l1 { left: 1.6%; top: 22%; transform: rotate(-18deg); } .wbtn.l2 { left: .6%; top: 45.5%; } .wbtn.l3 { left: 1.6%; top: 69%; transform: rotate(18deg); }
-.wbtn.r1 { right: 1.6%; top: 28%; transform: rotate(18deg); } .wbtn.r2 { right: 1.6%; top: 63%; transform: rotate(-18deg); }
 .status { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: center; font-size: 12.5px; }
 .status .mono { min-width: 92px; color: var(--muted); }
 .tgl { display: flex; gap: 6px; align-items: center; color: var(--muted); cursor: pointer; }
