@@ -46,7 +46,7 @@
     }
   }
 
-  function pace(sec) { if (sec < 0 || sec > 3599) return '--:--'; var s = Math.trunc(sec); return Math.floor(s / 60) + ':' + pad2(s % 60); }
+  function pace(sec) { if (sec < 0 || sec > 3599) return '--:--'; var s = Math.round(sec); return Math.floor(s / 60) + ':' + pad2(s % 60); }
   function clock(sec) {
     var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = Math.floor(sec % 60);
     return h > 0 ? h + ':' + pad2(m) + ':' + pad2(s) : pad2(m) + ':' + pad2(s);

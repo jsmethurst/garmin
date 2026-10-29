@@ -110,7 +110,7 @@
 
     private function fldPace(secPerKm as Float) as String {
         if (secPerKm < 0.0 || secPerKm > 3599.0) { return "--:--"; }
-        var s = secPerKm.toNumber();
+        var s = (secPerKm + 0.5).toNumber();
         return (s / 60).format("%d") + ":" + (s % 60).format("%02d");
     }
 
