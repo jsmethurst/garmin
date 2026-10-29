@@ -102,7 +102,7 @@
   }
 
   // ---- dot-matrix world map, baked once per angle ----
-  var pitch = 280 / 72, x0 = (280 - COLS * pitch) / 2, y0 = 280 * 0.40;
+  var pitch = 280 / 72, x0 = (280 - COLS * pitch) / 2, y0 = 280 * 0.349;
   var mapCache = {};
   function mapCanvas(angle) {
     if (mapCache[angle]) return mapCache[angle];
@@ -125,17 +125,67 @@
     mapCache[angle] = c; return c;
   }
 
+  // ---- text laid along the screen edge (top: tops outward, reads clockwise; otherwise tops inward, counter-clockwise) ----
+  function partW(p, u) { return p[0] === 0 ? strWidth(p[1], u) : 9 * u; }
+  function arcChars(ctx, s, color, a0, dir, pos, rm, u, pen, top, round) {
+    ctx.strokeStyle = q(color); ctx.fillStyle = q(color);
+    for (var i = 0; i < s.length; i++) {
+      var c = s[i]; if (c === ' ') { pos += SPACE * u; continue; }
+      var g = GLYPH[baseChar(c)], gw = g ? g[0] : 8;
+      if (g) {
+        var th = a0 + dir * (pos + gw * u / 2) / rm, al = top ? th : th + Math.PI, ux = u * Math.cos(al), uy = u * Math.sin(al);
+        var bx = 140 + rm * Math.sin(th) - (gw / 2) * ux + 6 * uy, by = 140 - rm * Math.cos(th) - (gw / 2) * uy - 6 * ux;
+        strokes(ctx, g, 1, bx, by, ux, uy, pen, round);
+        if (c === 'İ') strokes(ctx, MARK.DOT, 0, bx, by, ux, uy, pen, round);
+        else if (c === 'Ç' || c === 'Ş') strokes(ctx, MARK.CEDILLA, 0, bx, by, ux, uy, pen, round);
+        else if (c === 'Ğ') strokes(ctx, MARK.BREVE, 0, bx, by, ux, uy, pen, round);
+      }
+      pos += (gw + GAP) * u;
+    }
+  }
+  function arcTri(ctx, up, color, a0, dir, pos, rm, u, top) {
+    var th = a0 + dir * (pos + 4.5 * u) / rm, al = top ? th : th + Math.PI, ux = u * Math.cos(al), uy = u * Math.sin(al);
+    var bx = 140 + rm * Math.sin(th) - 4.5 * ux + 6 * uy, by = 140 - rm * Math.cos(th) - 4.5 * uy - 6 * ux;
+    var pts = up ? [[0, 10], [9, 10], [4.5, 2]] : [[0, 2], [9, 2], [4.5, 10]];
+    ctx.fillStyle = q(color); ctx.beginPath();
+    pts.forEach(function (p, i) { var X = bx + p[0] * ux - p[1] * uy, Y = by + p[0] * uy + p[1] * ux; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+    ctx.closePath(); ctx.fill();
+  }
+  function arcRun(ctx, parts, centerDeg, rEdge, u, pen, top) {
+    var rm = rEdge - 6 * u, dir = top ? 1 : -1, sp = 6 * u, total = -sp, i;
+    for (i = 0; i < parts.length; i++) total += partW(parts[i], u) + sp;
+    var a0 = GW.rad(centerDeg) - dir * (total / rm) / 2;
+    ctx.lineCap = 'butt';
+    for (var pass = 0; pass < 2; pass++) {
+      var pos = 0;
+      for (i = 0; i < parts.length; i++) {
+        var p = parts[i];
+        if (p[0] === 0) { ctx.lineWidth = pass === 0 ? pen + 4 : pen; arcChars(ctx, p[1], pass === 0 ? C.BLACK : p[2], a0, dir, pos, rm, u, pass === 0 ? pen + 4 : pen, top, pass === 1 && pen >= 4); }
+        else if (pass === 1) arcTri(ctx, p[1] === 1, p[2], a0, dir, pos, rm, u, top);
+        pos += partW(p, u) + sp;
+      }
+    }
+  }
+
   function draw(ctx, el, env) {
     var angle = el.angle, R = ctxOf(angle), d = data(env), W = 280, H = 280;
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(mapCanvas(angle), 0, 0, 280, 280);
 
-    drawText(ctx, R, d.date, R.cx, H * 0.14, 1.25, 2, C.WHITE, 1, true);
+    // "you are here" marker: drawn right after the map, so all text sits on top of it
+    var vx = x0 + (env.sim.lon + 180) / 360 * COLS * pitch, vy = y0 + (75 - env.sim.lat) / 5 * pitch;
+    var mx = Math.trunc(R.rx(vx, vy)), my = Math.trunc(R.ry(vx, vy));
+    [[10, C.BLACK], [8, C.YELLOW], [4, C.BLACK], [2, C.YELLOW]].forEach(function (c) {
+      ctx.fillStyle = q(c[1]); ctx.beginPath(); ctx.arc(mx, my, c[0], 0, 7); ctx.fill();
+    });
+
+    // date along the top edge of the face
+    arcRun(ctx, [[0, d.date, C.WHITE]], angle, 135, 1.3, 2, true);
 
     // time (shadow first)
     var u = 4.3, pen = Math.trunc(u * 1.7), hs = pad2(env.h), ms = pad2(env.m), gap = GAP * u;
     var hw = strWidth(hs, u), cw = strWidth(':', u), mw = strWidth(ms, u);
-    var x = (W - (hw + cw + mw + 2 * gap)) / 2, y = H * 0.232, sh = 3;
+    var x = (W - (hw + cw + mw + 2 * gap)) / 2, y = H * 0.207, sh = 3;
     drawText(ctx, R, hs, x + sh, y + sh, u, pen, C.GREY, 0, false);
     drawText(ctx, R, ms, x + hw + cw + 2 * gap + sh, y + sh, u, pen, C.CYAN_D, 0, false);
     drawText(ctx, R, hs, x, y, u, pen, C.WHITE, 0, false);
@@ -143,35 +193,19 @@
     drawText(ctx, R, ms, x + hw + cw + 2 * gap, y, u, pen, C.CYAN, 0, false);
 
     // 2 x 3 grid of readouts
-    var xs = [W * 0.2, W * 0.5, W * 0.8], y1 = H * 0.45, y2 = H * 0.614;
+    var xs = [W * 0.23, W * 0.5, W * 0.77], y1 = H * 0.485, y2 = H * 0.65;
     function cell(cx, cy, label, value, col) {
       drawText(ctx, R, label, cx, cy, 1.15, 2, C.LGREY, 1, true);
-      drawText(ctx, R, value, cx, cy + 12 * 1.15 + 5, 1.55, 3, col, 1, true);
+      drawText(ctx, R, value, cx, cy + 12 * 1.15 + 5, 1.5, 3, col, 1, true);
     }
     cell(xs[0], y1, 'NABIZ', d.hr, C.RED); cell(xs[1], y1, 'ADIM', d.steps, C.WHITE); cell(xs[2], y1, 'PİL', d.bat, d.batColor);
     cell(xs[0], y2, 'SON KM', d.km, C.WHITE); cell(xs[1], y2, 'TEMPO', d.pace, C.WHITE); cell(xs[2], y2, d.ny.zone, d.ny.t, C.CYAN);
 
-    // sunrise / temperature / sunset strip
-    function sunGroup(gx, gy, text, up, col) {
-      var m = gy + 6 * 1.05, t = 5;
-      var pts = up ? [[gx, m + t], [gx + 2 * t, m + t], [gx + t, m - t]] : [[gx, m - t], [gx + 2 * t, m - t], [gx + t, m + t]];
-      ctx.fillStyle = q(col); ctx.beginPath();
-      pts.forEach(function (p, j) { var X = R.rx(p[0], p[1]), Y = R.ry(p[0], p[1]); j ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
-      ctx.closePath(); ctx.fill();
-      drawText(ctx, R, text, gx + 14, gy, 1.05, 2, C.WHITE, 0, true);
-    }
-    var sy = H * 0.793, gw = strWidth('00:00', 1.05) + 14, tw = strWidth(d.temp, 1.05);
-    sunGroup(R.cx - gw - 14 - tw / 2, sy, d.rise, true, C.AMBER);
-    drawText(ctx, R, d.temp, R.cx, sy, 1.05, 2, C.WHITE, 1, true);
-    sunGroup(R.cx + 14 + tw / 2, sy, d.set, false, C.RED);
-
-    // "you are here" marker on the map
-    var lon = env.sim.lon, lat = env.sim.lat;
-    var vx = x0 + (lon + 180) / 360 * COLS * pitch, vy = y0 + (75 - lat) / 5 * pitch;
-    var mx = Math.trunc(R.rx(vx, vy)), my = Math.trunc(R.ry(vx, vy));
-    [[10, C.BLACK], [8, C.YELLOW], [4, C.BLACK], [2, C.YELLOW]].forEach(function (c) {
-      ctx.fillStyle = q(c[1]); ctx.beginPath(); ctx.arc(mx, my, c[0], 0, 7); ctx.fill();
-    });
+    // sunrise / temperature / sunset along the opposite edge
+    var sun = [[1, 1, C.AMBER], [0, d.rise, C.WHITE]];
+    if (d.temp.length) sun.push([0, d.temp, C.WHITE]);
+    sun.push([1, 0, C.RED]); sun.push([0, d.set, C.WHITE]);
+    arcRun(ctx, sun, angle + 180, 135, 1.15, 2, false);
   }
 
   var CLOCK_POS = [[0, '12'], [30, '1'], [60, '2'], [90, '3'], [120, '4'], [150, '5']];
@@ -184,7 +218,7 @@
     hit: function (el, x, y) { return Math.hypot(x - 140, y - 140) <= 140; },
     fields: function () {
       return [
-        { t: 'note', text: 'A complete face: big time, six readouts, sunrise/sunset and a dot-matrix world map with your position (Istanbul until the watch has a fix). Turkish labels. It draws over everything below it, so keep it at the bottom of the layers.' },
+        { t: 'note', text: 'A complete face: big time, six readouts and a dot-matrix world map with your position (Istanbul until the watch has a fix). The date and the sunrise / temperature / sunset curve along the screen edge. Turkish labels. It draws over everything below it, so keep it at the bottom of the layers.' },
         { k: 'angle', t: 'range', label: 'Tilt: which way the top of the face points', min: 0, max: 359 },
         { k: 'angle', t: 'seg', label: 'Quick pick (clock position)', opts: CLOCK_POS.map(function (p) { return [p[0], p[1]]; }), num: true },
         { t: 'note', text: '2 o’clock (60°) points at the red START button; 1 o’clock (30°) is the 5-minute position.' }
