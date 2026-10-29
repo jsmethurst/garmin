@@ -185,7 +185,28 @@
   setInterval(function () { if (GW.sim.live && !document.hidden) schedule(); }, 1000);
   window.addEventListener('beforeunload', function () { try { localStorage.setItem('gw.design.v1', JSON.stringify(GW.serialize())); } catch (e) { } });
 
+  // ---------- real device picture (private: served from the builder, only exists on the Vercel deployment) ----------
+  function useDevicePicture() {
+    fetch('/api/device-image?meta=1').then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
+      if (!m || !m.w) return;
+      var img = new Image();
+      img.onload = function () {
+        var w = document.querySelector('.watch'), g = w.querySelector('.glass');
+        img.className = 'devimg'; img.alt = ''; w.insertBefore(img, g);
+        w.classList.add('dev');
+        w.style.setProperty('--ar', m.w + ' / ' + m.h);
+        w.style.setProperty('--rat', m.w / m.h);
+        g.style.left = ((m.x + m.size / 2) / m.w * 100) + '%';
+        g.style.top = ((m.y + m.size / 2) / m.h * 100) + '%';
+        g.style.width = (m.size / m.w * 100) + '%';
+        schedule();
+      };
+      img.src = '/api/device-image';
+    }).catch(function () { });
+  }
+
   // ---------- boot ----------
+  useDevicePicture();
   GW.renderAdd();
   GW.fontsReady().then(function () {
     var saved = GW.loadSaved();
