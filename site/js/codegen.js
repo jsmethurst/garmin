@@ -94,8 +94,8 @@
         '        return (_lat != null) ? [_lat, _lon] : null;\n    }'
     },
     sunStr: {
-      needs: ['wx'],
-      code: 'function sunStr(mode) {\n        if (_wx == null || _wx.observationLocationPosition == null) { return "--:--"; }\n        var loc = _wx.observationLocationPosition;\n        var now = Time.now();\n        var m = null;\n' +
+      needs: ['wx'], imports: ['Toybox.Position'],
+      code: 'function sunStr(mode) {\n        // the weather location when the watch has one, otherwise Istanbul\n        var loc = (_wx != null && _wx.observationLocationPosition != null) ? _wx.observationLocationPosition : new Position.Location({ :latitude => 41.01, :longitude => 28.98, :format => :degrees });\n        var now = Time.now();\n        var m = null;\n' +
         '        if (mode == 1) {\n            m = Weather.getSunrise(loc, now);\n        } else if (mode == 2) {\n            m = Weather.getSunset(loc, now);\n        } else {\n' +
         '            var rise = Weather.getSunrise(loc, now);\n            var sset = Weather.getSunset(loc, now);\n' +
         '            if (rise != null && now.lessThan(rise)) {\n                m = rise;\n            } else if (sset != null && now.lessThan(sset)) {\n                m = sset;\n            } else {\n' +
@@ -316,7 +316,7 @@
     if (st.fonts.length > 3) warnings.push(st.fonts.length + ' custom bitmap fonts: each one is held in watch memory. Consider fewer sizes/glyph sets.');
     if (els.some(function (e) { return e.type === 'hands' && e.sShow; })) warnings.push('Second hand only moves while the wrist is raised (high-power mode); it is hidden in low-power mode.');
     if (els.some(function (e) { return (e.type === 'text' && (e.source === 'second' || (e.source === 'time' && e.secs))); })) warnings.push('Seconds text freezes in low-power mode (the watch redraws once a minute).');
-    if (els.some(function (e) { return e.type === 'text' && ['weatherDesc', 'temp', 'sunrise', 'sunset', 'sunNext'].indexOf(e.source) >= 0; })) warnings.push('Weather and sun times only show data once the watch has synced weather from your phone (they read "--" until then).');
+    if (els.some(function (e) { return e.type === 'text' && ['weatherDesc', 'temp'].indexOf(e.source) >= 0; })) warnings.push('Weather text and temperature only show data once the watch has synced weather from your phone (they read "--" until then). Sunrise and sunset fall back to Istanbul.');
     if (!els.length) warnings.push('The design is empty.');
 
     return { name: name, type: isField ? 'datafield' : 'watchface', app: app, view: view, perms: perms, fonts: st.fonts, images: st.images, bg: bg, warnings: warnings, files: st.files, minApi: st.minApi };

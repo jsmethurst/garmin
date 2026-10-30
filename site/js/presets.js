@@ -136,7 +136,7 @@
           txt(140, 188, 'battery', S, '#005500', { prefix: 'BAT ', suffix: '%' })
         ]);
       } },
-    { id: 'bigdata', name: 'Big Data',
+    { id: 'bigdata', name: 'Bosphorus',
       build: function () {
         var INK = '#000000', MID = '#555555', RULE = '#aaaaaa', ACC = '#ff5500';
         var fonts = [
@@ -149,7 +149,7 @@
         function lab(x, y, t) { return label(x, y, t, 'fLab', MID, { name: t }); }
         function val(x, y, source, o) { return txt(x, y, source, 'fVal', INK, o); }
         var cols = [70, 140, 210];
-        return D('Big Data', '#ffffff', fonts, [
+        return D('Bosphorus', '#ffffff', fonts, [
           E('arc', { name: 'Steps ring', cx: 140, cy: 140, r: 135, pen: 3, start: 0, sweep: 360, source: 'steps', color: ACC, track: RULE, round: false }),
           txt(140, 38, 'date', 'fDate', ACC, { name: 'Date', fmt: 'ddd DD MMM', tr: true }),
           txt(140, 88, 'time', 'fTime', INK, { name: 'Time', hmode: 'h24', lz: true }),
