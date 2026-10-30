@@ -140,7 +140,7 @@
       build: function () {
         var INK = '#000000', MID = '#555555', RULE = '#aaaaaa', ACC = '#ff5500';
         var fonts = [
-          font('fTime', 'Milo Serif', 400, 92, 'digits', 2, 3),
+          font('fTime', 'Libre Baskerville', 700, 84, 'digits'),
           font('fDate', 'DM Sans', 500, 18, 'tr'),
           font('fLab', 'DM Sans', 500, 12, 'tr'),
           font('fVal', 'DM Sans', 500, 20, 'basic'),
@@ -152,7 +152,7 @@
         return D('Bosphorus', '#ffffff', fonts, [
           E('arc', { name: 'Steps ring', cx: 140, cy: 140, r: 135, pen: 3, start: 0, sweep: 360, source: 'steps', color: ACC, track: RULE, round: false }),
           txt(140, 34, 'date', 'fDate', ACC, { name: 'Date', fmt: 'ddd DD MMM', tr: true }),
-          txt(140, 85, 'time', 'fTime', INK, { name: 'Time', hmode: 'h24', lz: true }),
+          txt(140, 88, 'time', 'fTime', INK, { name: 'Time', hmode: 'h24', lz: true }),
           line(60, 128, 220, 128, RULE, 1, 'Rule'),
           line(105, 136, 105, 202, RULE, 1, 'Divider'), line(175, 136, 175, 202, RULE, 1, 'Divider'),
           line(60, 167, 220, 167, RULE, 1, 'Rule'),
