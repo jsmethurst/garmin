@@ -17,8 +17,9 @@
   })();
   var COLS = 72, ROWS = 27;
 
-  var C = { BLACK: '#000000', WHITE: '#ffffff', CYAN: '#00ffff', CYAN_D: '#005555', GREY: '#555555', LGREY: '#aaaaaa',
-    RED: '#ff5555', GREEN: '#55ff55', AMBER: '#ffaa00', YELLOW: '#ffff00', MAPC: '#0055ff', OCEAN: '#000055' };
+  // greyscale on white: BLACK is the background/halo colour, WHITE the ink (names kept from the original colour version)
+  var C = { BLACK: '#ffffff', WHITE: '#000000', CYAN: '#555555', CYAN_D: '#aaaaaa', GREY: '#aaaaaa', LGREY: '#555555',
+    RED: '#000000', GREEN: '#555555', AMBER: '#555555', YELLOW: '#000000', MAPC: '#555555', OCEAN: '#aaaaaa' };
   var DAYS = ['PAZ', 'PZT', 'SAL', 'ÇAR', 'PER', 'CUM', 'CMT'], MONTHS = ['OCA', 'ŞUB', 'MAR', 'NİS', 'MAY', 'HAZ', 'TEM', 'AĞU', 'EYL', 'EKİ', 'KAS', 'ARA'];
   var BASE = { 'İ': 'I', 'Ç': 'C', 'Ş': 'S', 'Ğ': 'G' };
   function baseChar(c) { return BASE[c] || c; }
@@ -211,7 +212,7 @@
   var CLOCK_POS = [[0, '12'], [30, '1'], [60, '2'], [90, '3'], [120, '4'], [150, '5']];
   T.bigdata = {
     label: 'Big Data face', icon: '▦',
-    defaults: function () { return { type: 'bigdata', name: 'Big Data face', angle: 30 }; },
+    defaults: function () { return { type: 'bigdata', name: 'Big Data face', angle: 0 }; },
     pos: [],
     draw: draw,
     box: function () { return { x: 0, y: 0, w: 280, h: 280 }; },

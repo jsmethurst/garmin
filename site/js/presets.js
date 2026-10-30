@@ -136,8 +136,8 @@
           txt(140, 188, 'battery', S, '#005500', { prefix: 'BAT ', suffix: '%' })
         ]);
       } },
-    { id: 'bigdata', name: 'Big Data', blurb: 'Huge tilted time, nine readouts and a dot-matrix world map. Tilt set to 1 o\u2019clock (5-minute position).',
-      build: function () { return D('Big Data', '#000000', [], [E('bigdata', { name: 'Big Data face', angle: 30 })]); } },
+    { id: 'bigdata', name: 'Big Data', blurb: 'Huge time, nine readouts and a dot-matrix world map, in greyscale on white. Upright by default; tilt it from the Face tab.',
+      build: function () { return D('Big Data', '#ffffff', [], [E('bigdata', { name: 'Big Data face', angle: 0 })]); } },
     { id: 'run', name: 'Run screen', kind: 'datafield', blurb: 'Data field for runs in Garmin\u2019s own style: timer, HR zone colour, distance, lap / average / last-lap pace. Auto-laps every km.',
       build: function () { return fieldDesign('Run Screen', { name: 'Run screen', autoLap: true }); } },
     { id: 'race', name: 'Race screen', kind: 'datafield', blurb: 'Same screen, but it only laps when you press Lap: for km flags on a race course.',
