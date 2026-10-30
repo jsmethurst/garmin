@@ -149,7 +149,7 @@
         function lab(x, y, t) { return label(x, y, t, 'fLab', MID, { name: t }); }
         function val(x, y, source, o) { return txt(x, y, source, 'fVal', INK, o); }
         var cols = [70, 140, 210];
-        return D('Bosphorus', '#ffffff', fonts, [
+        var face = D('Bosphorus', '#ffffff', fonts, [
           E('arc', { name: 'Steps ring', cx: 140, cy: 140, r: 135, pen: 3, start: 0, sweep: 360, source: 'steps', color: ACC, track: RULE, round: false }),
           txt(140, 34, 'date', 'fDate', ACC, { name: 'Date', fmt: 'ddd DD MMM', tr: true }),
           txt(140, 88, 'time', 'fTime', INK, { name: 'Time', hmode: 'h24', lz: true }),
@@ -168,6 +168,9 @@
           E('sunicon', { name: 'Sunset icon', x: 166, y: 227, r: 6, kind: 'set', color: ACC }),
           txt(179, 227, 'sunset', 'fSun', INK, { name: 'Sunset', justify: 'L' })
         ]);
+        face.elements.forEach(function (e) { if (e.type !== 'arc') { e.y += 9; if (e.y2 != null) e.y2 += 9; } });   // sit the whole face a little lower
+        face.elements.filter(function (e) { return e.name === 'Time'; })[0].y -= 5;   // ...but keep air between the time and the rule
+        return face;
       } },
     { id: 'run', name: 'Run screen', kind: 'datafield', blurb: 'Data field for runs in Garmin\u2019s own style: timer, HR zone colour, distance, lap / average / last-lap pace. Auto-laps every km.',
       build: function () { return fieldDesign('Run Screen', { name: 'Run screen', autoLap: true }); } },
