@@ -82,6 +82,7 @@ button { cursor: pointer; }
 /* stage / watch */
 .stage { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0; position: sticky; top: 64px; }
 .watch { position: relative; width: min(100%, 600px); aspect-ratio: 1; filter: drop-shadow(0 8px 12px rgba(0,0,0,.28)); }
+.watch.loading { visibility: hidden; }
 .frame { position: absolute; inset: 0; width: 100%; height: 100%; }
 /* display: 1.4in of a 51mm case, so about 70% of the case diameter (case radius 38.2 of 100 -> display radius 26.5) */
 .glass { position: absolute; left: 50%; top: 50%; width: 53%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; overflow: hidden; background: #000; }

@@ -241,14 +241,21 @@
 
   // ---------- real device picture (private: served from the builder, only exists on the Vercel deployment) ----------
   function useDevicePicture() {
+    var w0 = document.querySelector('.watch');
+    // no private picture available (static hosting): fall back to the drawn frame
+    function fallback() {
+      if (!w0.querySelector('.frame')) w0.insertBefore(document.getElementById('fallbackFrame').content.cloneNode(true), w0.firstChild);
+      w0.classList.remove('loading');
+    }
     fetch('/api/device-image?meta=1').then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
-      if (!m || !m.w) return;
+      if (!m || !m.w) return fallback();
       var src = new Image();
+      src.onerror = fallback;
       src.onload = function () {
         var img = cutOutBackground(src);
         var w = document.querySelector('.watch'), g = w.querySelector('.glass');
         img.className = 'devimg'; img.alt = ''; w.insertBefore(img, g);
-        w.classList.add('dev');
+        w.classList.add('dev'); w.classList.remove('loading');
         w.style.setProperty('--ar', m.w + ' / ' + m.h);
         w.style.setProperty('--rat', m.w / m.h);
         g.style.left = ((m.x + m.size / 2) / m.w * 100) + '%';
@@ -257,7 +264,7 @@
         schedule();
       };
       src.src = '/api/device-image';
-    }).catch(function () { });
+    }).catch(fallback);
   }
 
   // ---------- boot ----------
