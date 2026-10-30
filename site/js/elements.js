@@ -35,7 +35,13 @@
       var s = (el.prefix || '') + GW.srcStr(el, env) + (el.suffix || '');
       return el.upper ? s.toUpperCase() : s;
     },
-    draw: function (ctx, el, env) { GW.drawText(ctx, el.font, T.text.string(el, env), el.x, el.y, el.justify, q(el.color)); },
+    draw: function (ctx, el, env) {
+      if (el.rot) { // rotated copy (export option): turn the text about its own anchor point
+        ctx.save(); ctx.translate(el.x, el.y); ctx.rotate(rad(el.rot));
+        GW.drawText(ctx, el.font, T.text.string(el, env), 0, 0, el.justify, q(el.color)); ctx.restore(); return;
+      }
+      GW.drawText(ctx, el.font, T.text.string(el, env), el.x, el.y, el.justify, q(el.color));
+    },
     box: function (el, env, ctx) { return GW.layoutText(ctx, el.font, T.text.string(el, env), el.x, el.y, el.justify); },
     fields: function (el) {
       var src = GW.sources[el.source] || {}, o = src.opts || [], f = [];
@@ -46,6 +52,7 @@
       if (o.indexOf('secs') >= 0) f.push({ k: 'secs', t: 'check', label: 'Show seconds' });
       if (o.indexOf('sep') >= 0) f.push({ k: 'sep', t: 'seg', label: 'Separator', opts: [[':', ':'], ['.', '.'], [' ', 'space'], ['', 'none']] });
       if (o.indexOf('datefmt') >= 0) f.push({ t: 'datefmt' });
+      if (o.indexOf('trnames') >= 0) f.push({ k: 'tr', t: 'check', label: 'Turkish day and month names' });
       if (o.indexOf('unit_temp') >= 0) f.push({ k: 'unit', t: 'seg', label: 'Unit', opts: [['auto', 'Watch'], ['C', '°C'], ['F', '°F']] });
       if (o.indexOf('unit_dist') >= 0) f.push({ k: 'unit', t: 'seg', label: 'Unit', opts: [['auto', 'Watch'], ['km', 'km'], ['mi', 'mi']] });
       if (o.indexOf('unit_alt') >= 0) f.push({ k: 'unit', t: 'seg', label: 'Unit', opts: [['auto', 'Watch'], ['m', 'm'], ['ft', 'ft']] });
@@ -69,6 +76,15 @@
       var expr = parts.join(' + ');
       if (el.upper) expr = '(' + expr + ').toUpper()';
       var j = { L: 'LEFT', C: 'CENTER', R: 'RIGHT' }[el.justify] || 'CENTER';
+      var cf = el.rot && GW.customFont(el.font);
+      if (cf) { // bitmap fonts cannot be rotated on the watch: use a copy whose glyph images are pre-rotated and place them one by one
+        var met = GW.fontMetrics(cf), k = (met.asc - met.desc) / 2, th = rad(el.rot), rf = cg.rotFont(el.font, el.rot);
+        cg.helper('rotTxt');
+        return [
+          'dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);',
+          'rotTxt(dc, ' + rf.ref + ', ' + rf.adv + ', ' + rf.m + ', ' + expr + ', ' + (el.x - k * Math.sin(th)).toFixed(1) + ', ' + (el.y + k * Math.cos(th)).toFixed(1) + ', ' + ({ L: 0, C: 1, R: 2 }[el.justify] == null ? 1 : { L: 0, C: 1, R: 2 }[el.justify]) + ');'
+        ];
+      }
       return [
         'dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);',
         'dc.drawText(' + N(el.x) + ', ' + N(el.y) + ', ' + cg.font(el.font) + ', ' + expr + ', Graphics.TEXT_JUSTIFY_' + j + ' | Graphics.TEXT_JUSTIFY_VCENTER);'
@@ -358,7 +374,9 @@
       ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineWidth = el.pen; ctx.lineCap = 'butt';
       if (el.kind === 'line') { ctx.beginPath(); ctx.moveTo(el.x, el.y); ctx.lineTo(el.x2, el.y2); ctx.stroke(); }
       else if (el.kind === 'circle') { ctx.beginPath(); ctx.arc(el.x, el.y, el.r, 0, Math.PI * 2); el.fill ? ctx.fill() : ctx.stroke(); }
-      else {
+      else if (el.rot) {
+        var c = GW.rectPts(el); ctx.beginPath(); c.forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); el.fill ? ctx.fill() : ctx.stroke();
+      } else {
         var x = el.x - el.w / 2, y = el.y - el.h / 2;
         ctx.beginPath();
         if (el.rad > 0 && ctx.roundRect) ctx.roundRect(x, y, el.w, el.h, el.rad); else ctx.rect(x, y, el.w, el.h);
@@ -411,6 +429,10 @@
       } else if (el.kind === 'circle') {
         if (el.fill) L.push('dc.fillCircle(' + N(el.x) + ', ' + N(el.y) + ', ' + N(el.r) + ');');
         else { L.push('dc.setPenWidth(' + N(el.pen) + ');'); L.push('dc.drawCircle(' + N(el.x) + ', ' + N(el.y) + ', ' + N(el.r) + ');'); L.push('dc.setPenWidth(1);'); }
+      } else if (el.rot) {
+        var rp = GW.rectPts(el).map(function (p) { return '[' + N(p[0]) + ', ' + N(p[1]) + ']'; }).join(', ');
+        if (el.fill) L.push('dc.fillPolygon([' + rp + ']);');
+        else { L.push('dc.setPenWidth(' + N(el.pen) + ');'); L.push('var pp = [' + rp + '];'); L.push('for (var i = 0; i < 4; i++) { dc.drawLine(pp[i][0], pp[i][1], pp[(i + 1) % 4][0], pp[(i + 1) % 4][1]); }'); L.push('dc.setPenWidth(1);'); }
       } else {
         var x = N(el.x - el.w / 2), y = N(el.y - el.h / 2), w = N(el.w), h = N(el.h), rr = N(el.rad);
         if (el.fill) L.push(rr > 0 ? 'dc.fillRoundedRectangle(' + x + ', ' + y + ', ' + w + ', ' + h + ', ' + rr + ');' : 'dc.fillRectangle(' + x + ', ' + y + ', ' + w + ', ' + h + ');');
@@ -784,6 +806,65 @@
       L.push('    dc.drawCircle(mx, my, ' + (m + 3) + ');');
       L.push('    dc.setPenWidth(1);');
       L.push('}');
+      return L;
+    }
+  };
+
+  // rotated rectangle corners (clockwise rotation about the box centre)
+  GW.rectPts = function (el) {
+    var a = rad(el.rot || 0), c = Math.cos(a), s = Math.sin(a), hw = el.w / 2, hh = el.h / 2;
+    return [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]].map(function (p) { return [el.x + p[0] * c - p[1] * s, el.y + p[0] * s + p[1] * c]; });
+  };
+
+  // ================= SUN ICON (sunrise / sunset picture) =================
+  // geometry in absolute design coordinates, shared by the preview and the generator
+  function sunGeom(el) {
+    var r = el.r, a = rad(el.rot || 0), c = Math.cos(a), s = Math.sin(a), rise = el.kind !== 'set';
+    var hy = r * 0.7, cy = rise ? hy - r * 0.2 : hy + r * 0.45;   // horizon line / disc centre (local, y down)
+    function P(x, y) { return [el.x + x * c - y * s, el.y + x * s + y * c]; }
+    var disc = [];
+    for (var d = 180; d <= 360; d += 15) {                         // upper half of the disc, cut at the horizon
+      var px = r * Math.cos(rad(d)), py = cy + r * Math.sin(rad(d));
+      if (py <= hy) disc.push(P(px, py));
+    }
+    var yEnd = Math.min(hy, cy), xe = Math.sqrt(Math.max(0, r * r - (yEnd - cy) * (yEnd - cy)));
+    var rays = [], list = rise ? [-150, -120, -90, -60, -30] : [-135, -90, -45];
+    list.forEach(function (deg) {
+      var x1 = r * 1.35 * Math.cos(rad(deg)), y1 = cy + r * 1.35 * Math.sin(rad(deg)), x2 = r * 1.85 * Math.cos(rad(deg)), y2 = cy + r * 1.85 * Math.sin(rad(deg));
+      if (y2 < hy - 2) rays.push([P(x1, y1), P(x2, y2)]);
+    });
+    void xe;
+    return { disc: disc, rays: rays, horizon: [P(-r * 2, hy), P(r * 2, hy)] };
+  }
+  T.sunicon = {
+    label: 'Sun icon', icon: '☀',
+    defaults: function () { return { type: 'sunicon', name: 'Sun', x: 140, y: 140, r: 8, kind: 'rise', color: '#ff5500', rot: 0 }; },
+    pos: [['x', 'y']],
+    draw: function (ctx, el) {
+      var g = sunGeom(el), col = q(el.color);
+      ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineCap = 'butt';
+      ctx.beginPath(); g.disc.forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); ctx.fill();
+      ctx.lineWidth = Math.max(1.5, el.r / 4);
+      g.rays.forEach(function (rr) { ctx.beginPath(); ctx.moveTo(rr[0][0], rr[0][1]); ctx.lineTo(rr[1][0], rr[1][1]); ctx.stroke(); });
+      ctx.beginPath(); ctx.moveTo(g.horizon[0][0], g.horizon[0][1]); ctx.lineTo(g.horizon[1][0], g.horizon[1][1]); ctx.stroke();
+    },
+    box: function (el) { var r = el.r * 2; return { x: el.x - r, y: el.y - r, w: r * 2, h: r * 2 }; },
+    fields: function () {
+      return [
+        { k: 'kind', t: 'seg', label: 'Sun', opts: [['rise', 'Rising'], ['set', 'Setting']] },
+        { k: 'color', t: 'color', label: 'Colour' },
+        { k: 'r', t: 'range', label: 'Size', min: 3, max: 30 },
+        { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y', min: -50, max: 330 }] }
+      ];
+    },
+    gen: function (el) {
+      var g = sunGeom(el), pen = Math.max(2, Math.round(el.r / 4)), L = ['dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);'];
+      function pt(p) { return N(p[0]) + ', ' + N(p[1]); }
+      if (g.disc.length > 2) L.push('dc.fillPolygon([' + g.disc.map(function (p) { return '[' + pt(p) + ']'; }).join(', ') + ']);');
+      L.push('dc.setPenWidth(' + pen + ');');
+      g.rays.forEach(function (rr) { L.push('dc.drawLine(' + pt(rr[0]) + ', ' + pt(rr[1]) + ');'); });
+      L.push('dc.drawLine(' + pt(g.horizon[0]) + ', ' + pt(g.horizon[1]) + ');');
+      L.push('dc.setPenWidth(1);');
       return L;
     }
   };

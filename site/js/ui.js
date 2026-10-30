@@ -243,7 +243,6 @@
       var i = h('input', { type: 'text', value: cur, spellcheck: 'false', placeholder: 'ddd DD MMM' });
       i.addEventListener('input', function () { el.fmt = i.value; GW.touch(false); }); i.addEventListener('change', function () { fireChange(false); });
       wrap.appendChild(i);
-      wrap.appendChild(h('div', { class: 'note', html: 'Tokens: <b>DDDD</b> weekday · <b>ddd</b> Mon · <b>DD</b> 06 · <b>D</b> 6 · <b>MMMM</b> December · <b>MMM</b> Dec · <b>MM</b> 12 · <b>M</b> 12 · <b>YYYY</b> · <b>YY</b>. Names follow the watch language.' }));
     }
     if (!isPreset) custom();
     sel.addEventListener('change', function () {
@@ -274,7 +273,7 @@
   function renderField(el, f) {
     switch (f.t) {
       case 'h': return h('h4', { text: f.label });
-      case 'note': return h('div', { class: 'note', text: f.text });
+      case 'note': return null;
       case 'row': return h('div', { class: 'row' }, f.fields.map(function (x) { return renderField(el, x); }));
       case 'source': return fSource(el, f);
       case 'font': return fFont(el, f);
@@ -299,7 +298,7 @@
   function renderInspector(p) {
     var el = GW.selected();
     if (!el) {
-      p.appendChild(h('div', { class: 'empty' }, [h('b', { text: 'Nothing selected' }), 'Click something on the watch, pick a layer, or add an element on the left.']));
+      p.appendChild(h('div', { class: 'empty' }, [h('b', { text: 'Nothing selected' })]));
       return;
     }
     var t = T[el.type];
@@ -311,9 +310,6 @@
       h('button', { class: 'btn', title: 'Duplicate (Ctrl+D)', text: '⧉', onclick: function () { GW.duplicateSelected(); } }),
       h('button', { class: 'btn danger', title: 'Delete (Del)', text: '🗑', onclick: function () { GW.deleteSelected(); } })
     ]));
-    var info = null;
-    if (el.type === 'text' && el.source === 'second') info = 'Seconds only refresh while the wrist is raised.';
-    if (info) p.appendChild(h('div', { class: 'note', text: info }));
     if (el.type === 'text' && GW.customFont(el.font)) {
       var cf = GW.customFont(el.font), chars = GW.GLYPH_SETS[cf.glyphs].chars, s = GW.sources[el.source];
       if (s && s.id !== 'custom' && cf.glyphs === 'nums' && ['time', 'date', 'battery', 'steps'].indexOf(el.source) >= 0 && (el.source === 'time' || el.source === 'date' || el.prefix || el.suffix)) {
@@ -351,7 +347,6 @@
   GW.renderLayers = function () {
     var ul = $('layers'); ul.innerHTML = '';
     var els = GW.design.elements;
-    $('layersEmpty').hidden = els.length > 0;
     for (var i = els.length - 1; i >= 0; i--) (function (el) {
       var t = T[el.type];
       var li = h('li', { class: 'layer' + (el.id === GW.selId ? ' sel' : '') + (el.hidden ? ' off' : ''), draggable: 'true', 'data-id': el.id, tabindex: 0, role: 'button', 'aria-label': el.name }, [
@@ -429,7 +424,7 @@
       } }));
     });
     var g = $('addGrid'); g.innerHTML = '';
-    ['text', 'arc', 'hands', 'ticks', 'shape', 'image', 'barchart', 'movebar', 'moon', 'binary', 'wxicon', 'worldmap', 'bigdata'].forEach(function (k) {
+    ['text', 'arc', 'hands', 'ticks', 'shape', 'image', 'barchart', 'movebar', 'moon', 'binary', 'wxicon', 'worldmap', 'sunicon'].forEach(function (k) {
       g.appendChild(h('button', { class: 'addbtn', onclick: function () { GW.addElement(k, { name: T[k].label }); } }, [h('i', { text: T[k].icon }), T[k].label]));
     });
   };
@@ -451,7 +446,6 @@
   // ---------------------------------------------------------------- data field settings
   function renderFieldSettings(p) {
     var d = GW.design;
-    p.appendChild(h('div', { class: 'note', text: 'Settings for the whole data field. On the watch, add it to an activity data screen with a one-field layout; in a smaller slot the design scales down to fit.' }));
     p.appendChild(field('Screen colours', segCtl([['light', 'Light'], ['auto', 'Match watch'], ['dark', 'Dark']], d.dfTheme || 'light', function (v) { d.dfTheme = v; GW.commit(true); })));
     p.appendChild(field('Units', segCtl([['watch', 'Match watch'], ['metric', 'Metric'], ['imperial', 'Imperial']], d.dfUnits || 'watch', function (v) { d.dfUnits = v; GW.commit(true); })));
     p.appendChild(h('h4', { text: 'Laps' }));
@@ -459,9 +453,6 @@
     c.addEventListener('change', function () { d.dfAutoLap = c.checked; GW.commit(true); });
     p.appendChild(h('label', { class: 'chk' }, [c, 'Auto lap by distance']));
     if (d.dfAutoLap) p.appendChild(fNum(d, { k: 'dfLapM', label: 'Auto lap every (metres)', min: 100, max: 10000, step: 100 }));
-    p.appendChild(h('div', { class: 'note', text: d.dfAutoLap
-      ? 'The Lap button also starts a new lap. Laps are tracked by this field (lap pace, last lap). For real laps in Garmin Connect, also switch on the activity’s own Auto Lap.'
-      : 'It only laps when you press the Lap button, for example at the km flags on a race course. Make sure the activity’s own Auto Lap is off.' }));
     if (d.dfLapM == null) d.dfLapM = 1000;
   }
 
@@ -481,23 +472,6 @@
     p.appendChild(h('div', { class: 'f' }, [h('label', { text: 'Background image (optional)' }),
       h('div', { class: 'dropzone', onclick: function () { file.click(); }, text: d.bgImage ? 'Replace image…' : 'Choose a 280×280 image…' }), file,
       d.bgImage ? h('button', { class: 'btn sm', text: 'Remove background image', onclick: function () { d.bgImage = null; GW.commit(true); } }) : null]));
-    p.appendChild(h('div', { class: 'note warn', text: 'Full-screen images are the quickest way to run out of watch memory. Shapes and gauges cost almost nothing.' }));
-    p.appendChild(h('h4', { text: 'Target' }));
-    p.appendChild(h('div', { class: 'note', text: GW.DEVICE.name + ' · ' + GW.SIZE + '×' + GW.SIZE + ' round MIP · 64 colours · device id ' + GW.DEVICE.id }));
-    if (GW.rotatable(d)) {
-      p.appendChild(h('h4', { text: 'Rotate whole face' }));
-      var ang = GW.faceAngle(d);
-      function setAngle(v) { d.elements.forEach(function (e) { if (e.type === 'bigdata') e.angle = v; }); }
-      var rr = h('input', { type: 'range', min: 0, max: 359, step: 1, value: ang, 'aria-label': 'Rotation' });
-      var nn = h('input', { type: 'number', min: 0, max: 359, step: 1, value: ang });
-      function live(v) { setAngle(v); rr.value = v; nn.value = v; GW.touch(false); }
-      rr.addEventListener('input', function () { live(parseFloat(rr.value)); });
-      nn.addEventListener('input', function () { var v = parseFloat(nn.value); if (!isNaN(v)) live(((Math.round(v) % 360) + 360) % 360); });
-      rr.addEventListener('change', function () { GW.commit(true); }); nn.addEventListener('change', function () { GW.commit(true); });
-      p.appendChild(field('Which way the top of the face points', h('div', { class: 'rng' }, [rr, nn])));
-      p.appendChild(segCtl([[0, '0°'], [30, '1 o’clock'], [60, '2 (red)'], [90, '3']], ang, function (v) { setAngle(v); GW.commit(true); }));
-      p.appendChild(h('div', { class: 'note', text: 'To export several rotations at once (for example 0° and 30°), pick them in the export dialog.' }));
-    }
     p.appendChild(h('h4', { text: 'Saved in this browser' }));
     var nameIn = h('input', { type: 'text', value: d.name, maxlength: 40, 'aria-label': 'Snapshot name' });
     p.appendChild(h('div', { class: 'row' }, [nameIn, h('button', { class: 'btn', style: 'flex:none', text: 'Save snapshot', onclick: function () {
@@ -514,7 +488,6 @@
         h('button', { 'aria-label': 'Delete snapshot', title: 'Delete', text: '×', onclick: function () { var a = getSaves(); a.splice(i, 1); putSaves(a); GW.renderPanel(); } })
       ]));
     });
-    p.appendChild(h('p', { class: 'muted small', text: 'Snapshots live only in this browser. Use Save (top bar) to download a .json file you can keep or share.' }));
     p.appendChild(h('h4', { text: 'Start over' }));
     p.appendChild(h('div', { class: 'row' }, [
       h('button', { class: 'btn', text: 'Presets…', onclick: function () { GW.openPresets(); } }),
@@ -550,7 +523,6 @@
   }
 
   function renderFonts(p) {
-    p.appendChild(h('div', { class: 'note', text: 'The watch only has a handful of built-in fonts. Bitmap fonts are drawn from any typeface at the size you choose and are bundled into your project automatically at export. Each one costs watch memory, so keep sizes and glyph sets small.' }));
     GW.design.fonts.forEach(function (f) {
       var cv = h('canvas');
       var used = fontUsage(f.id);
@@ -644,7 +616,6 @@
   }
   function renderSim(p) {
     var s = GW.sim;
-    p.appendChild(h('div', { class: 'note', text: 'Test data only changes the preview. The real watch shows real values.' }));
     var live = h('input', { type: 'checkbox' }); live.checked = s.live;
     live.addEventListener('change', function () { s.live = live.checked; $('optLive').checked = s.live; GW.touch(false); GW.renderPanel(); });
     p.appendChild(h('label', { class: 'chk' }, [live, 'Use the live clock']));
@@ -703,10 +674,10 @@
       else thumb = GW.thumb(p.build(), 140);
       var card = h('button', { class: 'pcard', onclick: function () {
         GW.applyPreset(p.id, function () { GW.fontsReady().then(function () { GW.touch(true); closeModal(); GW.toast(p.name + ' loaded. Ctrl+Z undoes it.'); GW.history.commit(); }); });
-      } }, [thumb, h('b', { text: p.name }),  h('span', { text: p.blurb })]);
+      } }, [thumb, h('b', { text: p.name })]);
       grid.appendChild(card);
     });
-    modal(fld ? 'Start from a layout' : 'Start from a preset', h('div', {}, [h('p', { class: 'muted', text: 'Everything is editable afterwards. Presets replace your current design (Ctrl+Z brings it back).' }), grid]));
+    modal(fld ? 'Layouts' : 'Presets', grid);
   };
 
   // ---- one-click cloud build (only on the Vercel deployment) ----
@@ -775,25 +746,11 @@
     return box;
   }
 
-  // Chips to pick which rotations (tilts) to export, e.g. 0° and 30° side by side.
-  function tiltPicker(onChange) {
-    var tl = GW.tiltList(GW.design) || [], wrap = h('div', { class: 'card', style: 'margin:0 0 14px' });
-    var PRESETS = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
-    function set(list) { GW.design.tilts = list.length ? list : [GW.faceAngle(GW.design)]; GW.history.commit(); onChange(); }
-    wrap.appendChild(h('h4', { style: 'margin:0 0 6px', class: 'muted small', text: 'ROTATION VERSIONS TO EXPORT' }));
-    var chips = h('div', { class: 'chips' });
-    var shown = PRESETS.concat(tl.filter(function (a) { return PRESETS.indexOf(a) < 0; })).sort(function (a, b) { return a - b; });
-    shown.forEach(function (a) {
-      var on = tl.indexOf(a) >= 0;
-      chips.appendChild(h('button', { class: 'chip' + (on ? ' on' : ''), 'aria-pressed': on ? 'true' : 'false', text: a + '°', onclick: function () {
-        set(on ? tl.filter(function (x) { return x !== a; }) : tl.concat([a]));
-      } }));
-    });
-    var custom = h('input', { type: 'number', min: 0, max: 359, placeholder: 'other °', style: 'width:84px;background:var(--panel);border:1px solid var(--line2);border-radius:4px;padding:4px 10px;color:inherit' });
-    custom.addEventListener('change', function () { var v = parseInt(custom.value, 10); if (!isNaN(v)) set(tl.concat([((v % 360) + 360) % 360])); });
-    chips.appendChild(custom);
-    wrap.appendChild(chips);
-    wrap.appendChild(h('div', { class: 'muted small', style: 'margin-top:6px', text: tl.length > 1 ? 'Each rotation becomes its own watchface (named with its angle), so you can keep several on the watch.' : '0° = upright, 30° = points at 1 o’clock, 60° = 2 o’clock (the red button). Pick more than one to export several at once.' }));
+  // The only place rotation shows up: upright, turned 30 degrees to the right, or both as separate watch faces.
+  function rotationPicker(onChange) {
+    var wrap = h('div', { class: 'f', style: 'margin:0 0 14px' });
+    wrap.appendChild(h('label', { text: 'Rotation' }));
+    wrap.appendChild(segCtl([['none', 'Upright'], ['r30', 'Rotated 30° to the right'], ['both', 'Both']], GW.rotChoice(GW.design), function (v) { GW.design.rotate = v; GW.history.commit(); onChange(); }));
     return wrap;
   }
 
@@ -803,12 +760,12 @@
     function render() {
       GW.buildVariants(GW.design).then(function (results) {
         var first = results[0], many = results.length > 1;
-        if (!many) GW.design.appId = first.appId; GW.history.commit();
+        GW.history.commit();
         var zipName = (many ? GW.slug(GW.design.name) + '-versions' : first.name) + '-fenix6x.zip';
         var all = []; results.forEach(function (r) { r.files.forEach(function (f) { all.push({ path: r.name + '/' + f.path, data: f.data, exec: f.exec }); }); });
         var blob = GW.zip(all), nFiles = all.length;
         body.innerHTML = '';
-        if (GW.rotatable(GW.design)) body.appendChild(tiltPicker(function () { body.innerHTML = ''; body.appendChild(h('p', { class: 'muted', text: 'Building your project…' })); render(); }));
+        if (GW.rotatable(GW.design)) body.appendChild(rotationPicker(function () { body.innerHTML = ''; body.appendChild(h('p', { class: 'muted', text: 'Building your project…' })); render(); }));
 
         var cur = null, codeBox = h('div', { class: 'code', text: '' }), tabs = h('div', { class: 'codetabs' }), vsel = null;
         function textFilesOf(r) { return r.files.filter(function (f) { return typeof f.data === 'string' && !/design\.json$|\.fnt$|\.gitignore$|launch\.json$/.test(f.path); }); }
@@ -839,7 +796,7 @@
         body.appendChild(h('h4', { style: 'margin:20px 0 8px', class: 'muted small', text: 'GENERATED CODE' }));
         if (many) {
           vsel = h('select', { style: 'margin-bottom:8px;background:var(--panel);border:1px solid var(--line2);border-radius:4px;padding:5px 8px;color:inherit' },
-            results.map(function (r, i) { return h('option', { value: i, text: r.name + ' (' + r.tilt + '°)' }); }));
+            results.map(function (r, i) { return h('option', { value: i, text: r.name }); }));
           vsel.addEventListener('change', function () { loadTabs(results[parseInt(vsel.value, 10)]); });
           body.appendChild(vsel);
         }

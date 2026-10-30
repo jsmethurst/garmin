@@ -24,11 +24,14 @@
     { family: 'Bebas Neue', weights: [400] },
     { family: 'Oxanium', weights: [600] },
     { family: 'Chakra Petch', weights: [600] },
-    { family: 'Press Start 2P', weights: [400] }
+    { family: 'Press Start 2P', weights: [400] },
+    { family: 'DM Serif Display', weights: [400] },
+    { family: 'DM Sans', weights: [500, 700] }
   ];
   GW.GLYPH_SETS = {
     nums: { label: 'Digits 0-9 only (smallest)', chars: '0123456789' },
     digits: { label: 'Digits + : . - + % ° /', chars: ' 0123456789:.-+%°/' },
+    tr: { label: 'Digits + A-Z + Turkish capitals', chars: ' 0123456789:.-+%°/ABCDEFGHIJKLMNOPQRSTUVWXYZÇĞİŞÖÜ' },
     basic: { label: 'Digits + A-Z', chars: ' 0123456789:.-+%°/ABCDEFGHIJKLMNOPQRSTUVWXYZ' },
     full: { label: 'Full ASCII + °', chars: (function () { var s = ''; for (var i = 32; i < 127; i++) s += String.fromCharCode(i); return s + '°'; })() }
   };
@@ -37,7 +40,7 @@
   GW.fontsReady = function () {
     var jobs = [];
     GW.FONT_FAMILIES.forEach(function (f) {
-      f.weights.forEach(function (w) { jobs.push(document.fonts.load(w + ' 20px "' + f.family + '"')); });
+      f.weights.forEach(function (w) { jobs.push(document.fonts.load(w + ' 20px "' + f.family + '"')); jobs.push(document.fonts.load(w + ' 20px "' + f.family + '"', 'İŞĞÜ')); });
     });
     return Promise.all(jobs).catch(function () { });
   };
@@ -125,18 +128,36 @@
     return b;
   };
 
+  // Glyph images of a font turned clockwise by `deg` (used for the rotated export). Offsets are measured from the pen origin on the baseline;
+  // `base` / `lm` shift that origin so no offset is negative.
+  GW.rotFontInfo = function (f, deg) {
+    var met = GW.fontMetrics(f), a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), minX = 0, minY = 0, maxY = 0, glyphs = {};
+    met.chars.split('').forEach(function (ch) {
+      var g = met.glyphs[ch];
+      if (g.blank) { glyphs[ch] = { blank: true, w: 0, h: 0, bx: 0, by: 0 }; return; }
+      var pts = [[g.x0, g.y0], [g.x0 + g.w, g.y0], [g.x0 + g.w, g.y0 + g.h], [g.x0, g.y0 + g.h]].map(function (p) { return [p[0] * c - p[1] * s, p[0] * s + p[1] * c]; });
+      var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
+      var bx = Math.floor(Math.min.apply(null, xs)) - 1, by = Math.floor(Math.min.apply(null, ys)) - 1;
+      var bx2 = Math.ceil(Math.max.apply(null, xs)) + 1, by2 = Math.ceil(Math.max.apply(null, ys)) + 1;
+      glyphs[ch] = { bx: bx, by: by, w: bx2 - bx, h: by2 - by };
+      minX = Math.min(minX, bx); minY = Math.min(minY, by); maxY = Math.max(maxY, by2);
+    });
+    return { glyphs: glyphs, base: -minY, lm: -minX, lineHeight: -minY + maxY };
+  };
+
   // ---------- export: rasterise to BMFont (.fnt text + .png atlas) ----------
   GW.rasterizeFont = function (f) {
-    var met = GW.fontMetrics(f), chars = met.chars, size = 128, placed, atlas;
+    var met = GW.fontMetrics(f), chars = met.chars, size = 128, placed, atlas, rot = f.rot ? GW.rotFontInfo(f, f.rot) : null;
+    function box(ch) { var g = met.glyphs[ch]; return rot ? rot.glyphs[ch] : g; }
     function pack(sz) {
       var out = [], px = 1, py = 1, rowH = 0;
       for (var i = 0; i < chars.length; i++) {
-        var g = met.glyphs[chars[i]];
-        if (g.blank) { out.push({ g: g, ch: chars[i], x: 0, y: 0 }); continue; }
-        if (px + g.w + 1 > sz) { px = 1; py += rowH + 1; rowH = 0; }
-        if (py + g.h + 1 > sz) return null;
-        out.push({ g: g, ch: chars[i], x: px, y: py });
-        px += g.w + 1; rowH = Math.max(rowH, g.h);
+        var g = met.glyphs[chars[i]], bb = box(chars[i]);
+        if (g.blank) { out.push({ g: g, ch: chars[i], x: 0, y: 0, bb: bb }); continue; }
+        if (px + bb.w + 1 > sz) { px = 1; py += rowH + 1; rowH = 0; }
+        if (py + bb.h + 1 > sz) return null;
+        out.push({ g: g, ch: chars[i], x: px, y: py, bb: bb });
+        px += bb.w + 1; rowH = Math.max(rowH, bb.h);
       }
       return out;
     }
@@ -144,17 +165,22 @@
     atlas = document.createElement('canvas'); atlas.width = atlas.height = size;
     var c = atlas.getContext('2d');
     c.font = GW.fontCss(f); c.fillStyle = '#ffffff'; c.textBaseline = 'alphabetic'; c.textAlign = 'left';
-    placed.forEach(function (p) { if (!p.g.blank) c.fillText(p.ch, p.x - p.g.x0, p.y - p.g.y0); });
-    var name = f.id;
+    placed.forEach(function (p) {
+      if (p.g.blank) return;
+      if (rot) { c.save(); c.translate(p.x - p.bb.bx, p.y - p.bb.by); c.rotate(f.rot * Math.PI / 180); c.fillText(p.ch, 0, 0); c.restore(); }
+      else c.fillText(p.ch, p.x - p.g.x0, p.y - p.g.y0);
+    });
+    var name = f.id, base = rot ? rot.base : met.asc, lineH = rot ? rot.lineHeight : met.lineHeight;
     var lines = [];
     lines.push('info face="' + f.family + '" size=' + f.px + ' bold=0 italic=0 charset="" unicode=1 stretchH=100 smooth=1 aa=1 padding=0,0,0,0 spacing=1,1');
-    lines.push('common lineHeight=' + met.lineHeight + ' base=' + met.asc + ' scaleW=' + size + ' scaleH=' + size + ' pages=1 packed=0');
+    lines.push('common lineHeight=' + lineH + ' base=' + base + ' scaleW=' + size + ' scaleH=' + size + ' pages=1 packed=0');
     lines.push('page id=0 file="' + name + '.png"');
     lines.push('chars count=' + placed.length);
     placed.forEach(function (p) {
-      var g = p.g;
-      lines.push('char id=' + g.code + ' x=' + p.x + ' y=' + p.y + ' width=' + g.w + ' height=' + g.h +
-        ' xoffset=' + g.x0 + ' yoffset=' + (g.blank ? 0 : met.asc + g.y0) + ' xadvance=' + g.adv + ' page=0 chnl=15');
+      var g = p.g, w = rot ? p.bb.w : g.w, h = rot ? p.bb.h : g.h;
+      var xo = rot ? (g.blank ? 0 : p.bb.bx + rot.lm) : g.x0, yo = g.blank ? 0 : (rot ? rot.base + p.bb.by : met.asc + g.y0);
+      lines.push('char id=' + g.code + ' x=' + p.x + ' y=' + p.y + ' width=' + w + ' height=' + h +
+        ' xoffset=' + xo + ' yoffset=' + yo + ' xadvance=' + g.adv + ' page=0 chnl=15');
     });
     return { name: name, fnt: lines.join('\n') + '\n', canvas: atlas, size: size };
   };

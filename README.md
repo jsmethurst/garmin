@@ -26,6 +26,8 @@ No server, no build step, no tracking: it is a static site in [`site/`](site).
 | Images, world map + “you are here” marker | PNG/JPG/SVG, resized for you at export |
 | **Bitmap fonts** | any bundled typeface (or your own TTF/OTF) is rasterised to a Garmin `.fnt` + `.png` and added to the project automatically |
 
+The **Big Data** preset uses a serif time with sans-serif readouts (all bitmap fonts) and has Turkish labels. In the export dialog you can export it upright, rotated 30° to the right, or both; rotated versions use pre-rotated bitmap fonts.
+
 ### Data fields
 
 The **Data fields** section builds Connect IQ data fields (the screens you flip through during an activity). A field is made of **data cells**; each cell shows one value in a standard Garmin system font (`FONT_XTINY` to `FONT_NUMBER_THAI_HOT`) and has a label, alignment, colours, optional heart-rate-zone fill and divider lines. Values: timer, elapsed time, time of day, distance, lap distance, pace, average / lap / last-lap pace, speed, lap number, heart rate (with zone), average and max heart rate, cadence, power, altitude, ascent, calories and battery. Whole-field settings: light / dark / match-watch screen colours, units, and auto lap by distance (the Lap button always laps). Layouts: one to four fields, the Run screen and the Race screen.

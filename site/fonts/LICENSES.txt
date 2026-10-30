@@ -7,7 +7,9 @@ Bundled typefaces (all licensed under the SIL Open Font License 1.1, https://ope
   Oxanium           (c) 2019 The Oxanium Project Authors
   Chakra Petch      (c) 2018 The Chakra Petch Project Authors
   Press Start 2P    (c) 2012 The Press Start 2P Project Authors
+  DM Serif Display  (c) 2014 The DM Serif Project Authors
+  DM Sans           (c) 2014 The DM Sans Project Authors
 
-Files are the Latin subsets distributed by Fontsource (https://fontsource.org).
+Files are the Latin and Latin-ext subsets distributed by Fontsource (https://fontsource.org).
 Bitmap fonts that the tool generates from these faces for your watchface are derivative
 works that may be used and distributed freely under the same license.

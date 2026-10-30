@@ -59,16 +59,20 @@
     if (last < fmt.length) out.push({ lit: fmt.slice(last) });
     return out;
   };
-  function dateStr(env, fmt) {
+  var TR_D3 = ['PAZ', 'PZT', 'SAL', 'ÇAR', 'PER', 'CUM', 'CMT'];
+  var TR_DAY = ['PAZAR', 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ'];
+  var TR_M3 = ['OCA', 'ŞUB', 'MAR', 'NİS', 'MAY', 'HAZ', 'TEM', 'AĞU', 'EYL', 'EKİ', 'KAS', 'ARA'];
+  var TR_MON = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN', 'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
+  function dateStr(env, fmt, tr) {
     return GW.dateParts(fmt).map(function (p) {
       if (p.lit != null) return p.lit;
       switch (p.tok) {
-        case 'DDDD': return DOW[env.dow];
-        case 'ddd': return DOW[env.dow].slice(0, 3);
+        case 'DDDD': return tr ? TR_DAY[env.dow] : DOW[env.dow];
+        case 'ddd': return tr ? TR_D3[env.dow] : DOW[env.dow].slice(0, 3);
         case 'DD': return pad2(env.day);
         case 'D': return String(env.day);
-        case 'MMMM': return MON[env.mo - 1];
-        case 'MMM': return MON[env.mo - 1].slice(0, 3);
+        case 'MMMM': return tr ? TR_MON[env.mo - 1] : MON[env.mo - 1];
+        case 'MMM': return tr ? TR_M3[env.mo - 1] : MON[env.mo - 1].slice(0, 3);
         case 'MM': return pad2(env.mo);
         case 'M': return String(env.mo);
         case 'YYYY': return String(env.y);
@@ -80,6 +84,7 @@
     ['ddd DD MMM', 'Sat 06 Dec'], ['DDDD', 'Saturday'], ['ddd', 'Sat'], ['DD', '06'], ['MMM DD', 'Dec 06'],
     ['DD/MM', '06/12'], ['MM/DD', '12/06'], ['DD.MM.YYYY', '06.12.2025'], ['MMMM D', 'December 6']
   ];
+  function trArr(a) { return '[' + a.map(function (x) { return '"' + x + '"'; }).join(', ') + ']'; }
   function mcLit(s) { return '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'; }
   GW.mcLit = mcLit;
 
@@ -127,19 +132,19 @@
     mcStr: function (el, cg) { cg.need('clk'); return '((_clk.hour < 12) ? "AM" : "PM")'; }
   });
   def('date', {
-    label: 'Date', group: 'Time', kind: 'str', opts: ['datefmt'],
-    str: function (el, env) { return dateStr(env, el.fmt || 'ddd DD MMM'); },
+    label: 'Date', group: 'Time', kind: 'str', opts: ['datefmt', 'trnames'],
+    str: function (el, env) { return dateStr(env, el.fmt || 'ddd DD MMM', el.tr); },
     mcStr: function (el, cg) {
       var parts = GW.dateParts(el.fmt || 'ddd DD MMM'), out = [];
       parts.forEach(function (p) {
         if (p.lit != null) { out.push(mcLit(p.lit)); return; }
         switch (p.tok) {
-          case 'DDDD': cg.need('dl'); out.push('_dl.day_of_week'); break;
-          case 'ddd': cg.need('dm'); out.push('_dm.day_of_week'); break;
+          case 'DDDD': if (el.tr) { cg.need('ds'); cg.member('    const TR_DAY = ' + trArr(TR_DAY) + ';'); out.push('TR_DAY[_ds.day_of_week - 1]'); } else { cg.need('dl'); out.push('_dl.day_of_week'); } break;
+          case 'ddd': if (el.tr) { cg.need('ds'); cg.member('    const TR_D3 = ' + trArr(TR_D3) + ';'); out.push('TR_D3[_ds.day_of_week - 1]'); } else { cg.need('dm'); out.push('_dm.day_of_week'); } break;
           case 'DD': cg.need('ds'); out.push('_ds.day.format("%02d")'); break;
           case 'D': cg.need('ds'); out.push('_ds.day.toString()'); break;
-          case 'MMMM': cg.need('dl'); out.push('_dl.month'); break;
-          case 'MMM': cg.need('dm'); out.push('_dm.month'); break;
+          case 'MMMM': if (el.tr) { cg.need('ds'); cg.member('    const TR_MON = ' + trArr(TR_MON) + ';'); out.push('TR_MON[_ds.month - 1]'); } else { cg.need('dl'); out.push('_dl.month'); } break;
+          case 'MMM': if (el.tr) { cg.need('ds'); cg.member('    const TR_M3 = ' + trArr(TR_M3) + ';'); out.push('TR_M3[_ds.month - 1]'); } else { cg.need('dm'); out.push('_dm.month'); } break;
           case 'MM': cg.need('ds'); out.push('_ds.month.format("%02d")'); break;
           case 'M': cg.need('ds'); out.push('_ds.month.toString()'); break;
           case 'YYYY': cg.need('ds'); out.push('_ds.year.toString()'); break;
@@ -257,6 +262,35 @@
       return minToStr(env, now < env.sim.sunrise ? env.sim.sunrise : (now < env.sim.sunset ? env.sim.sunset : env.sim.sunrise));
     },
     mcStr: function (el, cg) { cg.need('wx'); cg.helper('sunStr'); return 'sunStr(0)'; }
+  });
+
+  // --- Last activity (from the watch's activity history) ---
+  def('lastKm', {
+    label: 'Last activity distance (km)', group: 'Activity', kind: 'str', opts: [], perms: ['UserProfile'], imports: ['Toybox.UserProfile', 'Toybox.Time'],
+    str: function (el, env) { return env.sim.lastKm.toFixed(1); },
+    mcStr: function (el, cg) { cg.minApi('3.4.0'); cg.helper('lastAct'); return 'lastKmStr()'; }
+  });
+  def('lastPace', {
+    label: 'Last activity pace (min/km)', group: 'Activity', kind: 'str', opts: [], perms: ['UserProfile'], imports: ['Toybox.UserProfile', 'Toybox.Time'],
+    str: function (el, env) { var p = Math.round(env.sim.paceSec); return Math.floor(p / 60) + ':' + pad2(p % 60); },
+    mcStr: function (el, cg) { cg.minApi('3.4.0'); cg.helper('lastAct'); return 'lastPaceStr()'; }
+  });
+
+  // --- New York time (follows daylight saving, so it reads EDT or EST) ---
+  function nyParts(now) {
+    var f = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZoneName: 'short' });
+    var p = {}; f.formatToParts(now).forEach(function (x) { p[x.type] = x.value; });
+    return { t: p.hour + ':' + p.minute, zone: /EDT|EST/.test(p.timeZoneName) ? p.timeZoneName : 'EST' };
+  }
+  def('nyTime', {
+    label: 'New York time (24h)', group: 'Environment', kind: 'str', opts: [], imports: ['Toybox.Time', 'Toybox.Time.Gregorian'],
+    str: function (el, env) { return nyParts(env.now).t; },
+    mcStr: function (el, cg) { cg.helper('nyStr'); return 'nyStr(0)'; }
+  });
+  def('nyZone', {
+    label: 'New York zone (EDT / EST)', group: 'Environment', kind: 'str', opts: [], imports: ['Toybox.Time', 'Toybox.Time.Gregorian'],
+    str: function (el, env) { return nyParts(env.now).zone; },
+    mcStr: function (el, cg) { cg.helper('nyStr'); return 'nyStr(1)'; }
   });
 
   // --- Special (not in Garmin's own faces) ---

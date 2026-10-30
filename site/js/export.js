@@ -146,31 +146,34 @@
     });
   };
 
-  // ---- tilt versions: the Big Data face can be exported at several rotations, each as its own app ----
-  GW.rotatable = function (design) { return design.elements.some(function (e) { return e.type === 'bigdata' && !e.hidden; }); };
-  GW.faceAngle = function (design) {
-    var e = design.elements.filter(function (x) { return x.type === 'bigdata'; })[0];
-    return e ? e.angle : 0;
+  // ---- rotated version: every element is turned about the centre of the screen ----
+  GW.rotateDesign = function (d, deg) {
+    var a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+    function rp(x, y) { var dx = x - 140, dy = y - 140; return [140 + dx * c - dy * s, 140 + dx * s + dy * c]; }
+    d.elements.forEach(function (e) {
+      var p;
+      if (e.type === 'text' || e.type === 'sunicon' || (e.type === 'shape' && e.kind !== 'line')) { p = rp(e.x, e.y); e.x = p[0]; e.y = p[1]; e.rot = (e.rot || 0) + deg; }
+      else if (e.type === 'shape') { p = rp(e.x, e.y); e.x = p[0]; e.y = p[1]; p = rp(e.x2, e.y2); e.x2 = p[0]; e.y2 = p[1]; }
+      else if (e.type === 'arc') { p = rp(e.cx, e.cy); e.cx = p[0]; e.cy = p[1]; e.start = (e.start + deg) % 360; }
+    });
+    return d;
   };
-  GW.tiltList = function (design) {
-    if (!GW.rotatable(design)) return null;
-    var t = (design.tilts && design.tilts.length) ? design.tilts.slice() : [GW.faceAngle(design)];
-    t = t.map(function (a) { return ((Math.round(a) % 360) + 360) % 360; });
-    return t.filter(function (a, i) { return t.indexOf(a) === i; }).sort(function (a, b) { return a - b; });
-  };
-  // Resolves to an array of project results (one per tilt; a single normal project otherwise).
+  GW.rotatable = function (design) { return design.kind !== 'datafield' && design.elements.length > 0; };
+  // 'none' | 'r30' | 'both'
+  GW.rotChoice = function (design) { return design.rotate === 'r30' || design.rotate === 'both' ? design.rotate : 'none'; };
+  // Resolves to an array of project results: upright, rotated 30 degrees to the right, or both.
   GW.buildVariants = function (design) {
-    var tl = GW.tiltList(design);
-    if (!tl || tl.length < 2) return GW.buildProject(design).then(function (r) { return [r]; });
+    var ch = GW.rotChoice(design), list = ch === 'r30' ? [30] : (ch === 'both' ? [0, 30] : [0]);
     design.appIds = design.appIds || {};
     var out = [];
-    return tl.reduce(function (p, a) {
+    return list.reduce(function (p, a) {
       return p.then(function () {
         var d = GW.clone(design);
-        d.name = design.name + ' ' + a + '\u00b0';
-        d.elements.forEach(function (e) { if (e.type === 'bigdata') e.angle = a; });
-        var id = design.appIds[a]; if (!/^[0-9a-f]{32}$/.test(id || '')) id = uuid32();
-        design.appIds[a] = id; d.appId = id;
+        if (a) { GW.rotateDesign(d, a); d.name = design.name + ' ' + a + '\u00b0'; }
+        var id = a ? design.appIds[a] : design.appId;
+        if (!/^[0-9a-f]{32}$/.test(id || '')) id = uuid32();
+        if (a) design.appIds[a] = id; else design.appId = id;
+        d.appId = id;
         return GW.buildProject(d).then(function (r) { r.tilt = a; out.push(r); });
       });
     }, Promise.resolve()).then(function () { return out; });

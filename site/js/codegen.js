@@ -118,6 +118,32 @@
       imports: ['Toybox.Time'],
       code: 'function moonPhase() {\n        var days = (Time.now().value() - 947182440).toFloat() / 86400.0;\n        var p = days / 29.530588853;\n        return p - p.toNumber().toFloat();\n    }'
     },
+    lastAct: {
+      imports: ['Toybox.UserProfile', 'Toybox.Time'],
+      members: ['    var _laT = 0;', '    var _laKm = "--";', '    var _laPace = "--";'],
+      code: 'function lastRefresh() {\n        var now = Time.now().value();\n        if (_laT != 0 && now - _laT < 60) { return; }\n        _laT = now;\n        _laKm = "--";\n        _laPace = "--";\n' +
+        '        if (!(UserProfile has :getUserActivityHistory)) { return; }\n        var it = UserProfile.getUserActivityHistory();\n        var a = (it != null) ? it.next() : null;\n' +
+        '        if (a == null || a.distance == null || a.distance <= 0) { return; }\n        _laKm = (a.distance / 1000.0).format("%.1f");\n' +
+        '        if (a.duration != null && a.distance >= 100) {\n            var s = (a.duration.value() / (a.distance / 1000.0)).toNumber();\n            _laPace = (s / 60).format("%d") + ":" + (s % 60).format("%02d");\n        }\n    }\n\n' +
+        '    function lastKmStr() {\n        lastRefresh();\n        return _laKm;\n    }\n\n    function lastPaceStr() {\n        lastRefresh();\n        return _laPace;\n    }'
+    },
+    nyStr: {
+      imports: ['Toybox.Time', 'Toybox.Time.Gregorian'],
+      code: 'function nyStr(mode) {\n        var now = Time.now();\n        var year = Gregorian.utcInfo(now, Time.FORMAT_SHORT).year;\n' +
+        '        var start = nthSun(year, 3, 2, 7);    // 2nd Sunday in March, 02:00 EST = 07:00 UTC\n        var end = nthSun(year, 11, 1, 6);     // 1st Sunday in November, 02:00 EDT = 06:00 UTC\n' +
+        '        var off = (now.compare(start) >= 0 && now.compare(end) < 0) ? -4 : -5;\n        if (mode == 1) { return (off == -4) ? "EDT" : "EST"; }\n' +
+        '        var i = Gregorian.utcInfo(now.add(new Time.Duration(off * 3600)), Time.FORMAT_SHORT);\n        return i.hour.format("%02d") + ":" + i.min.format("%02d");\n    }\n\n' +
+        '    function nthSun(year, month, n, hourUtc) {\n        var first = Gregorian.moment({ :year => year, :month => month, :day => 1, :hour => 0 });\n' +
+        '        var dow = Gregorian.utcInfo(first, Time.FORMAT_SHORT).day_of_week;   // 1 = Sunday\n        var day = 1 + ((8 - dow) % 7) + (n - 1) * 7;\n        return Gregorian.moment({ :year => year, :month => month, :day => day, :hour => hourUtc });\n    }'
+    },
+    rotTxt: {
+      imports: ['Toybox.Math'],
+      code: 'function rotTxt(dc, font, adv, m, s, x, y, just) {\n        var a = Math.toRadians(m[0]);\n        var c = Math.cos(a);\n        var sn = Math.sin(a);\n        var chars = s.toCharArray();\n        var tw = 0;\n' +
+        '        for (var i = 0; i < chars.size(); i++) {\n            var w = adv[chars[i]];\n            tw += (w != null) ? w : 8;\n        }\n' +
+        '        var off = (just == 1) ? -tw / 2.0 : ((just == 2) ? -tw.toFloat() : 0.0);\n        var px = x + off * c;\n        var py = y + off * sn;\n' +
+        '        for (var j = 0; j < chars.size(); j++) {\n            var ch = chars[j];\n            if (ch != \' \') {\n                dc.drawText((px - m[2]).toNumber(), (py - m[1]).toNumber(), font, ch.toString(), Graphics.TEXT_JUSTIFY_LEFT);\n            }\n' +
+        '            var w2 = adv[ch];\n            if (w2 == null) { w2 = 8; }\n            px += w2 * c;\n            py += w2 * sn;\n        }\n    }'
+    },
     moonIllum: { deps: ['moonPhase'], imports: ['Toybox.Math'], code: 'function moonIllum() {\n        return ((1.0 - Math.cos(2.0 * Math.PI * moonPhase())) * 50.0 + 0.5).toNumber();\n    }' },
     moonName: {
       deps: ['moonPhase'],
@@ -141,7 +167,6 @@
   };
   if (GW.RUNFIELD_SRC) H.fld = { code: GW.RUNFIELD_SRC.code, members: GW.RUNFIELD_SRC.members }; // run data field methods
   if (GW.DF_SRC) H.dfd = { code: GW.DF_SRC.code, members: GW.DF_SRC.members }; // data-cell maths for the data field builder
-  if (GW.BDF_SRC) H.bdf = { code: GW.BDF_SRC.code, members: GW.BDF_SRC.members }; // the Big Data face's own methods
   GW.MC_HELPERS = H;
 
   var NEED_INIT = {
@@ -186,6 +211,20 @@
         if (!f) return 'Graphics.FONT_SMALL';
         if (!st.fseen[id]) { st.fseen[id] = 1; st.fonts.push(f); }
         return '_' + id;
+      },
+      // a copy of a bitmap font whose glyph images are rotated (for the rotated export); returns the names to pass to rotTxt
+      rotFont: function (id, deg) {
+        var f = GW.customFont(id), rid = id + '_r' + Math.round(deg), info = GW.rotFontInfo(f, deg), met = GW.fontMetrics(f);
+        if (!st.fseen[rid]) {
+          st.fseen[rid] = 1; st.fonts.push(Object.assign({}, f, { id: rid, rot: deg }));
+          var ents = met.chars.split('').map(function (ch) {
+            var lit = ch === "'" ? "'\\''" : (ch === '\\' ? "'\\\\'" : "'" + ch + "'");
+            return lit + ' => ' + met.glyphs[ch].adv;
+          });
+          cg.member('    const RA_' + rid + ' = { ' + ents.join(', ') + ' };');
+          cg.member('    const RM_' + rid + ' = [' + Math.round(deg) + ', ' + info.base + ', ' + info.lm + '];');
+        }
+        return { ref: '_' + rid, adv: 'RA_' + rid, m: 'RM_' + rid };
       },
       image: function (assetId, w, h) {
         var k = assetId + ':' + w + 'x' + h;
@@ -280,7 +319,6 @@
     if (els.some(function (e) { return e.type === 'text' && ['weatherDesc', 'temp', 'sunrise', 'sunset', 'sunNext'].indexOf(e.source) >= 0; })) warnings.push('Weather and sun times only show data once the watch has synced weather from your phone (they read "--" until then).');
     if (!els.length) warnings.push('The design is empty.');
 
-    if (els.some(function (e) { return e.type === 'bigdata'; })) warnings.push('Big Data face: needs Location and User Profile permissions (the watch may ask) for sunrise / sunset and your last activity.');
     return { name: name, type: isField ? 'datafield' : 'watchface', app: app, view: view, perms: perms, fonts: st.fonts, images: st.images, bg: bg, warnings: warnings, files: st.files, minApi: st.minApi };
   };
 })(window.GW);

@@ -15,7 +15,7 @@ const sandbox = {
 };
 sandbox.window = sandbox; sandbox.devicePixelRatio = 1;
 vm.createContext(sandbox);
-['core', 'sources', 'fonts', 'bigdata-src', 'runfield-src', 'elements', 'bigdata', 'runfield', 'datafield', 'render', 'codegen', 'presets'].forEach((f) => {
+['core', 'sources', 'fonts', 'runfield-src', 'elements', 'runfield', 'datafield', 'render', 'codegen', 'presets'].forEach((f) => {
   vm.runInContext(fs.readFileSync(path.join(site, f + '.js'), 'utf8'), sandbox, { filename: f + '.js' });
 });
 const GW = sandbox.GW;
