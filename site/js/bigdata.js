@@ -1,4 +1,4 @@
-/* "Big Data face" element: the whole BigDataFace watchface (rotated layout, stroke font, dot-matrix world map).
+/* "Big Data face" element: the whole BigDataFace watchface (rotated layout, stroke font).
    The preview below is a direct port of its Monkey C drawing code; the export uses the original code (bigdata-src.js,
    generated from the project's .mc files) with only the rotation angle changed. */
 (function (GW) {
@@ -13,10 +13,8 @@
     ['DOT', 'CEDILLA', 'BREVE'].forEach(function (n) {
       var mm = new RegExp('MARK_' + n + '\\s*=\\s*\\[([^\\]]*)\\]').exec(S.glyphs); MARK[n] = mm[1].split(',').map(Number);
     });
-    S.mapdata.slice(S.mapdata.indexOf('BITS')).replace(/0x([0-9A-Fa-f]+)/g, function (_, h) { BITS.push(parseInt(h, 16)); });
   })();
-  var COLS = 72, ROWS = 27;
-
+  
   // greyscale on white: BLACK is the background/halo colour, WHITE the ink (names kept from the original colour version)
   var C = { BLACK: '#ffffff', WHITE: '#000000', CYAN: '#555555', CYAN_D: '#aaaaaa', GREY: '#aaaaaa', LGREY: '#555555',
     RED: '#000000', GREEN: '#555555', AMBER: '#555555', YELLOW: '#000000', MAPC: '#555555', OCEAN: '#aaaaaa' };
@@ -102,30 +100,6 @@
     }
   }
 
-  // ---- dot-matrix world map, baked once per angle ----
-  var pitch = 280 / 72, x0 = (280 - COLS * pitch) / 2, y0 = 280 * 0.349;
-  var mapCache = {};
-  function mapCanvas(angle) {
-    if (mapCache[angle]) return mapCache[angle];
-    var c = document.createElement('canvas'); c.width = c.height = 280;
-    var x = c.getContext('2d'), R = ctxOf(angle), maxR2 = (140 - 2) * (140 - 2);
-    x.fillStyle = C.BLACK; x.fillRect(0, 0, 280, 280);
-    for (var r = 0; r < ROWS; r++) {
-      var dy = y0 + r * pitch - R.cy;
-      for (var k = 0; k < 3; k++) {
-        var word = BITS[r * 3 + k];
-        for (var i = 0; i < 24; i++) {
-          var dx = x0 + (k * 24 + i) * pitch - R.cx;
-          if (dx * dx + dy * dy > maxR2) continue;
-          var sx = Math.trunc(R.cx + dx * R.cs - dy * R.sn), sy = Math.trunc(R.cy + dx * R.sn + dy * R.cs);
-          if ((word >> i) & 1) { x.fillStyle = q(C.MAPC); x.fillRect(sx - 1, sy - 1, 2, 2); }
-          else { x.fillStyle = q(C.OCEAN); x.fillRect(sx, sy, 1, 1); }
-        }
-      }
-    }
-    mapCache[angle] = c; return c;
-  }
-
   // ---- text laid along the screen edge (top: tops outward, reads clockwise; otherwise tops inward, counter-clockwise) ----
   function partW(p, u) { return p[0] === 0 ? strWidth(p[1], u) : 9 * u; }
   function arcChars(ctx, s, color, a0, dir, pos, rm, u, pen, top, round) {
@@ -171,36 +145,29 @@
   function draw(ctx, el, env) {
     var angle = el.angle, R = ctxOf(angle), d = data(env), W = 280, H = 280;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(mapCanvas(angle), 0, 0, 280, 280);
-
-    // "you are here" marker: drawn right after the map, so all text sits on top of it
-    var vx = x0 + (env.sim.lon + 180) / 360 * COLS * pitch, vy = y0 + (75 - env.sim.lat) / 5 * pitch;
-    var mx = Math.trunc(R.rx(vx, vy)), my = Math.trunc(R.ry(vx, vy));
-    [[5, C.BLACK], [4, C.YELLOW]].forEach(function (c) {
-      ctx.fillStyle = q(c[1]); ctx.beginPath(); ctx.arc(mx, my, c[0], 0, 7); ctx.fill();
-    });
 
     // date along the top edge of the face
     arcRun(ctx, [[0, d.date, C.WHITE]], angle, 135, 1.3, 2, true);
 
     // time (shadow first)
-    var u = 4.3, pen = Math.trunc(u * 1.7), hs = pad2(env.h), ms = pad2(env.m), gap = GAP * u;
+    var u = 3.3, pen = Math.trunc(u * 1.7), hs = pad2(env.h), ms = pad2(env.m), gap = GAP * u;
     var hw = strWidth(hs, u), cw = strWidth(':', u), mw = strWidth(ms, u);
-    var x = (W - (hw + cw + mw + 2 * gap)) / 2, y = H * 0.207, sh = 3;
+    var x = (W - (hw + cw + mw + 2 * gap)) / 2, y = H * 0.18, sh = 3;
     drawText(ctx, R, hs, x + sh, y + sh, u, pen, C.GREY, 0, false);
     drawText(ctx, R, ms, x + hw + cw + 2 * gap + sh, y + sh, u, pen, C.CYAN_D, 0, false);
     drawText(ctx, R, hs, x, y, u, pen, C.WHITE, 0, false);
     drawText(ctx, R, ':', x + hw + gap, y, u, pen, C.LGREY, 0, false);
     drawText(ctx, R, ms, x + hw + cw + 2 * gap, y, u, pen, C.CYAN, 0, false);
 
-    // 2 x 3 grid of readouts
-    var xs = [W * 0.23, W * 0.5, W * 0.77], y1 = H * 0.485, y2 = H * 0.65;
+    // 3 rows x 2 columns of readouts
+    var xs = [W * 0.28, W * 0.72], ys = [H * 0.37, H * 0.53, H * 0.69];
     function cell(cx, cy, label, value, col) {
-      drawText(ctx, R, label, cx, cy, 1.15, 2, C.LGREY, 1, true);
-      drawText(ctx, R, value, cx, cy + 12 * 1.15 + 5, 1.5, 3, col, 1, true);
+      drawText(ctx, R, label, cx, cy, 0.95, 2, C.LGREY, 1, false);
+      drawText(ctx, R, value, cx, cy + 12 * 0.95 + 4, 1.5, 3, col, 1, false);
     }
-    cell(xs[0], y1, 'NABIZ', d.hr, C.RED); cell(xs[1], y1, 'ADIM', d.steps, C.WHITE); cell(xs[2], y1, 'PİL', d.bat, d.batColor);
-    cell(xs[0], y2, 'SON KM', d.km, C.WHITE); cell(xs[1], y2, 'TEMPO', d.pace, C.WHITE); cell(xs[2], y2, d.ny.zone, d.ny.t, C.CYAN);
+    cell(xs[0], ys[0], 'NABIZ', d.hr, C.RED); cell(xs[1], ys[0], 'ADIM', d.steps, C.WHITE);
+    cell(xs[0], ys[1], 'PİL', d.bat, d.batColor); cell(xs[1], ys[1], 'SON KM', d.km, C.WHITE);
+    cell(xs[0], ys[2], 'TEMPO', d.pace, C.WHITE); cell(xs[1], ys[2], d.ny.zone, d.ny.t, C.CYAN);
 
     // sunrise / temperature / sunset along the opposite edge
     var sun = [[1, 1, C.AMBER], [0, d.rise, C.WHITE]];
@@ -219,7 +186,7 @@
     hit: function (el, x, y) { return Math.hypot(x - 140, y - 140) <= 140; },
     fields: function () {
       return [
-        { t: 'note', text: 'A complete face: big time, six readouts and a dot-matrix world map with your position (Istanbul until the watch has a fix). The date and the sunrise / temperature / sunset curve along the screen edge. Turkish labels. It draws over everything below it, so keep it at the bottom of the layers.' },
+        { t: 'note', text: 'A complete face: big time and six readouts. The date and the sunrise / temperature / sunset curve along the screen edge. Turkish labels. It draws over everything below it, so keep it at the bottom of the layers.' },
         { k: 'angle', t: 'range', label: 'Tilt: which way the top of the face points', min: 0, max: 359 },
         { k: 'angle', t: 'seg', label: 'Quick pick (clock position)', opts: CLOCK_POS.map(function (p) { return [p[0], p[1]]; }), num: true },
         { t: 'note', text: '2 o’clock (60°) points at the red START button; 1 o’clock (30°) is the 5-minute position.' }
@@ -229,7 +196,7 @@
       ['Toybox.Activity', 'Toybox.ActivityMonitor', 'Toybox.Application', 'Toybox.Math', 'Toybox.Position', 'Toybox.Time', 'Toybox.Time.Gregorian',
         'Toybox.UserProfile', 'Toybox.Weather'].forEach(cg.imp);
       cg.perm('Positioning'); cg.perm('UserProfile'); cg.minApi('3.4.0');
-      cg.file('source/Glyphs.mc', S.glyphs); cg.file('source/MapData.mc', S.mapdata);
+      cg.file('source/Glyphs.mc', S.glyphs);
       cg.helper('bdf');
       return ['bdDraw(dc, ' + Math.round(el.angle) + ');'];
     }

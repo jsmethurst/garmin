@@ -136,7 +136,7 @@
           txt(140, 188, 'battery', S, '#005500', { prefix: 'BAT ', suffix: '%' })
         ]);
       } },
-    { id: 'bigdata', name: 'Big Data', blurb: 'Huge time, nine readouts and a dot-matrix world map, in greyscale on white. Upright by default; tilt it from the Face tab.',
+    { id: 'bigdata', name: 'Big Data', blurb: 'Huge time and nine readouts, in greyscale on white. Upright by default; tilt it from the Face tab.',
       build: function () { return D('Big Data', '#ffffff', [], [E('bigdata', { name: 'Big Data face', angle: 0 })]); } },
     { id: 'run', name: 'Run screen', kind: 'datafield', blurb: 'Data field for runs in Garmin\u2019s own style: timer, HR zone colour, distance, lap / average / last-lap pace. Auto-laps every km.',
       build: function () { return fieldDesign('Run Screen', { name: 'Run screen', autoLap: true }); } },

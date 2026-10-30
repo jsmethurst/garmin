@@ -280,7 +280,7 @@
     if (els.some(function (e) { return e.type === 'text' && ['weatherDesc', 'temp', 'sunrise', 'sunset', 'sunNext'].indexOf(e.source) >= 0; })) warnings.push('Weather and sun times only show data once the watch has synced weather from your phone (they read "--" until then).');
     if (!els.length) warnings.push('The design is empty.');
 
-    if (els.some(function (e) { return e.type === 'bigdata'; })) warnings.push('Big Data face: needs Location and User Profile permissions (the watch may ask), uses about 50 KB of memory, and draws its world map in a few passes after the face first loads.');
+    if (els.some(function (e) { return e.type === 'bigdata'; })) warnings.push('Big Data face: needs Location and User Profile permissions (the watch may ask) for sunrise / sunset and your last activity.');
     return { name: name, type: isField ? 'datafield' : 'watchface', app: app, view: view, perms: perms, fonts: st.fonts, images: st.images, bg: bg, warnings: warnings, files: st.files, minApi: st.minApi };
   };
 })(window.GW);
