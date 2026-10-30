@@ -140,7 +140,7 @@
       build: function () {
         var INK = '#000000', MID = '#555555', RULE = '#aaaaaa', ACC = '#ff5500';
         var fonts = [
-          font('fTime', 'Libre Baskerville', 700, 84, 'digits'),
+          font('fTime', 'Libre Baskerville', 700, 78, 'digits', -4),
           font('fDate', 'DM Sans', 500, 18, 'tr'),
           font('fLab', 'DM Sans', 500, 12, 'tr'),
           font('fVal', 'DM Sans', 500, 20, 'basic'),
@@ -168,8 +168,8 @@
           E('sunicon', { name: 'Sunset icon', x: 166, y: 227, r: 6, kind: 'set', color: ACC }),
           txt(179, 227, 'sunset', 'fSun', INK, { name: 'Sunset', justify: 'L' })
         ]);
-        face.elements.forEach(function (e) { if (e.type !== 'arc') { e.y += 9; if (e.y2 != null) e.y2 += 9; } });   // sit the whole face a little lower
-        face.elements.filter(function (e) { return e.name === 'Time'; })[0].y -= 5;   // ...but keep air between the time and the rule
+        // the date stays up top; the time and the data sit lower
+        face.elements.forEach(function (e) { if (e.type !== 'arc' && e.name !== 'Date') { e.y += 13; if (e.y2 != null) e.y2 += 13; } });
         return face;
       } },
     { id: 'run', name: 'Run screen', kind: 'datafield', blurb: 'Data field for runs in Garmin\u2019s own style: timer, HR zone colour, distance, lap / average / last-lap pace. Auto-laps every km.',
