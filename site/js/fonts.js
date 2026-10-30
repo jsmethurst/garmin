@@ -60,7 +60,7 @@
   // ---------- glyph metrics (shared by preview + export) ----------
   var scratch = document.createElement('canvas').getContext('2d');
   var cache = {};
-  function key(f) { return [f.family, f.weight, f.px, f.glyphs, f.spacing || 0].join('|'); }
+  function key(f) { return [f.family, f.weight, f.px, f.glyphs, f.spacing || 0, f.bold || 0].join('|'); }
 
   GW.fontMetrics = function (f) {
     var k = key(f);
@@ -68,11 +68,13 @@
     scratch.font = GW.fontCss(f);
     scratch.textBaseline = 'alphabetic'; scratch.textAlign = 'left';
     var chars = (GW.GLYPH_SETS[f.glyphs] || GW.GLYPH_SETS.digits).chars;
-    var asc = 0, desc = 0, glyphs = {}, ok = true;
+    var asc = 0, desc = 0, glyphs = {}, ok = true, hb = Math.ceil((f.bold || 0) / 2);   // f.bold: outline width that fattens a typeface without a bold cut
     for (var i = 0; i < chars.length; i++) {
       var ch = chars[i], m = scratch.measureText(ch);
       var x0 = Math.floor(-m.actualBoundingBoxLeft), x1 = Math.ceil(m.actualBoundingBoxRight);
       var y0 = Math.floor(-m.actualBoundingBoxAscent), y1 = Math.ceil(m.actualBoundingBoxDescent);
+      var blank0 = ch === ' ' || (x1 <= x0 && y1 <= y0);
+      if (!blank0) { x0 -= hb; x1 += hb; y0 -= hb; y1 += hb; }
       var blank = ch === ' ' || (x1 <= x0 && y1 <= y0);
       if (!blank) { asc = Math.max(asc, -y0); desc = Math.max(desc, y1); }
       glyphs[ch] = { code: ch.charCodeAt(0), x0: x0, y0: y0, w: blank ? 0 : Math.max(1, x1 - x0), h: blank ? 0 : Math.max(1, y1 - y0),
@@ -117,7 +119,7 @@
       for (var i = 0; i < text.length; i++) {
         var g = met.glyphs[text[i]];
         if (!g) { cx += Math.round(cf.px * 0.5); continue; }
-        if (!g.blank) ctx.fillText(text[i], cx, base);
+        if (!g.blank) { ctx.fillText(text[i], cx, base); if (cf.bold) { ctx.lineWidth = cf.bold; ctx.lineJoin = 'round'; ctx.strokeStyle = color; ctx.strokeText(text[i], cx, base); } }
         cx += g.adv;
       }
     } else {
@@ -168,8 +170,10 @@
     c.font = GW.fontCss(f); c.fillStyle = '#ffffff'; c.textBaseline = 'alphabetic'; c.textAlign = 'left';
     placed.forEach(function (p) {
       if (p.g.blank) return;
-      if (rot) { c.save(); c.translate(p.x - p.bb.bx, p.y - p.bb.by); c.rotate(f.rot * Math.PI / 180); c.fillText(p.ch, 0, 0); c.restore(); }
-      else c.fillText(p.ch, p.x - p.g.x0, p.y - p.g.y0);
+      var ox = p.x - p.g.x0, oy = p.y - p.g.y0;
+      if (f.bold) { c.lineWidth = f.bold; c.lineJoin = 'round'; c.strokeStyle = '#ffffff'; }
+      if (rot) { c.save(); c.translate(p.x - p.bb.bx, p.y - p.bb.by); c.rotate(f.rot * Math.PI / 180); c.fillText(p.ch, 0, 0); if (f.bold) c.strokeText(p.ch, 0, 0); c.restore(); }
+      else { c.fillText(p.ch, ox, oy); if (f.bold) c.strokeText(p.ch, ox, oy); }
     });
     var name = f.id, base = rot ? rot.base : met.asc, lineH = rot ? rot.lineHeight : met.lineHeight;
     var lines = [];

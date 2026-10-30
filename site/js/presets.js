@@ -11,7 +11,7 @@
   function rect(x, y, w, h, color, o) { return E('shape', Object.assign({ name: 'Box', kind: 'rect', x: x, y: y, w: w, h: h, fill: true, color: color }, o || {})); }
   function line(x, y, x2, y2, color, pen, name) { return E('shape', { name: name || 'Line', kind: 'line', x: x, y: y, x2: x2, y2: y2, color: color, pen: pen || 1 }); }
   function dot(x, y, r, color) { return E('shape', { name: 'Star', kind: 'circle', x: x, y: y, r: r, fill: true, color: color }); }
-  function font(id, family, weight, px, glyphs, spacing) { return { id: id, family: family, weight: weight, px: px, glyphs: glyphs, spacing: spacing || 0 }; }
+  function font(id, family, weight, px, glyphs, spacing, bold) { var f = { id: id, family: family, weight: weight, px: px, glyphs: glyphs, spacing: spacing || 0 }; if (bold) f.bold = bold; return f; }
   function D(name, bg, fonts, els) { var d = GW.blankDesign(); d.name = name; d.bg = bg; d.fonts = fonts; d.elements = els; return d; }
   function onCircle(deg, r) { return [140 + r * Math.sin(rad(deg)), 140 - r * Math.cos(rad(deg))]; }
 
@@ -140,7 +140,7 @@
       build: function () {
         var INK = '#000000', MID = '#555555', RULE = '#aaaaaa', ACC = '#ff5500';
         var fonts = [
-          font('fTime', 'Milo Serif', 400, 90, 'digits'),
+          font('fTime', 'Milo Serif', 400, 92, 'digits', 2, 3),
           font('fDate', 'DM Sans', 500, 18, 'tr'),
           font('fLab', 'DM Sans', 500, 12, 'tr'),
           font('fVal', 'DM Sans', 500, 20, 'basic'),
