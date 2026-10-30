@@ -140,33 +140,33 @@
       build: function () {
         var INK = '#000000', MID = '#555555', RULE = '#aaaaaa', ACC = '#ff5500';
         var fonts = [
-          font('fTime', 'DM Serif Display', 400, 78, 'digits'),
-          font('fDate', 'DM Sans', 700, 19, 'tr'),
-          font('fLab', 'DM Sans', 700, 13, 'tr'),
-          font('fVal', 'DM Sans', 700, 22, 'basic'),
-          font('fSun', 'DM Sans', 700, 17, 'basic')
+          font('fTime', 'Milo Serif', 400, 90, 'digits'),
+          font('fDate', 'DM Sans', 500, 18, 'tr'),
+          font('fLab', 'DM Sans', 500, 12, 'tr'),
+          font('fVal', 'DM Sans', 500, 20, 'basic'),
+          font('fSun', 'DM Sans', 500, 16, 'basic')
         ];
         function lab(x, y, t) { return label(x, y, t, 'fLab', MID, { name: t }); }
         function val(x, y, source, o) { return txt(x, y, source, 'fVal', INK, o); }
         var cols = [70, 140, 210];
         return D('Bosphorus', '#ffffff', fonts, [
           E('arc', { name: 'Steps ring', cx: 140, cy: 140, r: 135, pen: 3, start: 0, sweep: 360, source: 'steps', color: ACC, track: RULE, round: false }),
-          txt(140, 38, 'date', 'fDate', ACC, { name: 'Date', fmt: 'ddd DD MMM', tr: true }),
-          txt(140, 88, 'time', 'fTime', INK, { name: 'Time', hmode: 'h24', lz: true }),
-          line(60, 126, 220, 126, RULE, 1, 'Rule'),
-          line(105, 134, 105, 214, RULE, 1, 'Divider'), line(175, 134, 175, 214, RULE, 1, 'Divider'),
-          line(60, 174, 220, 174, RULE, 1, 'Rule'),
-          line(60, 222, 220, 222, RULE, 1, 'Rule'),
-          lab(cols[0], 142, 'NABIZ'), val(cols[0], 160, 'hr'),
-          lab(cols[1], 142, 'ADIM'), val(cols[1], 160, 'steps'),
-          lab(cols[2], 142, 'PİL'), val(cols[2], 160, 'batteryDays', { suffix: 'G' }),
-          lab(cols[0], 190, 'SON KM'), val(cols[0], 208, 'lastKm'),
-          lab(cols[1], 190, 'TEMPO'), val(cols[1], 208, 'lastPace'),
-          txt(cols[2], 190, 'nyZone', 'fLab', MID, { name: 'Zone' }), val(cols[2], 208, 'nyTime', { name: 'New York time' }),
-          E('sunicon', { name: 'Sunrise icon', x: 82, y: 238, r: 6, kind: 'rise', color: ACC }),
-          txt(96, 238, 'sunrise', 'fSun', INK, { name: 'Sunrise', justify: 'L' }),
-          E('sunicon', { name: 'Sunset icon', x: 166, y: 238, r: 6, kind: 'set', color: ACC }),
-          txt(180, 238, 'sunset', 'fSun', INK, { name: 'Sunset', justify: 'L' })
+          txt(140, 34, 'date', 'fDate', ACC, { name: 'Date', fmt: 'ddd DD MMM', tr: true }),
+          txt(140, 85, 'time', 'fTime', INK, { name: 'Time', hmode: 'h24', lz: true }),
+          line(60, 128, 220, 128, RULE, 1, 'Rule'),
+          line(105, 136, 105, 202, RULE, 1, 'Divider'), line(175, 136, 175, 202, RULE, 1, 'Divider'),
+          line(60, 167, 220, 167, RULE, 1, 'Rule'),
+          line(60, 207, 220, 207, RULE, 1, 'Rule'),
+          lab(cols[0], 140, 'NABIZ'), val(cols[0], 155, 'hr'),
+          lab(cols[1], 140, 'ADIM'), val(cols[1], 155, 'steps'),
+          lab(cols[2], 140, 'PİL'), val(cols[2], 155, 'batteryDays', { suffix: 'G' }),
+          lab(cols[0], 180, 'SON KM'), val(cols[0], 195, 'lastKm'),
+          lab(cols[1], 180, 'TEMPO'), val(cols[1], 195, 'lastPace'),
+          txt(cols[2], 180, 'nyZone', 'fLab', MID, { name: 'Zone' }), val(cols[2], 195, 'nyTime', { name: 'New York time' }),
+          E('sunicon', { name: 'Sunrise icon', x: 84, y: 227, r: 6, kind: 'rise', color: ACC }),
+          txt(97, 227, 'sunrise', 'fSun', INK, { name: 'Sunrise', justify: 'L' }),
+          E('sunicon', { name: 'Sunset icon', x: 166, y: 227, r: 6, kind: 'set', color: ACC }),
+          txt(179, 227, 'sunset', 'fSun', INK, { name: 'Sunset', justify: 'L' })
         ]);
       } },
     { id: 'run', name: 'Run screen', kind: 'datafield', blurb: 'Data field for runs in Garmin\u2019s own style: timer, HR zone colour, distance, lap / average / last-lap pace. Auto-laps every km.',

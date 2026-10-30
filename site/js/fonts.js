@@ -25,7 +25,7 @@
     { family: 'Oxanium', weights: [600] },
     { family: 'Chakra Petch', weights: [600] },
     { family: 'Press Start 2P', weights: [400] },
-    { family: 'DM Serif Display', weights: [400] },
+    { family: 'Milo Serif', weights: [400] },
     { family: 'DM Sans', weights: [500, 700] }
   ];
   GW.GLYPH_SETS = {
