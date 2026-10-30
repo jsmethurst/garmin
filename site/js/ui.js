@@ -348,7 +348,7 @@
     var ul = $('layers'); ul.innerHTML = '';
     var els = GW.design.elements;
     for (var i = els.length - 1; i >= 0; i--) (function (el) {
-      var t = T[el.type];
+      var t = T[el.type] || { icon: '?', label: el.type };
       var li = h('li', { class: 'layer' + (el.id === GW.selId ? ' sel' : '') + (el.hidden ? ' off' : ''), draggable: 'true', 'data-id': el.id, tabindex: 0, role: 'button', 'aria-label': el.name }, [
         h('span', { class: 'ic', text: t.icon }), h('span', { class: 'nm', text: el.name || t.label }),
         h('button', { class: el.locked ? 'on' : '', 'aria-label': el.locked ? 'Unlock layer' : 'Lock layer', title: el.locked ? 'Unlock' : 'Lock: clicks on the watch pass through it', html: el.locked ? ICON.lock : ICON.unlock, onclick: function (e) { e.stopPropagation(); el.locked = !el.locked; GW.commit(true); } }),
@@ -757,6 +757,7 @@
   GW.openExport = function () {
     var body = h('div', {}, [h('p', { class: 'muted', text: 'Building your project…' })]);
     modal('Get it on your watch', body);
+    if (GW.rotChoice(GW.design) === 'none') delete GW.design.rotate;
     function render() {
       GW.buildVariants(GW.design).then(function (results) {
         var first = results[0], many = results.length > 1;
@@ -807,7 +808,10 @@
           h('button', { class: 'btn sm', text: 'Save design.json (to edit later)', onclick: function () { GW.saveFile(); } })
         ]));
       }).catch(function (e) {
-        console.error(e); body.innerHTML = ''; body.appendChild(h('div', { class: 'note warn', text: 'Export failed: ' + e.message }));
+        console.error(e); body.innerHTML = '';
+        // never leave the dialog stuck on a rotation that cannot be built: fall back to upright
+        if (GW.rotChoice(GW.design) !== 'none') { GW.design.rotate = 'none'; GW.history.commit(); body.appendChild(h('div', { class: 'note warn', text: 'The rotated version could not be built (' + e.message + '). Showing the upright one.' })); render(); return; }
+        body.appendChild(h('div', { class: 'note warn', text: 'Export failed: ' + e.message }));
       });
     }
     render();

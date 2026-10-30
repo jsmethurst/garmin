@@ -139,6 +139,7 @@ window.GW = window.GW || {};
     GW.assets = {};
     function fin() {
       GW.design = Object.assign(GW.blankDesign(), d);
+      GW.design.elements = (GW.design.elements || []).filter(function (e) { return GW.types[e.type]; }); // drop element types that no longer exist
       GW.design.fonts = GW.design.fonts || [];
       GW.selId = null;
       GW.history.reset();

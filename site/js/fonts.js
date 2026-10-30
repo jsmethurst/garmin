@@ -162,6 +162,7 @@
       return out;
     }
     while (!(placed = pack(size)) && size < 4096) size *= 2;
+    if (!placed) throw new Error('font ' + f.family + ' ' + f.px + 'px is too large to export');
     atlas = document.createElement('canvas'); atlas.width = atlas.height = size;
     var c = atlas.getContext('2d');
     c.font = GW.fontCss(f); c.fillStyle = '#ffffff'; c.textBaseline = 'alphabetic'; c.textAlign = 'left';
