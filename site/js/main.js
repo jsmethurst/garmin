@@ -26,12 +26,12 @@
     if (opts.grid) {
       ctx.lineWidth = 1 / k;
       for (var i = 0; i <= GW.SIZE; i += 20) {
-        ctx.strokeStyle = i === 140 ? 'rgba(0,229,255,.55)' : 'rgba(255,255,255,.12)';
+        ctx.strokeStyle = i === 140 ? 'rgba(232,89,12,.6)' : 'rgba(128,128,128,.3)';
         ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, GW.SIZE); ctx.moveTo(0, i); ctx.lineTo(GW.SIZE, i); ctx.stroke();
       }
     }
     if (guides.x || guides.y) {
-      ctx.strokeStyle = 'rgba(0,229,255,.9)'; ctx.lineWidth = 1 / k; ctx.setLineDash([4 / k, 3 / k]);
+      ctx.strokeStyle = 'rgba(232,89,12,.9)'; ctx.lineWidth = 1 / k; ctx.setLineDash([4 / k, 3 / k]);
       ctx.beginPath(); if (guides.x) { ctx.moveTo(140, 0); ctx.lineTo(140, GW.SIZE); } if (guides.y) { ctx.moveTo(0, 140); ctx.lineTo(GW.SIZE, 140); } ctx.stroke();
     }
     function outline(el, col, w, dash) {
@@ -40,14 +40,14 @@
       ctx.strokeRect(b.x - 1 / k, b.y - 1 / k, b.w + 2 / k, b.h + 2 / k);
     }
     var hov = hoverId && hoverId !== GW.selId ? GW.findEl(hoverId) : null;
-    if (hov && !hov.hidden) outline(hov, 'rgba(0,229,255,.6)', 1, false);
+    if (hov && !hov.hidden) outline(hov, 'rgba(232,89,12,.55)', 1, false);
     var sel = GW.selected();
     if (sel && !sel.hidden) {
-      outline(sel, '#ffd400', 1.5, true);
+      outline(sel, '#e8590c', 1.5, true);
       var p = GW.posPairs(sel)[0];
       if (p) {
         var x = sel[p[0]], y = sel[p[1]], s = 4 / k;
-        ctx.setLineDash([]); ctx.strokeStyle = '#ffd400'; ctx.lineWidth = 1.5 / k;
+        ctx.setLineDash([]); ctx.strokeStyle = '#e8590c'; ctx.lineWidth = 1.5 / k;
         ctx.beginPath(); ctx.moveTo(x - s, y); ctx.lineTo(x + s, y); ctx.moveTo(x, y - s); ctx.lineTo(x, y + s); ctx.stroke();
       }
     }
@@ -153,7 +153,32 @@
   function scheduleLayers() { if (uiQ) return; uiQ = true; requestAnimationFrame(function () { uiQ = false; GW.renderLayers(); }); }
   GW.on('change', function () { schedule(); scheduleLayers(); });
   GW.on('drag', function () { schedule(); GW.refreshInspectorValues(); });
+  // Watch faces and data fields are two sections of the same app; the design's kind decides which one is showing.
+  function syncMode() {
+    var m = GW.modeOf(), field = m === 'field';
+    if (document.body.dataset.mode === m) return;
+    document.body.dataset.mode = m;
+    Array.prototype.forEach.call(document.querySelectorAll('#modes button'), function (b) { b.classList.toggle('on', b.dataset.mode === m); });
+    document.querySelector('#tabs [data-tab=face]').textContent = field ? 'Field' : 'Face';
+    $('designName').placeholder = field ? 'Name your data field' : 'Name your watchface';
+    $('designName').setAttribute('aria-label', field ? 'Data field name' : 'Watchface name');
+    $('btnPresets').textContent = field ? 'Layouts' : 'Presets';
+    document.title = (field ? 'Data Fields' : 'Watch Faces') + ' · Garmin Studio';
+    if (field && document.querySelector('#tabs button.on').dataset.tab === 'fonts') GW.setTab('inspect');
+    GW.renderAdd();
+  }
+  GW.setMode = function (m) {
+    if (GW.modeOf() === m) return;
+    GW.saveNow();
+    try { localStorage.setItem('gw.mode', m); } catch (e) { }
+    var saved = GW.loadSaved(m);
+    var done = function () { GW.fontsReady().then(function () { GW.touch(true); GW.emit('history'); }); };
+    if (saved && saved.design && saved.design.elements && GW.modeOf(saved.design) === m) GW.loadFrom(saved, done);
+    else GW.applyPreset(m === 'field' ? 'f3' : 'orbit', done);
+  };
+  Array.prototype.forEach.call(document.querySelectorAll('#modes button'), function (b) { b.addEventListener('click', function () { GW.setMode(b.dataset.mode); }); });
   GW.on('structure', function () {
+    syncMode();
     GW.renderLayers(); GW.renderPanel(); schedule();
     $('designName').value = GW.design.name;
   });
@@ -177,7 +202,7 @@
     var fr = new FileReader();
     fr.onload = function () {
       try { var obj = JSON.parse(fr.result); GW.loadFrom(obj, function () { GW.fontsReady().then(function () { GW.touch(true); GW.toast('Loaded ' + f.name); }); }); }
-      catch (e) { GW.toast('That file is not a Watchface Studio design.'); }
+      catch (e) { GW.toast('That file is not a Garmin Studio design.'); }
     };
     fr.readAsText(f); this.value = '';
   });
@@ -187,7 +212,7 @@
   document.getElementById('tabs').addEventListener('click', function (e) { var b = e.target.closest('button[data-tab]'); if (b) GW.setTab(b.dataset.tab); });
   if (window.ResizeObserver) new ResizeObserver(schedule).observe(cv); else window.addEventListener('resize', schedule);
   setInterval(function () { if (GW.sim.live && !document.hidden) schedule(); }, 1000);
-  window.addEventListener('beforeunload', function () { try { localStorage.setItem('gw.design.v1', JSON.stringify(GW.serialize())); } catch (e) { } });
+  window.addEventListener('beforeunload', function () { GW.saveNow(); });
 
   // Garmin's picture has an opaque white backdrop: make the white that touches the image edge transparent.
   function cutOutBackground(img) {
@@ -239,12 +264,14 @@
   useDevicePicture();
   GW.renderAdd();
   GW.fontsReady().then(function () {
-    var saved = GW.loadSaved();
+    var mode = 'watch';
+    try { if (localStorage.getItem('gw.mode') === 'field') mode = 'field'; } catch (e) { }
+    var saved = GW.loadSaved(mode);
     function done() {
       GW.fontsReady().then(function () { GW.touch(true); GW.emit('history'); document.documentElement.classList.add('ready'); });
     }
-    if (saved && saved.design && saved.design.elements) GW.loadFrom(saved, done);
-    else GW.applyPreset('orbit', done);
+    if (saved && saved.design && saved.design.elements && GW.modeOf(saved.design) === mode) GW.loadFrom(saved, done);
+    else GW.applyPreset(mode === 'field' ? 'f3' : 'orbit', done);
   });
   GW.stage = { schedule: schedule, opts: opts };
 })(window.GW);

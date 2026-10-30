@@ -1,5 +1,5 @@
 {
-  "name": "garmin-watchface-studio",
+  "name": "garmin-studio",
   "private": true,
   "type": "module",
   "description": "Design, preview, build and export Garmin fenix 6X Pro watchfaces.",

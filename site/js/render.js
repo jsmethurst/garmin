@@ -6,7 +6,7 @@
     var S = GW.SIZE;
     (design.fonts || []).forEach(function (f) { GW.previewFonts[f.id] = f; }); // lets thumbnails of other designs resolve their fonts
     ctx.save();
-    ctx.fillStyle = GW.q(design.bg); ctx.fillRect(0, 0, S, S);
+    ctx.fillStyle = GW.q(design.kind === 'datafield' ? GW.dfTheme(design).bg : design.bg); ctx.fillRect(0, 0, S, S);
     if (design.bgImage && GW.assets[design.bgImage]) ctx.drawImage(GW.assets[design.bgImage].img, 0, 0, S, S);
     design.elements.forEach(function (el) {
       if (el.hidden) return;

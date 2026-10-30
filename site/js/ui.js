@@ -84,7 +84,7 @@
   GW.renderPanel = function () {
     var p = $('panel'); p.innerHTML = '';
     if (tab === 'inspect') renderInspector(p);
-    else if (tab === 'face') renderFace(p);
+    else if (tab === 'face') (GW.modeOf() === 'field' ? renderFieldSettings : renderFace)(p);
     else if (tab === 'fonts') renderFonts(p);
     else renderSim(p);
   };
@@ -141,9 +141,36 @@
     return field(f.label, b);
   }
   function fOptColor(el, f) {
-    var v = el[f.k], b = h('button', { class: 'swatch', type: 'button' }, [h('i', { style: 'background:' + (v ? GW.q(v) : 'transparent') }), h('span', { text: v ? GW.q(v) : 'none' })]);
+    var v = el[f.k], b = h('button', { class: 'swatch', type: 'button' }, [h('i', { style: 'background:' + (v ? GW.q(v) : 'transparent') }), h('span', { text: v ? GW.q(v) : (f.noneLabel || 'none') })]);
     b.addEventListener('click', function () { GW.pickColor(b, v || '#ffffff', function (c) { el[f.k] = c; fireChange(true); }, { none: true }); });
     return field(f.label, b);
+  }
+  function fDfSrc(el, f) {
+    var sel = h('select', { 'data-k': f.k });
+    GW.DF_GROUPS.forEach(function (g) {
+      var og = h('optgroup', { label: g });
+      GW.DF_SOURCES.forEach(function (s) { if (s[3] === g) og.appendChild(h('option', { value: s[0], text: s[2] })); });
+      sel.appendChild(og);
+    });
+    sel.value = el[f.k];
+    sel.addEventListener('change', function () {
+      var old = GW.DF_BY[el[f.k]], neu = GW.DF_BY[sel.value];
+      if (!el.name || (old && (el.name === old[2] || el.name === el.label))) el.name = neu[2];
+      if (!el.label || (old && el.label.toLowerCase() === old[2].toLowerCase())) el.label = neu[1] ? neu[2].toUpperCase() : '';
+      el[f.k] = sel.value; fireChange(true);
+    });
+    return field(f.label, sel);
+  }
+  // Garmin's built-in fonts: the same list a Connect IQ developer picks from
+  function fSysFont(el, f) {
+    var sel = h('select', { 'data-k': f.k });
+    GW.SYS_FONTS.forEach(function (s) {
+      if (f.only && s[2] !== f.only) return;
+      sel.appendChild(h('option', { value: s[0], text: s[0].replace('FONT_', '').replace(/_/g, ' ').toLowerCase() + (s[2] === 'n' ? ' (digits only)' : '') + ' · ~' + Math.round(s[1] * GW.SIZE / 260) + 'px' }));
+    });
+    sel.value = el[f.k];
+    sel.addEventListener('change', function () { el[f.k] = sel.value; fireChange(false); GW.touch(false); });
+    return field(f.label, sel);
   }
   function fTrack(el, f) {
     var mode = el.track === 'auto' ? 'auto' : (el.track === 'none' ? 'none' : 'custom');
@@ -251,6 +278,8 @@
       case 'row': return h('div', { class: 'row' }, f.fields.map(function (x) { return renderField(el, x); }));
       case 'source': return fSource(el, f);
       case 'font': return fFont(el, f);
+      case 'dfsrc': return fDfSrc(el, f);
+      case 'sysfont': return fSysFont(el, f);
       case 'color': return fColor(el, f);
       case 'optcolor': return fOptColor(el, f);
       case 'track': return fTrack(el, f);
@@ -278,7 +307,7 @@
     nm.addEventListener('input', function () { el.name = nm.value; GW.touch(false); });
     nm.addEventListener('change', function () { GW.commit(false); });
     p.appendChild(h('div', { class: 'title' }, [
-      h('span', { class: 'ic', text: t.icon, style: 'color:var(--accent);font-size:18px' }), nm,
+      h('span', { class: 'ic', text: t.icon, style: 'color:var(--muted);font-size:18px' }), nm,
       h('button', { class: 'btn', title: 'Duplicate (Ctrl+D)', text: '⧉', onclick: function () { GW.duplicateSelected(); } }),
       h('button', { class: 'btn danger', title: 'Delete (Del)', text: '🗑', onclick: function () { GW.deleteSelected(); } })
     ]));
@@ -372,8 +401,26 @@
     return el;
   };
   GW.loadImageFile = loadImageFile;
+  var DFQUICK = [
+    ['Timer', 'timer', 'FONT_NUMBER_MEDIUM'], ['Distance', 'dist', 'FONT_NUMBER_MEDIUM'], ['Pace', 'pace', 'FONT_NUMBER_MEDIUM'], ['Average pace', 'avgPace', 'FONT_NUMBER_MEDIUM'],
+    ['Lap pace', 'lapPace', 'FONT_NUMBER_MEDIUM'], ['Last lap', 'lastLap', 'FONT_NUMBER_MEDIUM'], ['Heart rate', 'hr', 'FONT_NUMBER_MEDIUM'], ['Cadence', 'cad', 'FONT_NUMBER_MEDIUM'],
+    ['Power', 'power', 'FONT_NUMBER_MEDIUM'], ['Time of day', 'tod', 'FONT_NUMBER_MEDIUM']
+  ];
   GW.renderAdd = function () {
     var chips = $('quickChips'); chips.innerHTML = '';
+    if (GW.modeOf() === 'field') {
+      DFQUICK.forEach(function (q) {
+        chips.appendChild(h('button', { class: 'chip', text: q[0], onclick: function () {
+          var n = GW.design.elements.length;
+          GW.addElement('dfcell', { name: q[0], src: q[1], label: q[0].toUpperCase(), vfont: q[2], zone: q[1] === 'hr', y: 40 + (n % 4) * 30 });
+        } }));
+      });
+      var gf = $('addGrid'); gf.innerHTML = '';
+      ['dfcell', 'shape'].forEach(function (k) {
+        gf.appendChild(h('button', { class: 'addbtn', onclick: function () { GW.addElement(k, k === 'shape' ? { name: 'Divider', kind: 'line', x: 20, y: 140, x2: 260, y2: 140, color: '#aaaaaa', pen: 1 } : { name: 'Data cell', src: 'timer' }); } }, [h('i', { text: T[k].icon }), k === 'shape' ? 'Line / box' : 'Data cell']));
+      });
+      return;
+    }
     QUICK.forEach(function (q) {
       chips.appendChild(h('button', { class: 'chip', text: q.l, onclick: function () {
         var o = { name: q.l, source: q.s, font: q.f, y: q.y, color: q.c || '#ffffff', upper: !!q.up, suffix: q.suffix || '' };
@@ -400,6 +447,23 @@
     var a = GW.design.elements; a.splice(a.indexOf(el) + 1, 0, c);
     GW.selId = c.id; GW.commit(true); GW.emit('select', c.id);
   };
+
+  // ---------------------------------------------------------------- data field settings
+  function renderFieldSettings(p) {
+    var d = GW.design;
+    p.appendChild(h('div', { class: 'note', text: 'Settings for the whole data field. On the watch, add it to an activity data screen with a one-field layout; in a smaller slot the design scales down to fit.' }));
+    p.appendChild(field('Screen colours', segCtl([['light', 'Light'], ['auto', 'Match watch'], ['dark', 'Dark']], d.dfTheme || 'light', function (v) { d.dfTheme = v; GW.commit(true); })));
+    p.appendChild(field('Units', segCtl([['watch', 'Match watch'], ['metric', 'Metric'], ['imperial', 'Imperial']], d.dfUnits || 'watch', function (v) { d.dfUnits = v; GW.commit(true); })));
+    p.appendChild(h('h4', { text: 'Laps' }));
+    var c = h('input', { type: 'checkbox' }); c.checked = !!d.dfAutoLap;
+    c.addEventListener('change', function () { d.dfAutoLap = c.checked; GW.commit(true); });
+    p.appendChild(h('label', { class: 'chk' }, [c, 'Auto lap by distance']));
+    if (d.dfAutoLap) p.appendChild(fNum(d, { k: 'dfLapM', label: 'Auto lap every (metres)', min: 100, max: 10000, step: 100 }));
+    p.appendChild(h('div', { class: 'note', text: d.dfAutoLap
+      ? 'The Lap button also starts a new lap. Laps are tracked by this field (lap pace, last lap). For real laps in Garmin Connect, also switch on the activity’s own Auto Lap.'
+      : 'It only laps when you press the Lap button, for example at the km flags on a race course. Make sure the activity’s own Auto Lap is off.' }));
+    if (d.dfLapM == null) d.dfLapM = 1000;
+  }
 
   // ---------------------------------------------------------------- face tab
   function getSaves() { try { return JSON.parse(localStorage.getItem('gw.saves') || '[]'); } catch (e) { return []; } }
@@ -475,7 +539,7 @@
     var txt = f.glyphs === 'nums' ? '0123456789' : (f.glyphs === 'digits' ? '10:09 28.5°' : 'Sat 10:09 ABC');
     var sc = Math.min(1, (hh - 6) / Math.max(1, GW.fontMetrics(f).lineHeight), (w - 10) / Math.max(1, textW(f, txt)));
     x.save(); x.translate(6, 0); x.scale(sc, sc);
-    GW.drawText(x, f.id || '__preview', txt, 0, hh / 2 / sc, 'L', '#00e5ff');
+    GW.drawText(x, f.id || '__preview', txt, 0, hh / 2 / sc, 'L', '#ffffff');
     x.restore();
   }
   function textW(f, t) { var m = GW.fontMetrics(f), w = 0; for (var i = 0; i < t.length; i++) { var g = m.glyphs[t[i]]; w += g ? g.adv : 0; } return w; }
@@ -569,6 +633,8 @@
     ['notif', 'Notifications', 0, 20, 1], ['temp', 'Temperature °C', -20, 45, 1], ['altitude', 'Altitude m', -50, 4000, 10], ['moveBar', 'Move bar', 0, 5, 1],
     ['lastKm', 'Last activity km', 0, 50, 0.1], ['paceSec', 'Pace (sec per km)', 180, 600, 5],
     ['runHr', 'RUN: heart rate', 60, 200, 1], ['runKm', 'RUN: distance (km)', 0, 42, 0.01], ['runAvg', 'RUN: average pace (s/km)', 180, 600, 1],
+    ['runPace', 'RUN: current pace (s/km)', 180, 600, 1], ['runAvgHr', 'RUN: average heart rate', 60, 200, 1], ['runMaxHr', 'RUN: max heart rate', 60, 220, 1],
+    ['runCad', 'RUN: cadence', 100, 220, 1], ['runPow', 'RUN: power (W)', 0, 600, 5], ['runAscent', 'RUN: total ascent (m)', 0, 2000, 5], ['runCal', 'RUN: calories', 0, 3000, 10],
     ['lapKm', 'RUN: lap distance (km)', 0, 1, 0.01], ['lapPace', 'RUN: lap pace (s/km)', 180, 600, 1], ['lastLap', 'RUN: last lap pace (s/km)', 180, 600, 1]
   ];
   function numSim(label, k, mn, mx) {
@@ -629,16 +695,18 @@
 
   GW.openPresets = function () {
     var grid = h('div', { class: 'presets' });
+    var fld = GW.modeOf() === 'field';
     GW.PRESETS.forEach(function (p) {
+      if ((p.kind === 'datafield') !== fld) return;
       var thumb;
-      if (p.id === 'blank') { var c = document.createElement('canvas'); c.width = c.height = 120; c.getContext('2d').fillStyle = '#000'; c.getContext('2d').fillRect(0, 0, 120, 120); c.style.width = c.style.height = '120px'; thumb = c; }
+      if (p.id === 'blank' || p.id === 'blankfield') { var c = document.createElement('canvas'); c.width = c.height = 120; c.getContext('2d').fillStyle = p.id === 'blank' ? '#000' : '#fff'; c.getContext('2d').fillRect(0, 0, 120, 120); c.style.width = c.style.height = '120px'; thumb = c; }
       else thumb = GW.thumb(p.build(), 140);
       var card = h('button', { class: 'pcard', onclick: function () {
         GW.applyPreset(p.id, function () { GW.fontsReady().then(function () { GW.touch(true); closeModal(); GW.toast(p.name + ' loaded. Ctrl+Z undoes it.'); GW.history.commit(); }); });
-      } }, [thumb, h('b', { text: p.name }), p.kind === 'datafield' ? h('span', { class: 'chip on', style: 'cursor:default', text: 'data field' }) : null, h('span', { text: p.blurb })]);
+      } }, [thumb, h('b', { text: p.name }),  h('span', { text: p.blurb })]);
       grid.appendChild(card);
     });
-    modal('Start from a preset', h('div', {}, [h('p', { class: 'muted', text: 'Everything is editable afterwards. Presets replace your current design (Ctrl+Z brings it back).' }), grid]));
+    modal(fld ? 'Start from a layout' : 'Start from a preset', h('div', {}, [h('p', { class: 'muted', text: 'Everything is editable afterwards. Presets replace your current design (Ctrl+Z brings it back).' }), grid]));
   };
 
   // ---- one-click cloud build (only on the Vercel deployment) ----
@@ -654,11 +722,11 @@
     });
   }
   function builderBox(results) {
-    var box = h('div', { class: 'card', style: 'margin:14px 0;border-color:#17556b;background:#0c1c26' });
+    var box = h('div', { class: 'card', style: 'margin:14px 0;background:var(--panel2)' });
     var msg = h('div', { class: 'muted small', text: 'Checking the cloud builder…' });
     var logBox = h('div', { class: 'code', style: 'display:none;margin-top:10px;max-height:200px' });
     var many = results.length > 1;
-    var btn = h('button', { class: 'btn primary', style: 'font-size:15px;padding:11px 20px', text: many ? '⚙ Build all ' + results.length + ' versions (.prg)' : '⚙ Build my watchface (.prg)', disabled: true });
+    var btn = h('button', { class: 'btn primary', style: 'font-size:15px;padding:11px 20px', text: many ? 'Build all ' + results.length + ' versions (.prg)' : (GW.modeOf() === 'field' ? 'Build my data field (.prg)' : 'Build my watchface (.prg)'), disabled: true });
     var iqBtn = h('button', { class: 'btn', style: 'padding:11px 16px', title: 'A release package for the Connect IQ developer portal (apps.garmin.com/developer)', text: many ? '📦 Download .iq files (for the store)' : '📦 Download .iq (for the store)', disabled: true });
     var setup = h('button', { class: 'btn', text: 'Set up the builder (one time, ~2 min)', style: 'display:none;margin-left:8px' });
     function say(t, log) { msg.textContent = t; if (log != null) { logBox.style.display = log ? '' : 'none'; logBox.textContent = log; } }
@@ -721,7 +789,7 @@
         set(on ? tl.filter(function (x) { return x !== a; }) : tl.concat([a]));
       } }));
     });
-    var custom = h('input', { type: 'number', min: 0, max: 359, placeholder: 'other °', style: 'width:84px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:inherit' });
+    var custom = h('input', { type: 'number', min: 0, max: 359, placeholder: 'other °', style: 'width:84px;background:var(--panel);border:1px solid var(--line2);border-radius:4px;padding:4px 10px;color:inherit' });
     custom.addEventListener('change', function () { var v = parseInt(custom.value, 10); if (!isNaN(v)) set(tl.concat([((v % 360) + 360) % 360])); });
     chips.appendChild(custom);
     wrap.appendChild(chips);
@@ -770,7 +838,7 @@
         ]));
         body.appendChild(h('h4', { style: 'margin:20px 0 8px', class: 'muted small', text: 'GENERATED CODE' }));
         if (many) {
-          vsel = h('select', { style: 'margin-bottom:8px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:5px 8px;color:inherit' },
+          vsel = h('select', { style: 'margin-bottom:8px;background:var(--panel);border:1px solid var(--line2);border-radius:4px;padding:5px 8px;color:inherit' },
             results.map(function (r, i) { return h('option', { value: i, text: r.name + ' (' + r.tilt + '°)' }); }));
           vsel.addEventListener('change', function () { loadTabs(results[parseInt(vsel.value, 10)]); });
           body.appendChild(vsel);

@@ -61,6 +61,7 @@ window.GW = window.GW || {};
     battery: 78, batteryDays: 6.4, hr: 64, bodyBat: 71, stress: 28, spo2: 97, resp: 14,
     intMins: 95, intGoal: 150, distance: 6.2, notif: 3, temp: 17, wx: 1, lat: 41.01, lon: 28.98, lastKm: 8.4, paceSec: 342,
     runHr: 162, runKm: 7.37, runAvg: 318, runPlanKm: 10, lapNo: 8, lapKm: 0.41, lapPace: 305, lastLap: 312,
+    runPace: 308, runCad: 172, runPow: 248, runAvgHr: 158, runMaxHr: 176, runAscent: 84, runCal: 512,
     altitude: 312, moveBar: 2, sunrise: 6 * 60 + 52, sunset: 18 * 60 + 14,
     metric: true, is24: true
   };
@@ -110,7 +111,8 @@ window.GW = window.GW || {};
   GW.commit = function (structural) { GW.touch(structural); GW.history.commit(); };
 
   // ---------- persistence ----------
-  var KEY = 'gw.design.v1';
+  var KEYS = { watch: 'gw.design.v1', field: 'gw.design.field.v1' };
+  GW.modeOf = function (d) { return (d || GW.design).kind === 'datafield' ? 'field' : 'watch'; };
   var saveTimer = null;
   GW.serialize = function () {
     var used = {}, a = {};
@@ -121,11 +123,12 @@ window.GW = window.GW || {};
     Object.keys(used).forEach(function (id) { a[id] = GW.assets[id].dataUrl; });
     return { v: 1, design: GW.design, assets: a };
   };
+  GW.saveNow = function () {
+    try { localStorage.setItem(KEYS[GW.modeOf()], JSON.stringify(GW.serialize())); } catch (e) { /* quota / private mode */ }
+  };
   GW.save = function () {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(function () {
-      try { localStorage.setItem(KEY, JSON.stringify(GW.serialize())); } catch (e) { /* quota / private mode */ }
-    }, 250);
+    saveTimer = setTimeout(GW.saveNow, 250);
   };
   GW.loadFrom = function (obj, done) {
     var d = obj.design || obj;
@@ -155,7 +158,7 @@ window.GW = window.GW || {};
       img.src = assets[id];
     });
   };
-  GW.loadSaved = function () {
-    try { var s = localStorage.getItem(KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; }
+  GW.loadSaved = function (mode) {
+    try { var s = localStorage.getItem(KEYS[mode || 'watch']); return s ? JSON.parse(s) : null; } catch (e) { return null; }
   };
 })(window.GW);

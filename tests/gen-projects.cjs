@@ -15,7 +15,7 @@ const sandbox = {
 };
 sandbox.window = sandbox; sandbox.devicePixelRatio = 1;
 vm.createContext(sandbox);
-['core', 'sources', 'fonts', 'bigdata-src', 'runfield-src', 'elements', 'bigdata', 'runfield', 'render', 'codegen', 'presets'].forEach((f) => {
+['core', 'sources', 'fonts', 'bigdata-src', 'runfield-src', 'elements', 'bigdata', 'runfield', 'datafield', 'render', 'codegen', 'presets'].forEach((f) => {
   vm.runInContext(fs.readFileSync(path.join(site, f + '.js'), 'utf8'), sandbox, { filename: f + '.js' });
 });
 const GW = sandbox.GW;
@@ -31,7 +31,7 @@ const png = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk
 fs.rmSync(out, { recursive: true, force: true });
 let n = 0;
 for (const p of GW.PRESETS) {
-  if (p.id === 'blank') continue;
+  if (p.id === 'blank' || p.id === 'blankfield') continue;
   const d = p.build();
   const custom = new Set(d.fonts.map((f) => f.id));
   d.fonts = []; d.elements.forEach((e) => { if (e.font && custom.has(e.font)) e.font = 'FONT_NUMBER_MEDIUM'; });

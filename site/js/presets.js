@@ -16,6 +16,8 @@
   function onCircle(deg, r) { return [140 + r * Math.sin(rad(deg)), 140 - r * Math.cos(rad(deg))]; }
 
   function fieldDesign(name, o) { var d = D(name, '#ffffff', [], [E('runfield', o)]); d.kind = 'datafield'; return d; }
+  function cell(x, y, w, h, src, label, vfont, o) { return E('dfcell', Object.assign({ name: label, x: x, y: y, w: w, h: h, src: src, label: label, vfont: vfont }, o || {})); }
+  function cellDesign(name, els) { var d = D(name, '#ffffff', [], els); d.kind = 'datafield'; d.dfTheme = 'light'; d.dfUnits = 'watch'; d.dfAutoLap = false; d.dfLapM = 1000; return d; }
 
   GW.PRESETS = [
     { id: 'orbit', name: 'Orbit', blurb: 'Four nested rings: steps, battery, how much of the day and the year is gone.',
@@ -140,6 +142,16 @@
       build: function () { return fieldDesign('Run Screen', { name: 'Run screen', autoLap: true }); } },
     { id: 'race', name: 'Race screen', kind: 'datafield', blurb: 'Same screen, but it only laps when you press Lap: for km flags on a race course.',
       build: function () { return fieldDesign('Race Screen', { name: 'Race screen', autoLap: false }); } },
+    { id: 'f1', name: 'One field', kind: 'datafield', blurb: 'One huge number.',
+      build: function () { return cellDesign('One Field', [cell(20, 40, 240, 200, 'pace', 'PACE', 'FONT_NUMBER_THAI_HOT')]); } },
+    { id: 'f2', name: 'Two fields', kind: 'datafield', blurb: 'Timer on top, distance below.',
+      build: function () { return cellDesign('Two Fields', [cell(20, 26, 240, 112, 'timer', 'TIMER', 'FONT_NUMBER_HOT', { bB: true }), cell(20, 142, 240, 112, 'dist', 'DISTANCE', 'FONT_NUMBER_HOT')]); } },
+    { id: 'f3', name: 'Three fields', kind: 'datafield', blurb: 'Timer, then heart rate (zone colour) and pace side by side.',
+      build: function () { return cellDesign('Three Fields', [cell(20, 24, 240, 100, 'timer', 'TIMER', 'FONT_NUMBER_HOT', { bB: true }), cell(30, 128, 108, 110, 'hr', 'HEART RATE', 'FONT_NUMBER_MEDIUM', { zone: true, bR: true }), cell(142, 128, 108, 110, 'pace', 'PACE', 'FONT_NUMBER_MEDIUM')]); } },
+    { id: 'f4', name: 'Four fields', kind: 'datafield', blurb: 'A 2 \u00d7 2 grid: timer, distance, heart rate and pace.',
+      build: function () { return cellDesign('Four Fields', [cell(44, 28, 94, 100, 'timer', 'TIMER', 'FONT_NUMBER_MILD', { bR: true, bB: true }), cell(142, 28, 94, 100, 'dist', 'DISTANCE', 'FONT_NUMBER_MILD', { bB: true }), cell(44, 132, 94, 100, 'hr', 'HEART RATE', 'FONT_NUMBER_MILD', { zone: true, bR: true }), cell(142, 132, 94, 100, 'pace', 'PACE', 'FONT_NUMBER_MILD')]); } },
+    { id: 'blankfield', name: 'Blank field', kind: 'datafield', blurb: 'Start from an empty screen and add your own cells.',
+      build: function () { return cellDesign('My Data Field', []); } },
     { id: 'blank', name: 'Blank', blurb: 'Start from nothing.', build: function () { return D('My Watchface', '#000000', [], []); } }
   ];
 

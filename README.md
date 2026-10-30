@@ -1,6 +1,6 @@
-# Watchface Studio for the Garmin fēnix 6X Pro
+# Garmin Studio
 
-A browser tool to **design, preview and export custom watchfaces** for the fēnix 6X Pro (280×280, 64-colour MIP). Pick a preset or build from scratch, then export a complete **Connect IQ project** that you build once and copy to your watch.
+A browser tool to **design, preview and export custom watch faces and data fields** for the Garmin fēnix 6X Pro (280×280, 64-colour MIP). It has two sections, **Watch faces** and **Data fields**. Pick a preset or build from scratch, then export a complete **Connect IQ project** that you build once and copy to your watch.
 
 No server, no build step, no tracking: it is a static site in [`site/`](site).
 
@@ -26,6 +26,10 @@ No server, no build step, no tracking: it is a static site in [`site/`](site).
 | Images, world map + “you are here” marker | PNG/JPG/SVG, resized for you at export |
 | **Bitmap fonts** | any bundled typeface (or your own TTF/OTF) is rasterised to a Garmin `.fnt` + `.png` and added to the project automatically |
 
+### Data fields
+
+The **Data fields** section builds Connect IQ data fields (the screens you flip through during an activity). A field is made of **data cells**; each cell shows one value in a standard Garmin system font (`FONT_XTINY` to `FONT_NUMBER_THAI_HOT`) and has a label, alignment, colours, optional heart-rate-zone fill and divider lines. Values: timer, elapsed time, time of day, distance, lap distance, pace, average / lap / last-lap pace, speed, lap number, heart rate (with zone), average and max heart rate, cadence, power, altitude, ascent, calories and battery. Whole-field settings: light / dark / match-watch screen colours, units, and auto lap by distance (the Lap button always laps). Layouts: one to four fields, the Run screen and the Race screen.
+
 Colours are limited to the **64 colours the fēnix 6X display can actually show**; the preview snaps to them so what you see is what you get.
 
 ### Presets (none of them are Garmin’s own)
@@ -46,7 +50,7 @@ The tool also works when `site/index.html` is opened straight from disk.
 
 The repo is a Vercel project: `site/` is served as static files and `api/` holds the backend.
 
-* `api/build` compiles the exported project with Garmin's real compiler inside a persistent **Vercel Sandbox** and returns the finished `.prg`, so you can skip the manual SDK/VS Code steps. The export dialog has a **Build my watchface (.prg)** button.
+* `api/build` compiles the exported project with Garmin's real compiler inside a persistent **Vercel Sandbox** and returns the finished `.prg`, so you can skip the manual SDK/VS Code steps. The export dialog has a **Build my watchface / data field (.prg)** button.
 * `api/setup` prepares that sandbox once: it downloads the Connect IQ SDK, the fēnix 6X Pro device files and creates a signing key. Garmin only releases device files to a logged-in Garmin account, so it needs these Vercel environment variables (Project → Settings → Environment Variables, mark the password *Sensitive*):
 
 | Name | Value |
