@@ -26,7 +26,8 @@
     { family: 'Chakra Petch', weights: [600] },
     { family: 'Press Start 2P', weights: [400] },
     { family: 'Libre Baskerville', weights: [700] },
-    { family: 'Courier Prime', weights: [400, 700] },
+    { family: 'Xanh Mono', weights: [400] },
+    { family: 'Cutive Mono', weights: [400] },
     { family: 'DM Sans', weights: [500, 700] }
   ];
   GW.GLYPH_SETS = {
