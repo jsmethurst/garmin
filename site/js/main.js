@@ -53,6 +53,10 @@
     var sel = GW.selected();
     if (sel && !sel.hidden) {
       outline(sel, '#e8590c', 1.5, true);
+      gripsOf(sel).forEach(function (g) {
+        var s = 4 / k; ctx.save(); ctx.setLineDash([]); ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#e8590c'; ctx.lineWidth = 1.5 / k;
+        ctx.fillRect(g[0] - s, g[1] - s, 2 * s, 2 * s); ctx.strokeRect(g[0] - s, g[1] - s, 2 * s, 2 * s); ctx.restore();
+      });
       var p = GW.posPairs(sel)[0];
       if (p) {
         var x = sel[p[0]], y = sel[p[1]], s = 4 / k, so2 = offsetOf(sel);
@@ -63,6 +67,19 @@
       }
     }
     ctx.restore();
+  }
+  // corner grips (elements with `grips`): drag one to resize with the proportions kept
+  function gripsOf(el) {
+    var t = GW.types[el.type]; if (!t || !t.grips || el.locked || el.hidden) return [];
+    var b = safeBox(el); if (!b) return [];
+    var o = offsetOf(el);
+    return [[b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h]].map(function (c) { return [c[0] + o.x, c[1] + o.y]; });
+  }
+  function gripAt(p) {
+    var el = GW.selected(); if (!el) return null;
+    var g = gripsOf(el), tol = 9 * GW.SIZE / (cv.clientWidth || GW.SIZE);
+    for (var i = 0; i < g.length; i++) if (Math.abs(p.x - g[i][0]) <= tol && Math.abs(p.y - g[i][1]) <= tol) return { el: el, i: i, g: g };
+    return null;
   }
   function safeBox(el) { try { return GW.elBox(el, ctx); } catch (e) { return null; } }
 
@@ -107,6 +124,12 @@
   cv.addEventListener('pointerdown', function (e) {
     var p = toDesign(e), el = pick(p.x, p.y);
     GW.closeColor();
+    var gr = gripAt(p);
+    if (gr) {   // start resizing from a corner grip: the opposite corner stays where it is
+      var oc = gr.g[(gr.i + 2) % 4], bx = safeBox(gr.el);
+      drag = { resize: true, id: gr.el.id, i: gr.i, ax: oc[0], ay: oc[1], asp: bx.w / bx.h, off: offsetOf(gr.el), moved: false };
+      cv.setPointerCapture(e.pointerId); return;
+    }
     if (!el) {
       // clicking an empty slot of a screen layout makes it the current slot (new cells go there)
       if (GW.design.kind === 'datafield') {
@@ -131,6 +154,15 @@
     var p = toDesign(e);
     var co = GW.design.kind === 'datafield' ? GW.slotRect(GW.design, GW.design.dfSlot || 0) : { x: 0, y: 0 };
     $('coords').textContent = 'x ' + Math.round(p.x - co.x) + ' · y ' + Math.round(p.y - co.y);
+    if (drag && drag.resize) {
+      var rl = GW.findEl(drag.id); if (!rl) return;
+      var sxs = (drag.i === 1 || drag.i === 2) ? 1 : -1, sys = drag.i >= 2 ? 1 : -1;
+      var wd = Math.max((p.x - drag.ax) * sxs, (p.y - drag.ay) * sys * drag.asp);
+      wd = Math.max(16, Math.min(280, wd)); drag.moved = true;
+      rl.w = Math.round(wd); rl.h = Math.max(6, Math.round(wd / drag.asp));
+      rl.x = Math.round(drag.ax - drag.off.x + sxs * rl.w / 2); rl.y = Math.round(drag.ay - drag.off.y + sys * rl.h / 2);
+      GW.emit('drag'); return;
+    }
     if (drag) {
       var el = GW.findEl(drag.id); if (!el) return;
       var dx = p.x - drag.sx, dy = p.y - drag.sy;
@@ -143,8 +175,10 @@
       drag.orig.forEach(function (o) { el[o[0]] = Math.round(o[2] + dx); el[o[1]] = Math.round(o[3] + dy); });
       GW.emit('drag');
     } else {
-      var h = pick(p.x, p.y), id = h ? h.id : null;
-      if (id !== hoverId) { hoverId = id; cv.style.cursor = id ? 'move' : 'crosshair'; schedule(); }
+      var h = pick(p.x, p.y), id = h ? h.id : null, gg = gripAt(p);
+      if (gg) { cv.style.cursor = (gg.i % 2 === 0) ? 'nwse-resize' : 'nesw-resize'; return; }
+      if (id !== hoverId) { hoverId = id; schedule(); }
+      cv.style.cursor = id ? 'move' : 'crosshair';
     }
   });
   function endDrag() {
