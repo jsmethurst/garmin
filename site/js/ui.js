@@ -528,12 +528,6 @@
     if (GW.dfSlot(d).full) p.appendChild(rotationField(d));
     p.appendChild(field('Screen colours', segCtl([['light', 'Light'], ['auto', 'Match watch'], ['dark', 'Dark']], d.dfTheme || 'light', function (v) { d.dfTheme = v; GW.commit(true); })));
     p.appendChild(field('Units', segCtl([['watch', 'Match watch'], ['metric', 'Metric'], ['imperial', 'Imperial']], d.dfUnits || 'watch', function (v) { d.dfUnits = v; GW.commit(true); })));
-    p.appendChild(h('h4', { text: 'Laps' }));
-    var c = h('input', { type: 'checkbox' }); c.checked = !!d.dfAutoLap;
-    c.addEventListener('change', function () { d.dfAutoLap = c.checked; GW.commit(true); });
-    p.appendChild(h('label', { class: 'chk' }, [c, 'Auto lap by distance']));
-    if (d.dfAutoLap) p.appendChild(fNum(d, { k: 'dfLapM', label: 'Auto lap every (metres)', min: 100, max: 10000, step: 100 }));
-    if (d.dfLapM == null) d.dfLapM = 1000;
   }
 
   // ---------------------------------------------------------------- face tab

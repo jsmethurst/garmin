@@ -179,8 +179,6 @@
       cg.member('    const DF_UNITS = ' + ({ watch: 0, metric: 1, imperial: 2 }[d.dfUnits] || 0) + ';');
       var sl = GW.dfSlot(d);
       cg.member('    const DF_W = ' + sl.w + ';'); cg.member('    const DF_H = ' + sl.h + ';');
-      cg.member('    const DF_AUTO = ' + (d.dfAutoLap ? 'true' : 'false') + ';');
-      cg.member('    const DF_LAP_M = ' + Math.max(100, Math.round(d.dfLapM || 1000)) + ';');
       cg.helper('dfd');
       cg.hook('begin', 'dfBegin(dc);'); cg.hook('init', 'dfInit();'); cg.hook('compute', 'dfCompute(info);'); cg.hook('lap', 'dfLap();'); cg.hook('reset', 'dfReset();');
       var N = Math.round, L = layout(el), id = BY[el.src] ? BY[el.src][1] : 0, out = [];
@@ -225,7 +223,7 @@
     members: [
       '    const DF_ZFILL = [0xAAAAAA, 0x00AAFF, 0x55FF55, 0xFFAA00, 0xFF0000];',
       '    private var _dTimer = 0;', '    private var _dElapsed = 0;', '    private var _dDist = 0.0;', '    private var _dPrevT = 0;', '    private var _dPrevD = 0.0;',
-      '    private var _dLapT0 = 0;', '    private var _dLapD0 = 0.0;', '    private var _dLapNo = 1;', '    private var _dLast = -1.0;', '    private var _dVirt = -100000;',
+      '    private var _dLapT0 = 0;', '    private var _dLapD0 = 0.0;', '    private var _dLapNo = 1;', '    private var _dLast = -1.0;',
       '    private var _dHr = null;', '    private var _dAvgHr = null;', '    private var _dMaxHr = null;', '    private var _dCad = null;', '    private var _dPow = null;',
       '    private var _dSpd = null;', '    private var _dAvgSpd = null;', '    private var _dAlt = null;', '    private var _dAsc = null;', '    private var _dCal = null;',
       '    private var _dZones = null;', '    private var _dKu = 1.0;', '    private var _dK = 1.0;', '    private var _dOx = 0.0;', '    private var _dOy = 0.0;',
@@ -251,7 +249,6 @@
       '        _dLapD0 = 0.0;',
       '        _dLapNo = 1;',
       '        _dLast = -1.0;',
-      '        _dVirt = -100000;',
       '    }',
       '',
       '    // called every second with the activity data',
@@ -269,14 +266,6 @@
       '        _dElapsed = (info.elapsedTime != null) ? info.elapsedTime : 0;',
       '        var t = (info.timerTime != null) ? info.timerTime : 0;',
       '        var d = (info.elapsedDistance != null) ? info.elapsedDistance : 0.0;',
-      '        if (DF_AUTO && d >= _dLapD0 + DF_LAP_M && d > _dPrevD) {',
-      '            // crossed a lap mark since the previous second: interpolate the exact crossing time',
-      '            var mark = _dLapD0 + DF_LAP_M;',
-      '            var f = (mark - _dPrevD) / (d - _dPrevD);',
-      '            var tc = _dPrevT + (f * (t - _dPrevT)).toNumber();',
-      '            dfEndLap(tc, mark);',
-      '            _dVirt = t;',
-      '        }',
       '        _dTimer = t;',
       '        _dDist = d;',
       '        _dPrevT = t;',
@@ -285,7 +274,6 @@
       '',
       '    // Lap button (or the watch\'s own Auto Lap)',
       '    function dfLap() as Void {',
-      '        if (_dTimer - _dVirt < 3000) { return; }   // the watch lapped right after our own auto lap: ignore the duplicate',
       '        dfEndLap(_dTimer, _dDist);',
       '    }',
       '',
