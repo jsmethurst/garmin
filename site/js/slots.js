@@ -14,7 +14,7 @@
     { id: '5fields', name: '5 fields', slots: [[0, 0, 280, 69], [0, 70, 280, 69], [0, 141, 139, 69], [141, 141, 139, 69], [0, 211, 280, 69]] },
     { id: '6fields', name: '6 fields', slots: [[0, 0, 280, 69], [0, 70, 139, 69], [141, 70, 139, 69], [0, 141, 139, 69], [141, 141, 139, 69], [0, 211, 280, 69]] },
     { id: '7fields', name: '7 fields', slots: [[0, 0, 280, 49], [0, 50, 139, 59], [141, 50, 139, 59], [0, 110, 280, 59], [0, 171, 139, 59], [141, 171, 139, 59], [0, 231, 280, 49]] },
-    { id: '8fields', name: '8 fields', slots: [[0, 0, 280, 49], [0, 51, 139, 59], [141, 51, 139, 59], [0, 112, 139, 59], [141, 112, 139, 59], [0, 173, 139, 59], [141, 173, 139, 59], [0, 234, 280, 49]] }
+    { id: '8fields', name: '8 fields', edges: { 0: 'B', 1: 'R', 3: 'R', 5: 'R', 7: 'T' }, slots: [[0, 0, 280, 49], [0, 51, 139, 59], [141, 51, 139, 59], [0, 112, 139, 59], [141, 112, 139, 59], [0, 173, 139, 59], [141, 173, 139, 59], [0, 234, 280, 49]] }
   ];
   // the rectangle a data-field design lives in: {x, y, w, h, full}
   GW.dfSlot = function (design) {
@@ -23,6 +23,11 @@
   };
   // which slot an element of a data-field design belongs to (older designs without one follow the slot that was current)
   GW.elSlot = function (el, design) { return el.slot == null ? (design.dfSlot || 0) : el.slot; };
+  // Garmin's own dividing lines of a layout, drawn by the cells that sit next to them: {bT,bB,bL,bR} for one slot
+  GW.dfEdges = function (design, i) {
+    var L = GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0], e = (L.edges && design.dfLines !== false && L.edges[i]) || '';
+    return { bT: e.indexOf('T') >= 0, bB: e.indexOf('B') >= 0, bL: e.indexOf('L') >= 0, bR: e.indexOf('R') >= 0 };
+  };
   GW.slotRect = function (design, i) {
     var L = GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0], r = L.slots[i] || L.slots[0];
     return { x: r[0], y: r[1], w: r[2], h: r[3] };
