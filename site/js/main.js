@@ -15,6 +15,7 @@
   }
   function draw() {
     drawQ = false; fit();
+    cv.style.transform = GW.design.rotate === 'r30' ? 'rotate(30deg)' : '';   // rotation is a setting of the whole screen: the preview turns with it
     var k = cv.width / GW.SIZE, env = GW.env();
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
     ctx.scale(k, k);
@@ -72,8 +73,10 @@
     return GW.slotRect(GW.design, GW.elSlot(el, GW.design));
   }
   function toDesign(e) {   // screen coordinates, 0..280
-    var r = cv.getBoundingClientRect();
-    return { x: (e.clientX - r.left) / r.width * GW.SIZE, y: (e.clientY - r.top) / r.height * GW.SIZE };
+    var r = cv.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    if (GW.design.rotate === 'r30') { var a = -30 * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), nx = dx * c - dy * s; dy = dx * s + dy * c; dx = nx; }
+    var side = cv.clientWidth || r.width;
+    return { x: (dx / side + 0.5) * GW.SIZE, y: (dy / side + 0.5) * GW.SIZE };
   }
   function pick(x, y) {
     var els = GW.design.elements;

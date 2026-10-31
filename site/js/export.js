@@ -161,7 +161,6 @@
   };
   // 'none' | 'r30' | 'both'
   GW.rotChoice = function (design) {
-    if (design.kind === 'datafield' && !GW.dfSlot(design).full) return 'none';   // turning a field only makes sense when it fills the screen
     return design.rotate === 'r30' || design.rotate === 'both' ? design.rotate : 'none';
   };
   // Resolves to an array of project results: upright, rotated 30 degrees to the right, or both.
@@ -169,19 +168,15 @@
     design.appIds = design.appIds || {};
     var jobs = [];   // {key, label, slot, tilt}
     if (design.kind === 'datafield') {
-      var L = GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0], used = {};
-      design.elements.forEach(function (e) { if (e.type === 'dfcell') used[GW.elSlot(e, design)] = 1; });
+      var L = GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0], used = {}, ch = GW.rotChoice(design);
+      design.elements.forEach(function (e) { used[GW.elSlot(e, design)] = 1; });
       var slots = Object.keys(used).map(Number).filter(function (i) { return L.slots[i]; }).sort();
       if (!slots.length) slots = [design.dfSlot || 0];
       var multi = L.slots.length > 1;
-      slots.forEach(function (i) {
-        var d0 = GW.clone(design); d0.dfSlot = i;
-        var full = GW.dfSlot(d0).full, ch = full ? GW.rotChoice(d0) : 'none';
-        (ch === 'r30' ? [30] : (ch === 'both' ? [0, 30] : [0])).forEach(function (a) {
-          jobs.push({ slot: i, tilt: a, multi: multi, key: (multi ? 's' + i : '') + (a ? 'r' + a : '') || 'main',
-            label: (multi ? 'field ' + (i + 1) : 'upright') + (a ? (multi ? ' ' : '') + a + '\u00b0' : '') });
-        });
-      });
+      // upright: one project per field of the layout
+      if (ch !== 'r30') slots.forEach(function (i) { jobs.push({ slot: i, tilt: 0, multi: multi, key: multi ? 's' + i : 'main', label: multi ? 'field ' + (i + 1) : 'upright' }); });
+      // rotated: the whole screen (every field) becomes one full-screen field turned as a whole
+      if (ch !== 'none') jobs.push({ flat: true, tilt: 30, key: 'r30', label: multi ? 'rotated 30\u00b0, whole screen (use the 1 field layout)' : '30\u00b0' });
     } else {
       var ch0 = GW.rotChoice(design);
       (ch0 === 'r30' ? [30] : (ch0 === 'both' ? [0, 30] : [0])).forEach(function (a) { jobs.push({ slot: null, tilt: a, key: a ? 'r' + a : 'main', label: a ? a + '\u00b0' : 'upright' }); });
@@ -190,9 +185,16 @@
     return jobs.reduce(function (p, j) {
       return p.then(function () {
         var d = GW.clone(design);
-        if (j.slot != null) {
+        if (j.flat) {
+          // every cell moves from its field into screen coordinates, then the single full-screen field is turned
+          d.elements.forEach(function (el) {
+            var o = GW.slotRect(design, GW.elSlot(el, design));
+            GW.posPairs(el).forEach(function (p) { el[p[0]] += o.x; el[p[1]] += o.y; });
+          });
+          d.dfLayout = 0; d.dfSlot = 0;
+        } else if (j.slot != null) {
           d.dfSlot = j.slot;
-          d.elements = d.elements.filter(function (e) { return e.type !== 'dfcell' || GW.elSlot(e, design) === j.slot; });
+          d.elements = d.elements.filter(function (e) { return GW.elSlot(e, design) === j.slot; });
           if (j.multi) d.name = design.name + ' field ' + (j.slot + 1);
         }
         if (j.tilt) { GW.rotateDesign(d, j.tilt); d.name = d.name + ' ' + j.tilt + '\u00b0'; }
