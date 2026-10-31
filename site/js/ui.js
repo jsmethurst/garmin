@@ -116,19 +116,34 @@
 
   function fFont(el, f) {
     var sel = h('select', { 'data-k': f.k });
-    var g1 = h('optgroup', { label: 'Garmin built-in (preview is approximate)' });
+    var g1 = h('optgroup', { label: 'Garmin built-in (fixed sizes, preview is approximate)' });
     GW.SYS_FONTS.forEach(function (s) { g1.appendChild(h('option', { value: s[0], text: s[0].replace('FONT_', '').replace(/_/g, ' ').toLowerCase() + ' · ~' + Math.round(s[1] * GW.SIZE / 260) + 'px' })); });
     sel.appendChild(g1);
-    if (GW.design.fonts.length) {
-      var g2 = h('optgroup', { label: 'Your bitmap fonts' });
-      GW.design.fonts.forEach(function (c) { g2.appendChild(h('option', { value: c.id, text: c.family + ' ' + c.px + 'px' })); });
+    // bitmap typefaces: one entry per typeface + weight + character set; the size is its own field
+    var reps = {}, order = [];
+    GW.design.fonts.forEach(function (c) {
+      var k = [c.family, c.weight, c.glyphs, c.spacing || 0, c.bold || 0].join('|');
+      if (!reps[k]) { reps[k] = c; order.push(k); }
+    });
+    function keyOf(c) { return [c.family, c.weight, c.glyphs, c.spacing || 0, c.bold || 0].join('|'); }
+    function label(c) { return (c.label || c.family) + (c.upload ? '' : ' ' + c.weight); }
+    if (order.length) {
+      var g2 = h('optgroup', { label: 'Your typefaces' });
+      order.forEach(function (k) {
+        var c = reps[k], twin = order.some(function (o) { return o !== k && label(reps[o]) === label(c); });
+        g2.appendChild(h('option', { value: c.id, text: label(c) + (twin ? ' · ' + GW.GLYPH_SETS[c.glyphs].label.split(' (')[0] : '') }));
+      });
       sel.appendChild(g2);
     }
-    sel.appendChild(h('option', { value: '__new', text: '＋ New bitmap font…' }));
-    sel.value = el[f.k];
+    sel.appendChild(h('option', { value: '__new', text: '＋ New typeface…' }));
+    var cur = GW.customFont(el[f.k]);
+    sel.value = cur && reps[keyOf(cur)] ? reps[keyOf(cur)].id : el[f.k];
     sel.addEventListener('change', function () {
-      if (sel.value === '__new') { sel.value = el[f.k]; GW.setTab('fonts'); return; }
-      el[f.k] = sel.value; fireChange(false); GW.touch(false);
+      if (sel.value === '__new') { sel.value = cur && reps[keyOf(cur)] ? reps[keyOf(cur)].id : el[f.k]; GW.setTab('fonts'); return; }
+      var oldPx = el.fontSize || (cur && cur.px), nf = GW.customFont(sel.value);
+      el[f.k] = sel.value;
+      if (nf && oldPx && nf.px !== oldPx) el.fontSize = oldPx;   // switching typeface keeps the size you had
+      fireChange(true); GW.touch(false);
     });
     return field(f.label, sel);
   }
