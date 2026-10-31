@@ -152,13 +152,13 @@
     function rp(x, y) { var dx = x - 140, dy = y - 140; return [140 + dx * c - dy * s, 140 + dx * s + dy * c]; }
     d.elements.forEach(function (e) {
       var p;
-      if (e.type === 'text' || e.type === 'sunicon' || (e.type === 'shape' && e.kind !== 'line')) { p = rp(e.x, e.y); e.x = p[0]; e.y = p[1]; e.rot = (e.rot || 0) + deg; }
+      if (e.type === 'text' || e.type === 'sunicon' || e.type === 'dfcell' || (e.type === 'shape' && e.kind !== 'line')) {
+        if (e.type === 'dfcell') { var ccx = e.x + e.w / 2, ccy = e.y + e.h / 2; p = rp(ccx, ccy); e.x = p[0] - e.w / 2; e.y = p[1] - e.h / 2; e.rot = (e.rot || 0) + deg; return; } p = rp(e.x, e.y); e.x = p[0]; e.y = p[1]; e.rot = (e.rot || 0) + deg; }
       else if (e.type === 'shape') { p = rp(e.x, e.y); e.x = p[0]; e.y = p[1]; p = rp(e.x2, e.y2); e.x2 = p[0]; e.y2 = p[1]; }
       else if (e.type === 'arc') { p = rp(e.cx, e.cy); e.cx = p[0]; e.cy = p[1]; e.start = (e.start + deg) % 360; }
     });
     return d;
   };
-  GW.rotatable = function (design) { return design.kind !== 'datafield' && design.elements.length > 0; };
   // 'none' | 'r30' | 'both'
   GW.rotChoice = function (design) { return design.rotate === 'r30' || design.rotate === 'both' ? design.rotate : 'none'; };
   // Resolves to an array of project results: upright, rotated 30 degrees to the right, or both.

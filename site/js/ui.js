@@ -509,6 +509,7 @@
   // ---------------------------------------------------------------- data field settings
   function renderFieldSettings(p) {
     var d = GW.design;
+    p.appendChild(rotationField(d));
     p.appendChild(field('Screen colours', segCtl([['light', 'Light'], ['auto', 'Match watch'], ['dark', 'Dark']], d.dfTheme || 'light', function (v) { d.dfTheme = v; GW.commit(true); })));
     p.appendChild(field('Units', segCtl([['watch', 'Match watch'], ['metric', 'Metric'], ['imperial', 'Imperial']], d.dfUnits || 'watch', function (v) { d.dfUnits = v; GW.commit(true); })));
     p.appendChild(h('h4', { text: 'Laps' }));
@@ -527,6 +528,7 @@
     var bg = h('button', { class: 'swatch', type: 'button' }, [h('i', { style: 'background:' + GW.q(d.bg) }), h('span', { text: GW.q(d.bg) })]);
     bg.addEventListener('click', function () { GW.pickColor(bg, d.bg, function (c) { d.bg = c; GW.commit(true); }); });
     p.appendChild(field('Background colour', bg));
+    p.appendChild(rotationField(d));
     var file = h('input', { type: 'file', accept: 'image/*', hidden: true });
     file.addEventListener('change', function () {
       if (!file.files[0]) return;
@@ -710,12 +712,9 @@
     return box;
   }
 
-  // The only place rotation shows up: upright, turned 30 degrees to the right, or both as separate watch faces.
-  function rotationPicker(onChange) {
-    var wrap = h('div', { class: 'f', style: 'margin:0 0 14px' });
-    wrap.appendChild(h('label', { text: 'Rotation' }));
-    wrap.appendChild(segCtl([['none', 'Upright'], ['r30', 'Rotated 30° to the right'], ['both', 'Both']], GW.rotChoice(GW.design), function (v) { GW.design.rotate = v; GW.history.commit(); onChange(); }));
-    return wrap;
+  // Rotation is a setting of the design (Face / Field tab): upright, turned 30 degrees to the right, or both as separate faces.
+  function rotationField(d) {
+    return field('Rotation', segCtl([['none', 'Upright'], ['r30', 'Rotated 30° right'], ['both', 'Both']], GW.rotChoice(d), function (v) { d.rotate = v; GW.commit(false); GW.renderPanel(); }));
   }
 
   GW.openExport = function () {
@@ -750,7 +749,6 @@
           ]));
         });
         body.appendChild(idBox);
-        if (GW.rotatable(GW.design)) body.appendChild(rotationPicker(function () { body.innerHTML = ''; body.appendChild(h('p', { class: 'muted', text: 'Building your project…' })); render(); }));
 
         var cur = null, codeBox = h('div', { class: 'code', text: '' }), tabs = h('div', { class: 'codetabs' }), vsel = null;
         function textFilesOf(r) { return r.files.filter(function (f) { return typeof f.data === 'string' && !/design\.json$|\.fnt$|\.gitignore$|launch\.json$/.test(f.path); }); }

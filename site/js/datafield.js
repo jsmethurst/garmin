@@ -78,6 +78,43 @@
   var PAD = 6, GAP = 3;   // GAP: space between a cell's label and its value
   function ax(el) { return el.align === 'L' ? el.x + PAD : (el.align === 'R' ? el.x + el.w - PAD : el.x + el.w / 2); }
 
+  // Rotated cell (the rotated export): the box, rules and zone fill become polygons / lines, and the text uses bitmap copies of the
+  // system fonts (the same typeface the preview draws them in), because Garmin's own fonts cannot be turned.
+  function bitmapOf(sysId) {
+    var f = GW.sysFont(sysId); if (!f) return sysId;
+    var id = 'bf_' + sysId.toLowerCase().replace('font_', '');
+    GW.previewFonts[id] = { id: id, family: f.family, weight: f.weight, px: f.px, glyphs: /NUMBER/.test(sysId) ? 'digits' : 'full', spacing: 0 };
+    return id;
+  }
+  function genRot(el, cg, L, id) {
+    var N = Math.round, th = GW.rad(el.rot), c = Math.cos(th), sn = Math.sin(th), cx = el.x + el.w / 2, cy = el.y + el.h / 2, out = [];
+    function P(px, py) { var dx = px - cx, dy = py - cy; return [cx + dx * c - dy * sn, cy + dx * sn + dy * c]; }
+    function pt(p) { return 'dfx(' + N(p[0]) + '), dfy(' + N(p[1]) + ')'; }
+    var box = [P(el.x, el.y), P(el.x + el.w, el.y), P(el.x + el.w, el.y + el.h), P(el.x, el.y + el.h)];
+    function poly() { return 'dc.fillPolygon([' + box.map(function (p) { return '[' + pt(p) + ']'; }).join(', ') + ']);'; }
+    out.push('var fg = ' + (el.color ? GW.mcColor(el.color) : '_dFg') + ';', 'var lab = ' + (el.lcolor ? GW.mcColor(el.lcolor) : '_dLab') + ';');
+    if (L.hasV) out.push('var s = dfStr(' + id + ');');
+    if (el.fill) out.push('dc.setColor(' + GW.mcColor(el.fill) + ', ' + GW.mcColor(el.fill) + ');', poly());
+    if (el.zone && (el.src === 'hr' || el.src === 'zone')) {
+      out.push('var z = dfZone();', 'if (z >= 1) {', '    dc.setColor(DF_ZFILL[z - 1], DF_ZFILL[z - 1]);', '    ' + poly(), '    fg = (z == 5) ? 0xFFFFFF : 0x000000;', '    lab = fg;', '}');
+    }
+    if (el.bT || el.bB || el.bL || el.bR) {
+      out.push('dc.setPenWidth(1);', 'dc.setColor(' + (el.bcolor ? GW.mcColor(el.bcolor) : '_dLine') + ', Graphics.COLOR_TRANSPARENT);');
+      [[el.bT, 0, 1], [el.bR, 1, 2], [el.bB, 3, 2], [el.bL, 0, 3]].forEach(function (b) { if (b[0]) out.push('dc.drawLine(' + pt(box[b[1]]) + ', ' + pt(box[b[2]]) + ');'); });
+    }
+    var just = { L: 0, C: 1, R: 2 }[el.align] == null ? 1 : { L: 0, C: 1, R: 2 }[el.align];
+    function text(fontId, str, color, localY) {
+      var bid = bitmapOf(fontId), met = GW.fontMetrics(GW.customFont(bid)), k = (met.asc - met.desc) / 2, rf = cg.rotFont(bid, el.rot);
+      var p = P(ax(el), localY), ax2 = p[0] - k * sn, ay2 = p[1] + k * c;
+      cg.helper('rotTxt');
+      out.push('dc.setColor(' + color + ', Graphics.COLOR_TRANSPARENT);',
+        'rotTxt(dc, ' + rf.ref + ', ' + rf.adv + ', ' + rf.m + ', ' + str + ', dfx(' + N(ax2) + ') + ' + (ax2 - N(ax2)).toFixed(1) + ', dfy(' + N(ay2) + ') + ' + (ay2 - N(ay2)).toFixed(1) + ', ' + just + ');');
+    }
+    if (L.hasL) text(el.lfont, JSON.stringify(el.label), 'lab', L.ly);
+    if (L.hasV) text(el.vfont, 's', 'fg', L.vy);
+    return out;
+  }
+
   T.dfcell = {
     label: 'Data cell', icon: '▭',
     defaults: function () {
@@ -88,6 +125,10 @@
     box: function (el) { return { x: el.x, y: el.y, w: el.w, h: el.h }; },
     hit: function (el, x, y) { return x >= el.x && x <= el.x + el.w && y >= el.y && y <= el.y + el.h; },
     draw: function (ctx, el, env) {
+      if (el.rot) {   // rotated copy (export option): turn the whole cell about its own centre
+        ctx.save(); ctx.translate(el.x + el.w / 2, el.y + el.h / 2); ctx.rotate(GW.rad(el.rot)); ctx.translate(-(el.x + el.w / 2), -(el.y + el.h / 2));
+        T.dfcell.draw(ctx, Object.assign({}, el, { rot: 0 }), env); ctx.restore(); return;
+      }
       var d = GW.design, th = theme(d), s = env.sim;
       var fg = el.color || th.fg, lab = el.lcolor || th.lab;
       if (el.fill) { ctx.fillStyle = q(el.fill); ctx.fillRect(el.x, el.y, el.w, el.h); }
@@ -141,6 +182,7 @@
       cg.helper('dfd');
       cg.hook('begin', 'dfBegin(dc);'); cg.hook('init', 'dfInit();'); cg.hook('compute', 'dfCompute(info);'); cg.hook('lap', 'dfLap();'); cg.hook('reset', 'dfReset();');
       var N = Math.round, L = layout(el), id = BY[el.src] ? BY[el.src][1] : 0, out = [];
+      if (el.rot) return genRot(el, cg, L, id);
       var cx = N(el.x), cy = N(el.y), cw = N(el.w), ch = N(el.h);
       out.push('var x = dfx(' + cx + ');', 'var y = dfy(' + cy + ');', 'var w = dfs(' + cw + ');', 'var h = dfs(' + ch + ');');
       out.push('var fg = ' + (el.color ? GW.mcColor(el.color) : '_dFg') + ';', 'var lab = ' + (el.lcolor ? GW.mcColor(el.lcolor) : '_dLab') + ';');
