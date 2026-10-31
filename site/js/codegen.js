@@ -122,7 +122,7 @@
       imports: ['Toybox.UserProfile', 'Toybox.Time'],
       members: ['    var _laT = 0;', '    var _laKm = "--";', '    var _laPace = "--";'],
       code: 'function lastRefresh() {\n        var now = Time.now().value();\n        if (_laT != 0 && now - _laT < 60) { return; }\n        _laT = now;\n        _laKm = "--";\n        _laPace = "--";\n' +
-        '        if (!(UserProfile has :getUserActivityHistory)) { return; }\n        var it = UserProfile.getUserActivityHistory();\n        var a = (it != null) ? it.next() : null;\n' +
+        '        if (!(UserProfile has :getUserActivityHistory)) { return; }\n        var it = UserProfile.getUserActivityHistory();\n        var a = (it != null) ? it.next() : null;\n        var first = a;\n        var bt = 0;\n        var n = 0;\n        // the order of the history is not guaranteed, so look at every entry and keep the one that started last\n        while (a != null && n < 80) {\n            if (a.startTime != null && a.startTime.value() > bt) {\n                bt = a.startTime.value();\n                first = a;\n            }\n            a = it.next();\n            n += 1;\n        }\n        a = first;\n' +
         '        if (a == null || a.distance == null || a.distance <= 0) { return; }\n        _laKm = (a.distance / 1000.0).format("%.1f");\n' +
         '        if (a.duration != null && a.distance >= 100) {\n            var s = (a.duration.value() / (a.distance / 1000.0)).toNumber();\n            _laPace = (s / 60).format("%d") + ":" + (s % 60).format("%02d");\n        }\n    }\n\n' +
         '    function lastKmStr() {\n        lastRefresh();\n        return _laKm;\n    }\n\n    function lastPaceStr() {\n        lastRefresh();\n        return _laPace;\n    }'
