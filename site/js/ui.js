@@ -460,20 +460,24 @@
     return el;
   };
   GW.loadImageFile = loadImageFile;
-  var DFQUICK = [
-    ['Timer', 'timer', 'FONT_NUMBER_MEDIUM'], ['Distance', 'dist', 'FONT_NUMBER_MEDIUM'], ['Pace', 'pace', 'FONT_NUMBER_MEDIUM'], ['Average pace', 'avgPace', 'FONT_NUMBER_MEDIUM'],
-    ['Lap pace', 'lapPace', 'FONT_NUMBER_MEDIUM'], ['Last lap', 'lastLap', 'FONT_NUMBER_MEDIUM'], ['Heart rate', 'hr', 'FONT_NUMBER_MEDIUM'], ['Cadence', 'cad', 'FONT_NUMBER_MEDIUM'],
-    ['Power', 'power', 'FONT_NUMBER_MEDIUM'], ['Time of day', 'tod', 'FONT_NUMBER_MEDIUM']
-  ];
+  // quick add: every data source, grouped (same groups as the "Shows" menu)
+  function dfQuickList() {
+    return GW.DF_GROUPS.map(function (g) {
+      return [g, GW.DF_SOURCES.filter(function (x) { return x[3] === g && x[0] !== 'none'; })];
+    }).filter(function (x) { return x[1].length; });
+  }
   GW.renderAdd = function () {
     var chips = $('quickChips'); chips.innerHTML = '';
     if (GW.modeOf() === 'field') {
-      DFQUICK.forEach(function (q) {
-        chips.appendChild(h('button', { class: 'chip', text: q[0], onclick: function () {
-          // the new cell snaps into the chosen slot and fills it, so a heart-rate color covers the whole field
-          var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h);
-          GW.addElement('dfcell', { name: q[0], src: q[1], label: q[0].toUpperCase(), vfont: ft.v, lfont: ft.l, dx: ft.dx, zone: q[1] === 'hr', x: 0, y: 0, w: sl.w, h: sl.h });
-        } }));
+      dfQuickList().forEach(function (grp) {
+        chips.appendChild(h('div', { class: 'muted small', style: 'width:100%;margin:8px 0 2px', text: grp[0] }));
+        grp[1].forEach(function (s) {
+          chips.appendChild(h('button', { class: 'chip', text: s[2], onclick: function () {
+            // the new cell snaps into the chosen slot and fills it, so a heart-rate color covers the whole field
+            var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h);
+            GW.addElement('dfcell', { name: s[2], src: s[0], label: s[2].toUpperCase(), vfont: ft.v, lfont: ft.l, dx: ft.dx, zone: s[0] === 'hr', x: 0, y: 0, w: sl.w, h: sl.h });
+          } }));
+        });
       });
       var gf = $('addGrid'); gf.innerHTML = '';
       ['dfcell', 'shape'].forEach(function (k) {

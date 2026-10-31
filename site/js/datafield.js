@@ -9,17 +9,20 @@
   // ---------- sources: key -> [id used by the Monkey C, label, group] ----------
   GW.DF_SOURCES = [
     ['none', 0, 'Label only (no value)', 'Other'],
-    ['timer', 1, 'Timer', 'Time'], ['elapsed', 2, 'Elapsed time', 'Time'], ['tod', 3, 'Time of day', 'Time'],
-    ['dist', 4, 'Distance', 'Distance'], ['lapDist', 5, 'Lap distance', 'Distance'], ['ascent', 20, 'Total ascent', 'Distance'], ['alt', 19, 'Altitude', 'Distance'],
-    ['pace', 6, 'Pace', 'Pace and speed'], ['avgPace', 7, 'Average pace', 'Pace and speed'], ['lapPace', 8, 'Lap pace', 'Pace and speed'], ['lastLap', 9, 'Last lap pace', 'Pace and speed'],
-    ['speed', 17, 'Speed', 'Pace and speed'], ['avgSpeed', 18, 'Average speed', 'Pace and speed'],
-    ['lapNo', 10, 'Lap number', 'Laps'],
+    ['timer', 1, 'Timer', 'Time'], ['elapsed', 2, 'Elapsed time', 'Time'], ['tod', 3, 'Time of day', 'Time'], ['lapTime', 23, 'Lap time', 'Time'],
+    ['dist', 4, 'Distance', 'Distance'],
+    ['pace', 6, 'Pace', 'Pace and speed'], ['avgPace', 7, 'Average pace', 'Pace and speed'],
+    ['speed', 17, 'Speed', 'Pace and speed'], ['avgSpeed', 18, 'Average speed', 'Pace and speed'], ['maxSpeed', 25, 'Max speed', 'Pace and speed'],
+    ['lapNo', 10, 'Lap number', 'Laps'], ['lapDist', 5, 'Lap distance', 'Laps'], ['lapPace', 8, 'Lap pace', 'Laps'], ['lastLap', 9, 'Last lap pace', 'Laps'],
     ['hr', 11, 'Heart rate', 'Heart rate'], ['zone', 12, 'Heart rate zone', 'Heart rate'], ['avgHr', 13, 'Average heart rate', 'Heart rate'], ['maxHr', 14, 'Max heart rate', 'Heart rate'],
-    ['cad', 15, 'Cadence', 'Other'], ['power', 16, 'Power', 'Other'], ['cal', 21, 'Calories', 'Other'], ['batt', 22, 'Watch battery', 'Other']
+    ['cad', 15, 'Cadence', 'Cadence'], ['avgCad', 26, 'Average cadence', 'Cadence'], ['maxCad', 27, 'Max cadence', 'Cadence'],
+    ['power', 16, 'Power', 'Power'], ['avgPower', 28, 'Average power', 'Power'], ['maxPower', 29, 'Max power', 'Power'],
+    ['alt', 19, 'Altitude', 'Elevation'], ['ascent', 20, 'Total ascent', 'Elevation'], ['descent', 24, 'Total descent', 'Elevation'], ['pressure', 32, 'Air pressure (hPa)', 'Elevation'],
+    ['cal', 21, 'Calories', 'Body and watch'], ['te', 30, 'Training effect', 'Body and watch'], ['steps', 31, 'Steps today', 'Body and watch'], ['batt', 22, 'Watch battery %', 'Body and watch']
   ];
   var BY = {}; GW.DF_SOURCES.forEach(function (s) { BY[s[0]] = s; });
   GW.DF_BY = BY;
-  GW.DF_GROUPS = ['Time', 'Distance', 'Pace and speed', 'Laps', 'Heart rate', 'Other'];
+  GW.DF_GROUPS = ['Time', 'Distance', 'Pace and speed', 'Laps', 'Heart rate', 'Cadence', 'Power', 'Elevation', 'Body and watch', 'Other'];
 
   // ---------- preview values (mirrors dfStr in the Monkey C) ----------
   function pace(sec, ku) { if (!(sec > 0)) return '--:--'; var p = sec / ku; if (p > 3599) return '--:--'; var s = Math.round(p); return Math.floor(s / 60) + ':' + pad2(s % 60); }
@@ -54,6 +57,16 @@
       case 'ascent': return String(Math.round(s.runAscent * (ku < 1 ? 3.28084 : 1)));
       case 'cal': return String(Math.round(s.runCal));
       case 'batt': return String(Math.round(s.battery));
+      case 'lapTime': return clock(s.lapKm * s.lapPace);
+      case 'maxSpeed': return (3600 / (s.runPace * 0.82) * ku).toFixed(1);
+      case 'avgCad': return String(Math.round(s.runCad - 3));
+      case 'maxCad': return String(Math.round(s.runCad + 14));
+      case 'avgPower': return String(Math.round(s.runPow - 12));
+      case 'maxPower': return String(Math.round(s.runPow + 140));
+      case 'descent': return String(Math.round(s.runAscent * 0.8 * (ku < 1 ? 3.28084 : 1)));
+      case 'pressure': return '1013';
+      case 'te': return '3.2';
+      case 'steps': return String(Math.round(s.steps));
     }
     return '';
   }
@@ -175,7 +188,7 @@
     },
     gen: function (el, cg) {
       var d = cg.design;
-      ['Toybox.Activity', 'Toybox.UserProfile'].forEach(cg.imp);
+      ['Toybox.Activity', 'Toybox.UserProfile', 'Toybox.ActivityMonitor'].forEach(cg.imp);
       cg.perm('UserProfile');
       cg.member('    const DF_THEME = ' + ({ light: 0, auto: 1, dark: 2 }[d.dfTheme] || 0) + ';');
       cg.member('    const DF_UNITS = ' + ({ watch: 0, metric: 1, imperial: 2 }[d.dfUnits] || 0) + ';');
@@ -228,6 +241,7 @@
       '    private var _dLapT0 = 0;', '    private var _dLapD0 = 0.0;', '    private var _dLapNo = 1;', '    private var _dLast = -1.0;',
       '    private var _dHr = null;', '    private var _dAvgHr = null;', '    private var _dMaxHr = null;', '    private var _dCad = null;', '    private var _dPow = null;',
       '    private var _dSpd = null;', '    private var _dAvgSpd = null;', '    private var _dAlt = null;', '    private var _dAsc = null;', '    private var _dCal = null;',
+      '    private var _dMaxSpd = null;', '    private var _dAvgCad = null;', '    private var _dMaxCad = null;', '    private var _dAvgPow = null;', '    private var _dMaxPow = null;', '    private var _dDesc = null;', '    private var _dTE = null;', '    private var _dPres = null;',
       '    private var _dZones = null;', '    private var _dKu = 1.0;', '    private var _dK = 1.0;', '    private var _dOx = 0.0;', '    private var _dOy = 0.0;',
       '    private var _dFg = 0x000000;', '    private var _dLab = 0x555555;', '    private var _dLine = 0xAAAAAA;'
     ],
@@ -265,6 +279,14 @@
       '        _dAlt = info.altitude;',
       '        _dAsc = info.totalAscent;',
       '        _dCal = info.calories;',
+      '        _dMaxSpd = info.maxSpeed;',
+      '        _dAvgCad = info.averageCadence;',
+      '        _dMaxCad = info.maxCadence;',
+      '        _dAvgPow = info.averagePower;',
+      '        _dMaxPow = info.maxPower;',
+      '        _dDesc = info.totalDescent;',
+      '        _dTE = info.trainingEffect;',
+      '        _dPres = info.ambientPressure;',
       '        _dElapsed = (info.elapsedTime != null) ? info.elapsedTime : 0;',
       '        var t = (info.timerTime != null) ? info.timerTime : 0;',
       '        var d = (info.elapsedDistance != null) ? info.elapsedDistance : 0.0;',
@@ -365,6 +387,19 @@
       '        if (k == 20) { return (_dAsc == null) ? "--" : (_dAsc * ((_dKu < 1.0) ? 3.28084 : 1.0)).toNumber().format("%d"); }',
       '        if (k == 21) { return dfInt(_dCal); }',
       '        if (k == 22) { return (System.getSystemStats().battery + 0.5).toNumber().format("%d"); }',
+      '        if (k == 23) { return dfTime(_dTimer - _dLapT0); }',
+      '        if (k == 24) { return (_dDesc == null) ? "--" : (_dDesc * ((_dKu < 1.0) ? 3.28084 : 1.0)).toNumber().format("%d"); }',
+      '        if (k == 25) { return (_dMaxSpd == null) ? "--" : (_dMaxSpd * 3.6 * _dKu).format("%.1f"); }',
+      '        if (k == 26) { return dfInt(_dAvgCad); }',
+      '        if (k == 27) { return dfInt(_dMaxCad); }',
+      '        if (k == 28) { return dfInt(_dAvgPow); }',
+      '        if (k == 29) { return dfInt(_dMaxPow); }',
+      '        if (k == 30) { return (_dTE == null) ? "--" : _dTE.format("%.1f"); }',
+      '        if (k == 31) {',
+      '            var st = ActivityMonitor.getInfo().steps;',
+      '            return dfInt(st);',
+      '        }',
+      '        if (k == 32) { return (_dPres == null) ? "--" : (_dPres / 100.0).toNumber().format("%d"); }',
       '        return "";',
       '    }',
       '',
