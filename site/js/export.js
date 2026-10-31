@@ -173,7 +173,7 @@
       var slots = Object.keys(used).map(Number).filter(function (i) { return L.slots[i]; }).sort();
       if (!slots.length) slots = [design.dfSlot || 0];
       var multi = L.slots.length > 1;
-      if (design.dfFree) { jobs.push({ flat: true, tilt: ch === 'r30' ? 30 : 0, key: ch === 'r30' ? 'r30' : 'free', label: 'whole screen (use the 1 field layout)' }); }
+      if (multi && GW.dfFree(design)) { jobs.push({ flat: true, tilt: ch === 'r30' ? 30 : 0, key: ch === 'r30' ? 'r30' : 'free', label: 'whole screen (use the 1 field layout)' }); }
       else {
       // upright: one project per field of the layout
       if (ch !== 'r30') slots.forEach(function (i) { jobs.push({ slot: i, tilt: 0, multi: multi, key: multi ? 's' + i : 'main', label: multi ? 'field ' + (i + 1) : 'upright' }); });

@@ -546,7 +546,7 @@
     card.appendChild(h('h3', { text: 'Screen settings' }));
     var rest = h('div', { style: 'display:flex;flex-direction:column;gap:10px' });
     if (GW.DF_LAYOUTS[d.dfLayout] && GW.DF_LAYOUTS[d.dfLayout].slots.length > 1)
-      rest.appendChild(field('Fields', segCtl([['sep', 'Separate (Garmin layout)'], ['free', 'Free (one full-screen field)']], d.dfFree ? 'free' : 'sep', function (v) { d.dfFree = v === 'free'; GW.commit(true); })));
+      rest.appendChild(field('Fields', segCtl([['sep', 'Separate (Garmin layout)'], ['free', 'Free (one full-screen field)']], GW.dfFree(d) ? 'free' : 'sep', function (v) { d.dfFree = v === 'free'; GW.commit(true); })));
     rest.appendChild(rotationField(d));
     rest.appendChild(field('Screen colors', segCtl([['light', 'Light'], ['auto', 'Match watch'], ['dark', 'Dark']], d.dfTheme || 'light', function (v) { d.dfTheme = v; GW.commit(true); })));
     rest.appendChild(field('Units', segCtl([['watch', 'Match watch'], ['metric', 'Metric'], ['imperial', 'Imperial']], d.dfUnits || 'watch', function (v) { d.dfUnits = v; GW.commit(true); })));

@@ -12,9 +12,9 @@
       ctx.fillStyle = GW.q(GW.dfTheme(design).bg); ctx.fillRect(0, 0, S, S);   // the gaps between fields show the screen's own color, as on the watch
       L.slots.forEach(function (r, i) {
         var els = design.elements.filter(function (e) { return !e.hidden && GW.elSlot(e, design) === i; });
-        if (!els.length) { if (design.dfFree) return; ctx.fillStyle = '#d8d8d8'; ctx.fillRect(r[0], r[1], r[2], r[3]); return; }   // fields with nothing in them stay dim
+        if (!els.length) { if (GW.dfFree(design)) return; ctx.fillStyle = '#d8d8d8'; ctx.fillRect(r[0], r[1], r[2], r[3]); return; }   // fields with nothing in them stay dim
         ctx.save(); ctx.translate(r[0], r[1]);
-        if (!design.dfFree) { ctx.beginPath(); ctx.rect(0, 0, r[2], r[3]); ctx.clip(); }   // separate fields are cut off at their own edges on the watch
+        if (!GW.dfFree(design)) { ctx.beginPath(); ctx.rect(0, 0, r[2], r[3]); ctx.clip(); }   // separate fields are cut off at their own edges on the watch
         ctx.fillStyle = GW.q(GW.dfTheme(design).bg); ctx.fillRect(0, 0, r[2], r[3]);
         els.forEach(function (el) {
           var t = GW.types[el.type]; if (!t) return;

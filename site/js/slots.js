@@ -36,6 +36,8 @@
       ['bT', 'bB', 'bL', 'bR'].forEach(function (k) { if (E[k]) el[k] = true; });
     });
   };
+  // several fields drawn as one full-screen field (cells are not cut off at their field's edge) unless set to Separate
+  GW.dfFree = function (design) { return design.dfFree !== false; };
   GW.slotRect = function (design, i) {
     var L = GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0], r = L.slots[i] || L.slots[0];
     return { x: r[0], y: r[1], w: r[2], h: r[3] };
