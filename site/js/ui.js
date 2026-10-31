@@ -84,7 +84,7 @@
   GW.renderPanel = function () {
     var p = $('panel'); p.innerHTML = '';
     if (tab === 'inspect') renderInspector(p);
-    else if (tab === 'face') (GW.modeOf() === 'field' ? renderFieldSettings : renderFace)(p);
+    else if (tab === 'face') renderFace(p);
     else renderSim(p);
   };
 
@@ -526,8 +526,15 @@
     var card = $('slotCard'); if (!card) return;
     card.innerHTML = '';
     if (GW.modeOf() !== 'field') return;
+    var d = GW.design;
     card.appendChild(h('h3', { text: 'Screen layout' }));
-    card.appendChild(slotPicker(GW.design));
+    card.appendChild(slotPicker(d));
+    // whole-field settings live here, with the layout they belong to
+    var rest = h('div', { style: 'display:flex;flex-direction:column;gap:10px;margin-top:12px' });
+    if (GW.dfSlot(d).full) rest.appendChild(rotationField(d));
+    rest.appendChild(field('Screen colours', segCtl([['light', 'Light'], ['auto', 'Match watch'], ['dark', 'Dark']], d.dfTheme || 'light', function (v) { d.dfTheme = v; GW.commit(true); })));
+    rest.appendChild(field('Units', segCtl([['watch', 'Match watch'], ['metric', 'Metric'], ['imperial', 'Imperial']], d.dfUnits || 'watch', function (v) { d.dfUnits = v; GW.commit(true); })));
+    card.appendChild(rest);
   };
   // Fonts and sideways shift for a data cell that fills a slot: the biggest number font that still fits the part of the slot
   // that is visible on the round screen, with the text centred on that visible part.
@@ -554,12 +561,6 @@
   }
 
   // ---------------------------------------------------------------- data field settings
-  function renderFieldSettings(p) {
-    var d = GW.design;
-    if (GW.dfSlot(d).full) p.appendChild(rotationField(d));
-    p.appendChild(field('Screen colours', segCtl([['light', 'Light'], ['auto', 'Match watch'], ['dark', 'Dark']], d.dfTheme || 'light', function (v) { d.dfTheme = v; GW.commit(true); })));
-    p.appendChild(field('Units', segCtl([['watch', 'Match watch'], ['metric', 'Metric'], ['imperial', 'Imperial']], d.dfUnits || 'watch', function (v) { d.dfUnits = v; GW.commit(true); })));
-  }
 
   // ---------------------------------------------------------------- face tab
   function renderFace(p) {

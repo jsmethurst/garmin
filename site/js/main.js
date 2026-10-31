@@ -168,7 +168,8 @@
     if (k === 'arrowleft') dx = -step; else if (k === 'arrowright') dx = step; else if (k === 'arrowup') dy = -step; else if (k === 'arrowdown') dy = step; else return;
     if (t && t.tagName === 'INPUT') return; // let range sliders use arrows
     e.preventDefault();
-    GW.posPairs(el).forEach(function (p) { el[p[0]] += dx; el[p[1]] += dy; });
+    if (e.altKey && el.type === 'dfcell') { el.dx = (el.dx || 0) + dx; el.dy = (el.dy || 0) + dy; }   // Alt + arrows nudge what is inside a field, not the field
+    else GW.posPairs(el).forEach(function (p) { el[p[0]] += dx; el[p[1]] += dy; });
     GW.emit('drag');
     clearTimeout(nudgeT); nudgeT = setTimeout(function () { GW.history.commit(); }, 450);
   });
@@ -188,6 +189,7 @@
     $('designName').placeholder = field ? 'Name your data field' : 'Name your watchface';
     $('designName').setAttribute('aria-label', field ? 'Data field name' : 'Watchface name');
         document.title = (field ? 'Data Fields' : 'Watch Faces') + ' · Garmin Studio';
+    if (field && document.querySelector('#tabs button.on').dataset.tab === 'face') GW.setTab('inspect');
     GW.renderAdd();
   }
   GW.setMode = function (m) {

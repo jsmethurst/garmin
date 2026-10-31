@@ -66,7 +66,7 @@
   // vertical layout shared by preview and generator: returns y centres of label and value
   function layout(el) {
     var hasV = el.src !== 'none', hasL = el.labelPos !== 'none' && el.label !== '';
-    var lh = hasL ? fh(el.lfont) : 0, vh = hasV ? fh(el.vfont) : 0, gap = hasL && hasV ? GAP : 0, top = el.y + (el.h - lh - vh - gap) / 2;
+    var lh = hasL ? fh(el.lfont) : 0, vh = hasV ? fh(el.vfont) : 0, gap = hasL && hasV ? GAP : 0, top = el.y + (el.h - lh - vh - gap) / 2 + (el.dy || 0);
     return { hasV: hasV, hasL: hasL, gap: gap, ly: top + (el.labelPos === 'below' ? vh + gap : 0) + lh / 2, vy: top + (el.labelPos === 'below' ? 0 : lh + gap) + vh / 2 };
   }
   // the preview's number fonts are drawn a little larger than Garmin's, so nudge them apart (preview only)
@@ -170,7 +170,7 @@
       f.push({ t: 'h', label: 'Position and size' });
       f.push({ t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (left)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (top)', min: -50, max: 330 }] });
       f.push({ t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 10, max: 360 }, { k: 'h', t: 'num', label: 'Height', min: 10, max: 360 }] });
-      f.push({ k: 'dx', t: 'numopt', label: 'Shift text sideways (px)', ph: '0' });
+      f.push({ t: 'row', fields: [{ k: 'dx', t: 'numopt', label: 'Shift text X', ph: '0' }, { k: 'dy', t: 'numopt', label: 'Shift text Y', ph: '0' }] });
       return f;
     },
     gen: function (el, cg) {
@@ -207,7 +207,7 @@
       var tx = (el.align === 'L' ? 'x + dfs(' + PAD + ')' : (el.align === 'R' ? 'x + w - dfs(' + PAD + ')' : 'x + w / 2')) + (el.dx ? ' + dfs(' + N(el.dx) + ')' : '');
       var below = el.labelPos === 'below';
       out.push('var lh = ' + (L.hasL ? 'dc.getFontHeight(' + lf + ')' : '0') + ';', 'var vh = ' + (L.hasV ? 'dc.getFontHeight(' + vf + ')' : '0') + ';',
-        'var g = ' + (L.gap ? 'dfs(' + L.gap + ')' : '0') + ';', 'var top = y + (h - lh - vh - g) / 2;');
+        'var g = ' + (L.gap ? 'dfs(' + L.gap + ')' : '0') + ';', 'var top = y + (h - lh - vh - g) / 2' + (el.dy ? ' + dfs(' + Math.round(el.dy) + ')' : '') + ';');
       if (L.hasL) {
         out.push('dc.setColor(lab, Graphics.COLOR_TRANSPARENT);',
           'dc.drawText(' + tx + ', top + ' + (below ? 'vh + g + ' : '') + 'lh / 2, ' + lf + ', ' + JSON.stringify(el.label) + ', ' + just + ');');
