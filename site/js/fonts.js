@@ -26,6 +26,7 @@
     { family: 'Chakra Petch', weights: [600] },
     { family: 'Press Start 2P', weights: [400] },
     { family: 'Libre Baskerville', weights: [700] },
+    { family: 'Courier Prime', weights: [400, 700] },
     { family: 'DM Sans', weights: [500, 700] }
   ];
   GW.GLYPH_SETS = {
@@ -55,6 +56,14 @@
     var fs = GW.design.fonts;
     for (var i = 0; i < fs.length; i++) if (fs[i].id === id) return fs[i];
     return GW.previewFonts[id] || null;
+  };
+  // A text element can keep its typeface but use its own size: this derives (and registers) that variant and returns its id.
+  GW.fontFor = function (el) {
+    var f = GW.customFont(el.font), px = Math.round(el.fontSize || 0);
+    if (!f || !px || px === f.px) return el.font;
+    var id = f.id.replace(/_s\d+$/, '') + '_s' + px;
+    GW.previewFonts[id] = Object.assign({}, f, { id: id, px: px });
+    return id;
   };
   GW.fontCss = function (f) { return (f.weight || 400) + ' ' + f.px + 'px "' + f.family + '"'; };
 

@@ -38,11 +38,11 @@
     draw: function (ctx, el, env) {
       if (el.rot) { // rotated copy (export option): turn the text about its own anchor point
         ctx.save(); ctx.translate(el.x, el.y); ctx.rotate(rad(el.rot));
-        GW.drawText(ctx, el.font, T.text.string(el, env), 0, 0, el.justify, q(el.color)); ctx.restore(); return;
+        GW.drawText(ctx, GW.fontFor(el), T.text.string(el, env), 0, 0, el.justify, q(el.color)); ctx.restore(); return;
       }
-      GW.drawText(ctx, el.font, T.text.string(el, env), el.x, el.y, el.justify, q(el.color));
+      GW.drawText(ctx, GW.fontFor(el), T.text.string(el, env), el.x, el.y, el.justify, q(el.color));
     },
-    box: function (el, env, ctx) { return GW.layoutText(ctx, el.font, T.text.string(el, env), el.x, el.y, el.justify); },
+    box: function (el, env, ctx) { return GW.layoutText(ctx, GW.fontFor(el), T.text.string(el, env), el.x, el.y, el.justify); },
     fields: function (el) {
       var src = GW.sources[el.source] || {}, o = src.opts || [], f = [];
       f.push({ k: 'source', t: 'source', label: 'Shows' });
@@ -57,7 +57,9 @@
       if (o.indexOf('unit_dist') >= 0) f.push({ k: 'unit', t: 'seg', label: 'Unit', opts: [['auto', 'Watch'], ['km', 'km'], ['mi', 'mi']] });
       if (o.indexOf('unit_alt') >= 0) f.push({ k: 'unit', t: 'seg', label: 'Unit', opts: [['auto', 'Watch'], ['m', 'm'], ['ft', 'ft']] });
       f.push({ t: 'h', label: 'Style' });
-      f.push({ k: 'font', t: 'font', label: 'Font' });
+      f.push({ k: 'font', t: 'font', label: 'Typeface' });
+      var bf = GW.customFont(el.font);
+      if (bf) f.push({ k: 'fontSize', t: 'numopt', label: 'Size (px)', ph: String(bf.px) });
       f.push({ k: 'color', t: 'color', label: 'Colour' });
       f.push({ k: 'justify', t: 'seg', label: 'Align on X', opts: [['L', 'Left'], ['C', 'Centre'], ['R', 'Right']] });
       f.push({ t: 'row', fields: [{ k: 'prefix', t: 'text', label: 'Before' }, { k: 'suffix', t: 'text', label: 'After' }] });
@@ -76,9 +78,9 @@
       var expr = parts.join(' + ');
       if (el.upper) expr = '(' + expr + ').toUpper()';
       var j = { L: 'LEFT', C: 'CENTER', R: 'RIGHT' }[el.justify] || 'CENTER';
-      var cf = el.rot && GW.customFont(el.font);
+      var fid = GW.fontFor(el), cf = el.rot && GW.customFont(fid);
       if (cf) { // bitmap fonts cannot be rotated on the watch: use a copy whose glyph images are pre-rotated and place them one by one
-        var met = GW.fontMetrics(cf), k = (met.asc - met.desc) / 2, th = rad(el.rot), rf = cg.rotFont(el.font, el.rot);
+        var met = GW.fontMetrics(cf), k = (met.asc - met.desc) / 2, th = rad(el.rot), rf = cg.rotFont(fid, el.rot);
         cg.helper('rotTxt');
         return [
           'dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);',
@@ -87,7 +89,7 @@
       }
       return [
         'dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);',
-        'dc.drawText(' + N(el.x) + ', ' + N(el.y) + ', ' + cg.font(el.font) + ', ' + expr + ', Graphics.TEXT_JUSTIFY_' + j + ' | Graphics.TEXT_JUSTIFY_VCENTER);'
+        'dc.drawText(' + N(el.x) + ', ' + N(el.y) + ', ' + cg.font(fid) + ', ' + expr + ', Graphics.TEXT_JUSTIFY_' + j + ' | Graphics.TEXT_JUSTIFY_VCENTER);'
       ];
     }
   };
