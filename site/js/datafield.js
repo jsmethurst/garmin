@@ -177,6 +177,8 @@
       cg.perm('UserProfile');
       cg.member('    const DF_THEME = ' + ({ light: 0, auto: 1, dark: 2 }[d.dfTheme] || 0) + ';');
       cg.member('    const DF_UNITS = ' + ({ watch: 0, metric: 1, imperial: 2 }[d.dfUnits] || 0) + ';');
+      var sl = GW.dfSlot(d);
+      cg.member('    const DF_W = ' + sl.w + ';'); cg.member('    const DF_H = ' + sl.h + ';');
       cg.member('    const DF_AUTO = ' + (d.dfAutoLap ? 'true' : 'false') + ';');
       cg.member('    const DF_LAP_M = ' + Math.max(100, Math.round(d.dfLapM || 1000)) + ';');
       cg.helper('dfd');
@@ -380,9 +382,11 @@
       '    function dfBegin(dc as Dc) as Void {',
       '        var w = dc.getWidth();',
       '        var h = dc.getHeight();',
-      '        _dK = ((w < h) ? w : h) / 280.0;',
-      '        _dOx = w / 2.0 - 140.0 * _dK;',
-      '        _dOy = h / 2.0 - 140.0 * _dK;',
+      '        var kx = w / DF_W.toFloat();',
+      '        var ky = h / DF_H.toFloat();',
+      '        _dK = (kx < ky) ? kx : ky;',
+      '        _dOx = (w - DF_W * _dK) / 2.0;',
+      '        _dOy = (h - DF_H * _dK) / 2.0;',
       '        var dark = (DF_THEME == 2) || (DF_THEME == 1 && getBackgroundColor() == Graphics.COLOR_BLACK);',
       '        _dFg = dark ? 0xFFFFFF : 0x000000;',
       '        _dLab = dark ? 0xAAAAAA : 0x555555;',

@@ -160,7 +160,10 @@
     return d;
   };
   // 'none' | 'r30' | 'both'
-  GW.rotChoice = function (design) { return design.rotate === 'r30' || design.rotate === 'both' ? design.rotate : 'none'; };
+  GW.rotChoice = function (design) {
+    if (design.kind === 'datafield' && !GW.dfSlot(design).full) return 'none';   // turning a field only makes sense when it fills the screen
+    return design.rotate === 'r30' || design.rotate === 'both' ? design.rotate : 'none';
+  };
   // Resolves to an array of project results: upright, rotated 30 degrees to the right, or both.
   GW.buildVariants = function (design) {
     var ch = GW.rotChoice(design), list = ch === 'r30' ? [30] : (ch === 'both' ? [0, 30] : [0]);

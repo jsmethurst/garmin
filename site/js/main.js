@@ -19,7 +19,8 @@
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
     ctx.scale(k, k);
     GW.renderDesign(ctx, GW.design, env);
-    overlay(env, k);
+    var so = slotOffset();
+    ctx.save(); ctx.translate(so.x, so.y); overlay(env, k); ctx.restore();
   }
   function overlay(env, k) {
     ctx.save();
@@ -59,9 +60,15 @@
   function safeBox(el) { try { return GW.elBox(el, ctx); } catch (e) { return null; } }
 
   // ---------- picking / dragging ----------
+  // a data field that does not fill the screen is edited in its own slot: its coordinates start at the slot's top left
+  function slotOffset() {
+    if (GW.design.kind !== 'datafield') return { x: 0, y: 0, w: GW.SIZE, h: GW.SIZE };
+    var s = GW.dfSlot(GW.design); return { x: s.x, y: s.y, w: s.w, h: s.h };
+  }
   function toDesign(e) {
     var r = cv.getBoundingClientRect();
-    return { x: (e.clientX - r.left) / r.width * GW.SIZE, y: (e.clientY - r.top) / r.height * GW.SIZE };
+    var so = slotOffset();
+    return { x: (e.clientX - r.left) / r.width * GW.SIZE - so.x, y: (e.clientY - r.top) / r.height * GW.SIZE - so.y };
   }
   function pick(x, y) {
     var els = GW.design.elements;
@@ -73,7 +80,7 @@
   }
   // Snap the moving element's edges and centre to the screen centre and to the edges / centres of the other elements.
   function snapMove(el, b, dx, dy) {
-    var T = 4, tx = [140], ty = [140];
+    var so = slotOffset(), T = 4, tx = [so.w / 2, 0, so.w], ty = [so.h / 2, 0, so.h];
     GW.design.elements.forEach(function (o) {
       if (o === el || o.hidden) return;
       var ob = safeBox(o); if (!ob || (ob.w >= 270 && ob.h >= 270)) return;   // skip full-screen elements (rings, hands)
@@ -180,8 +187,7 @@
     document.querySelector('#tabs [data-tab=face]').textContent = field ? 'Field' : 'Face';
     $('designName').placeholder = field ? 'Name your data field' : 'Name your watchface';
     $('designName').setAttribute('aria-label', field ? 'Data field name' : 'Watchface name');
-    $('btnPresets').textContent = field ? 'Layouts' : 'Presets';
-    document.title = (field ? 'Data Fields' : 'Watch Faces') + ' · Garmin Studio';
+        document.title = (field ? 'Data Fields' : 'Watch Faces') + ' · Garmin Studio';
     GW.renderAdd();
   }
   GW.setMode = function (m) {

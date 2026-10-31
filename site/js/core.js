@@ -174,6 +174,16 @@ window.GW = window.GW || {};
       try { localStorage.setItem(LKEY, JSON.stringify(list)); } catch (e) { return { ok: false, name: name }; }
       return { ok: true, updated: updated, name: name };
     },
+    // built-in layouts you removed from the list (kept in the browser; "restore" brings them back)
+    hidden: function (kind) { try { return (JSON.parse(localStorage.getItem('gw.hidden.v1') || '[]')).filter(function (h) { return h.kind === kind; }).map(function (h) { return lkey(h.name); }); } catch (e) { return []; } },
+    hide: function (name, kind) {
+      var all; try { all = JSON.parse(localStorage.getItem('gw.hidden.v1') || '[]'); } catch (e) { all = []; }
+      all.push({ name: name, kind: kind }); try { localStorage.setItem('gw.hidden.v1', JSON.stringify(all)); } catch (e) { }
+    },
+    restoreHidden: function (kind) {
+      var all; try { all = JSON.parse(localStorage.getItem('gw.hidden.v1') || '[]'); } catch (e) { all = []; }
+      try { localStorage.setItem('gw.hidden.v1', JSON.stringify(all.filter(function (h) { return h.kind !== kind; }))); } catch (e) { }
+    },
     remove: function (name, kind) {
       var list = GW.layouts.all().filter(function (l) { return !(l.kind === kind && lkey(l.name) === lkey(name)); });
       try { localStorage.setItem(LKEY, JSON.stringify(list)); } catch (e) { }

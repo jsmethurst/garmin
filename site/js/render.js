@@ -6,7 +6,12 @@
     var S = GW.SIZE;
     (design.fonts || []).forEach(function (f) { GW.previewFonts[f.id] = f; }); // lets thumbnails of other designs resolve their fonts
     ctx.save();
-    ctx.fillStyle = GW.q(design.kind === 'datafield' ? GW.dfTheme(design).bg : design.bg); ctx.fillRect(0, 0, S, S);
+    var slot = design.kind === 'datafield' ? GW.dfSlot(design) : null, inSlot = slot && !slot.full;
+    if (inSlot) {   // a field that does not fill the screen: show the other slots of the layout dimly, and draw inside its own slot
+      ctx.fillStyle = '#d8d8d8'; ctx.fillRect(0, 0, S, S);
+      ctx.save(); ctx.translate(slot.x, slot.y); ctx.beginPath(); ctx.rect(0, 0, slot.w, slot.h); ctx.clip();
+    }
+    ctx.fillStyle = GW.q(design.kind === 'datafield' ? GW.dfTheme(design).bg : design.bg); ctx.fillRect(0, 0, inSlot ? slot.w : S, inSlot ? slot.h : S);
     if (design.bgImage && GW.assets[design.bgImage]) ctx.drawImage(GW.assets[design.bgImage].img, 0, 0, S, S);
     design.elements.forEach(function (el) {
       if (el.hidden) return;
@@ -15,6 +20,11 @@
       try { t.draw(ctx, el, env); } catch (e) { if (window.console) console.error('draw failed', el.type, e); }
       ctx.restore();
     });
+    if (inSlot) {
+      ctx.restore();
+      ctx.strokeStyle = '#999999'; ctx.lineWidth = 1;
+      slot.layout.slots.forEach(function (r) { ctx.strokeRect(r[0] + 0.5, r[1] + 0.5, r[2] - 1, r[3] - 1); });
+    }
     ctx.restore();
   };
 

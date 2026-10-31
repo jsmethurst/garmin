@@ -506,10 +506,26 @@
     GW.selId = c.id; GW.commit(true); GW.emit('select', c.id);
   };
 
+  // Which activity-screen layout and which slot of it this field is designed for (sizes are the SDK's own for the fēnix 6X Pro)
+  function slotPicker(d) {
+    var lay = GW.DF_LAYOUTS, li = lay[d.dfLayout] ? d.dfLayout : 0, L = lay[li], si = L.slots[d.dfSlot] ? d.dfSlot : 0;
+    var sel = h('select', {}, lay.map(function (l, i) { return h('option', { value: i, text: l.name }); }));
+    sel.value = li;
+    sel.addEventListener('change', function () { d.dfLayout = parseInt(sel.value, 10); d.dfSlot = 0; GW.commit(true); });
+    var svg = '<svg viewBox="0 0 280 280" width="150" height="150" style="display:block;margin:6px 0 0"><defs><clipPath id="sc"><circle cx="140" cy="140" r="139"/></clipPath></defs><g clip-path="url(#sc)">' +
+      L.slots.map(function (r, i) { return '<rect data-i="' + i + '" x="' + r[0] + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '" fill="' + (i === si ? '#c2410c' : '#f7f6f2') + '" stroke="#6b6860" stroke-width="2" style="cursor:pointer"/>'; }).join('') +
+      '</g><circle cx="140" cy="140" r="139" fill="none" stroke="#1d1d1b" stroke-width="3"/></svg>';
+    var box = h('div', { html: svg });
+    Array.prototype.forEach.call(box.querySelectorAll('rect'), function (r) { r.addEventListener('click', function () { d.dfSlot = parseInt(r.getAttribute('data-i'), 10); GW.commit(true); }); });
+    var sl = L.slots[si];
+    return h('div', { class: 'f' }, [h('label', { text: 'Screen layout' }), sel, box, h('div', { class: 'muted small', text: 'Field ' + (si + 1) + ' of ' + L.slots.length + ' · ' + sl[2] + ' × ' + sl[3] + ' px' })]);
+  }
+
   // ---------------------------------------------------------------- data field settings
   function renderFieldSettings(p) {
     var d = GW.design;
-    p.appendChild(rotationField(d));
+    p.appendChild(slotPicker(d));
+    if (GW.dfSlot(d).full) p.appendChild(rotationField(d));
     p.appendChild(field('Screen colours', segCtl([['light', 'Light'], ['auto', 'Match watch'], ['dark', 'Dark']], d.dfTheme || 'light', function (v) { d.dfTheme = v; GW.commit(true); })));
     p.appendChild(field('Units', segCtl([['watch', 'Match watch'], ['metric', 'Metric'], ['imperial', 'Imperial']], d.dfUnits || 'watch', function (v) { d.dfUnits = v; GW.commit(true); })));
     p.appendChild(h('h4', { text: 'Laps' }));
@@ -537,7 +553,7 @@
       d.bgImage ? h('button', { class: 'btn sm', text: 'Remove background image', onclick: function () { d.bgImage = null; GW.commit(true); } }) : null]));
     p.appendChild(h('h4', { text: 'Start over' }));
     p.appendChild(h('div', { class: 'row' }, [
-      h('button', { class: 'btn', text: 'Presets…', onclick: function () { GW.openPresets(); } }),
+      h('button', { class: 'btn', text: 'Layouts…', onclick: function () { GW.openPresets(); } }),
       h('button', { class: 'btn danger', text: 'Clear all', onclick: function () {
         GW.design.elements = []; GW.selId = null; GW.commit(true); GW.emit('select', null); GW.toast('Cleared. Ctrl+Z to undo.');
       } })
@@ -614,32 +630,38 @@
 
   GW.openPresets = function () {
     var grid = h('div', { class: 'presets' });
-    var kind = GW.modeOf(), fld = kind === 'field';
+    var kind = GW.modeOf(), fld = kind === 'field', hidden = GW.layouts.hidden(kind);
     function load(fn) { fn(function () { GW.fontsReady().then(function () { GW.touch(true); closeModal(); GW.history.commit(); }); }); }
-    function card(thumb, name, saved, onload) {
+    // every layout, built-in or saved, can be removed from the list (after a confirmation)
+    function card(thumb, name, saved, onload, onremove, removeMsg) {
       var kids = [thumb, h('b', { text: name })];
       if (saved) kids.push(h('span', { class: 'muted small', text: 'saved' }));
       var c = h('button', { class: 'pcard', onclick: function () { load(onload); GW.toast(name + ' loaded. Ctrl+Z undoes it.'); } }, kids);
-      if (!saved) return c;
-      var wrap = h('div', { class: 'pwrap' }, [c, h('button', { class: 'pdel', title: 'Delete this saved layout' + (GW.PRESETS.some(function (x) { return x.name.toLowerCase() === name.toLowerCase(); }) ? ' (the built-in one comes back)' : ''), 'aria-label': 'Delete ' + name, text: '×', onclick: function () {
-        GW.layouts.remove(name, kind); GW.openPresets();
+      return h('div', { class: 'pwrap' }, [c, h('button', { class: 'pdel', title: 'Delete this layout', 'aria-label': 'Delete ' + name, text: '×', onclick: function () {
+        if (window.confirm(removeMsg)) { onremove(); GW.openPresets(); }
       } })]);
-      return wrap;
     }
     function blankThumb(color) { var c = document.createElement('canvas'); c.width = c.height = 120; var x = c.getContext('2d'); x.fillStyle = color; x.fillRect(0, 0, 120, 120); c.style.width = c.style.height = '120px'; return c; }
     var shown = {};
     GW.PRESETS.forEach(function (p) {
       if ((p.kind === 'datafield') !== fld) return;
-      var saved = GW.layouts.find(p.name, kind);
-      if (saved) shown[p.name.toLowerCase()] = 1;
+      var key = p.name.toLowerCase(), saved = GW.layouts.find(p.name, kind);
+      if (saved) shown[key] = 1;
+      if (!saved && hidden.indexOf(key) >= 0) return;
       var thumb = p.id === 'blank' || p.id === 'blankfield' ? blankThumb(p.id === 'blank' ? '#000' : '#fff') : GW.thumb(saved ? saved.data.design : p.build(), 140);
-      grid.appendChild(card(thumb, p.name, !!saved, function (done) { GW.applyPreset(p.id, done); }));
+      grid.appendChild(card(thumb, p.name, !!saved, function (done) { GW.applyPreset(p.id, done); }, function () {
+        if (saved) GW.layouts.remove(p.name, kind); else GW.layouts.hide(p.name, kind);
+        if (saved) GW.layouts.hide(p.name, kind);
+      }, 'Delete the layout “' + p.name + '”?' + (saved ? ' Your saved version goes too.' : '')));
     });
     GW.layouts.all().forEach(function (l) {
       if (l.kind !== kind || shown[l.name.toLowerCase()]) return;
-      grid.appendChild(card(GW.thumb(l.data.design, 140), l.name, true, function (done) { GW.loadFrom(GW.clone(l.data), done); }));
+      grid.appendChild(card(GW.thumb(l.data.design, 140), l.name, true, function (done) { GW.loadFrom(GW.clone(l.data), done); },
+        function () { GW.layouts.remove(l.name, kind); }, 'Delete your saved layout “' + l.name + '”?'));
     });
-    modal(fld ? 'Layouts' : 'Presets', grid);
+    var kids = [grid];
+    if (hidden.length) kids.push(h('p', {}, [h('button', { class: 'btn sm', text: 'Restore the layouts I deleted', onclick: function () { GW.layouts.restoreHidden(kind); GW.openPresets(); } })]));
+    modal('Layouts', h('div', {}, kids));
   };
 
   // ---- one-click cloud build (only on the Vercel deployment) ----
