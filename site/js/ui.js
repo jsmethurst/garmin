@@ -543,9 +543,10 @@
     card.innerHTML = '';
     if (GW.modeOf() !== 'field') return;
     var d = GW.design;
-    card.appendChild(h('h3', { text: 'Field settings' }));
+    card.appendChild(h('h3', { text: 'Global settings' }));
     var rest = h('div', { style: 'display:flex;flex-direction:column;gap:10px' });
-    if (GW.dfSlot(d).full) rest.appendChild(rotationField(d));
+    rest.appendChild(rotationField(d));
+    if (!GW.dfSlot(d).full) rest.appendChild(h('div', { class: 'muted small', style: 'margin-top:-6px', text: 'Rotation only applies to fields that fill the whole screen.' }));
     rest.appendChild(field('Screen colors', segCtl([['light', 'Light'], ['auto', 'Match watch'], ['dark', 'Dark']], d.dfTheme || 'light', function (v) { d.dfTheme = v; GW.commit(true); })));
     rest.appendChild(field('Units', segCtl([['watch', 'Match watch'], ['metric', 'Metric'], ['imperial', 'Imperial']], d.dfUnits || 'watch', function (v) { d.dfUnits = v; GW.commit(true); })));
     card.appendChild(rest);
