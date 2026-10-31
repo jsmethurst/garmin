@@ -179,6 +179,8 @@
     }, Promise.resolve()).then(function () { return out; });
   };
 
+  GW.newAppId = uuid32;
+
   GW.download = function (blob, filename) {
     var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();

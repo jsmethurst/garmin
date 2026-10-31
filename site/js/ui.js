@@ -730,14 +730,26 @@
         var all = []; results.forEach(function (r) { r.files.forEach(function (f) { all.push({ path: r.name + '/' + f.path, data: f.data, exec: f.exec }); }); });
         var blob = GW.zip(all), nFiles = all.length;
         body.innerHTML = '';
-        // Connect IQ's developer portal rejects an app id it already knows (even your own): a new id makes it a brand-new app
-        var idRow = h('div', { class: 'row', style: 'align-items:center;margin:0 0 14px;gap:10px' }, [
-          h('span', { class: 'muted small', text: 'App ID ' + (first.appId || '').slice(0, 8) + '…' + (many ? ' (+ one per version)' : '') }),
-          h('button', { class: 'btn sm', text: 'Generate a new app ID', title: 'Use this when the developer portal says the manifest id is already used by another app', onclick: function () {
-            delete GW.design.appId; GW.design.appIds = {}; GW.history.commit(); body.innerHTML = ''; body.appendChild(h('p', { class: 'muted', text: 'Building your project…' })); render();
-          } })
-        ]);
-        body.appendChild(idRow);
+        // The manifest app ID decides what the Connect IQ portal does with the upload: keep it to publish a new version of that app,
+        // change it to publish a whole new app.
+        var idBox = h('div', { class: 'f', style: 'margin:0 0 14px' }, [h('label', { text: 'App ID (manifest)' })]);
+        results.forEach(function (r) {
+          var inp = h('input', { type: 'text', value: r.appId, maxlength: 32, spellcheck: 'false', class: 'mono', 'aria-label': 'App ID' });
+          function setId(v) {
+            if (r.tilt) { GW.design.appIds = GW.design.appIds || {}; GW.design.appIds[r.tilt] = v; } else GW.design.appId = v;
+            GW.history.commit(); body.innerHTML = ''; body.appendChild(h('p', { class: 'muted', text: 'Building your project…' })); render();
+          }
+          inp.addEventListener('change', function () {
+            var v = inp.value.trim().toLowerCase();
+            if (!/^[0-9a-f]{32}$/.test(v)) { GW.toast('An app ID is 32 characters, 0-9 and a-f.'); inp.value = r.appId; return; }
+            if (v !== r.appId) setId(v);
+          });
+          idBox.appendChild(h('div', { class: 'row', style: 'align-items:center;gap:8px;margin-top:4px' }, [
+            results.length > 1 || r.tilt ? h('span', { class: 'muted small', style: 'flex:none', text: r.tilt ? r.tilt + '°' : 'upright' }) : null,
+            inp, h('button', { class: 'btn sm', style: 'flex:none', text: 'Generate new', onclick: function () { setId(GW.newAppId()); } })
+          ]));
+        });
+        body.appendChild(idBox);
         if (GW.rotatable(GW.design)) body.appendChild(rotationPicker(function () { body.innerHTML = ''; body.appendChild(h('p', { class: 'muted', text: 'Building your project…' })); render(); }));
 
         var cur = null, codeBox = h('div', { class: 'code', text: '' }), tabs = h('div', { class: 'codetabs' }), vsel = null;
