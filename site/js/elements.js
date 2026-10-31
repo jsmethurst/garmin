@@ -770,24 +770,40 @@
   };
 
   // ================= WORLD MAP + "you are here" =================
-  // the built-in world map (public-domain Natural Earth outlines, drawn flat: 360° wide, from 80°N to 58°S)
-  GW.ensureWorldMap = function () {
-    if (!GW.assets.worldmap && GW.WORLD_MAP_URL) {
-      var img = new Image(), a = { dataUrl: GW.WORLD_MAP_URL, img: img, w: 88, h: 34 };
-      GW.assets.worldmap = a; img.onload = function () { GW.touch(false); }; img.src = GW.WORLD_MAP_URL;
-    }
-    return GW.assets.worldmap ? 'worldmap' : null;
+  // The built-in world map is drawn from vector outlines at exactly the size it is shown (and exported) at, so it is sharp at any size.
+  var mapCache = {};
+  GW.worldMapCanvas = function (w, h, n, s, color) {
+    w = Math.max(2, Math.round(w)); h = Math.max(2, Math.round(h));
+    var key = [w, h, n, s, color].join('|'); if (mapCache[key]) return mapCache[key];
+    var c = document.createElement('canvas'); c.width = w; c.height = h; var x = c.getContext('2d');
+    x.fillStyle = q(color);
+    function X(lon) { return (lon + 180) / 360 * w; }
+    function Y(lat) { return (n - lat) / (n - s) * h; }
+    (GW.WORLD_LAND || []).forEach(function (r) {
+      [-360, 0, 360].forEach(function (off) {
+        x.beginPath();
+        for (var i = 0; i < r.length; i += 2) { var px = X(r[i] / 10 + off), py = Y(r[i + 1] / 10); if (i) x.lineTo(px, py); else x.moveTo(px, py); }
+        x.closePath(); x.fill();
+      });
+    });
+    var keys = Object.keys(mapCache); if (keys.length > 12) delete mapCache[keys[0]];
+    return (mapCache[key] = c);
   };
   function mapLat(el) { var n = el.latN == null ? 90 : el.latN, s = el.latS == null ? -90 : el.latS; return [n, s]; }
+  function ownMap(el) { return el.asset && el.asset !== 'worldmap' && GW.assets[el.asset] ? GW.assets[el.asset] : null; }   // an image you chose replaces the built-in map
   T.worldmap = {
     label: 'World map + location', icon: '◍',
-    defaults: function () { return { type: 'worldmap', name: 'World map', x: 140, y: 246, w: 88, h: 34, asset: GW.ensureWorldMap(), marker: '#ff5500', msize: 2, ring: false, latN: 80, latS: -58 }; },
+    defaults: function () { return { type: 'worldmap', name: 'World map', x: 140, y: 248, w: 104, h: 40, asset: null, land: '#3a3a3a', marker: '#ff5500', msize: 2, ring: false, latN: 80, latS: -58 }; },
     pos: [['x', 'y']],
     draw: function (ctx, el, env) {
-      var a = GW.assets[el.asset], L = mapLat(el);
-      if (a) ctx.drawImage(a.img, el.x - el.w / 2, el.y - el.h / 2, el.w, el.h);
-      else { ctx.strokeStyle = '#888'; ctx.setLineDash([4, 3]); ctx.strokeRect(el.x - el.w / 2, el.y - el.h / 2, el.w, el.h); ctx.setLineDash([]); }
-      var mx = el.x - el.w / 2 + (env.sim.lon + 180) / 360 * el.w, my = el.y - el.h / 2 + (L[0] - env.sim.lat) / (L[0] - L[1]) * el.h;
+      var own = ownMap(el), L = mapLat(el), x0 = el.x - el.w / 2, y0 = el.y - el.h / 2;
+      if (own) ctx.drawImage(own.img, x0, y0, el.w, el.h);
+      else {
+        var k = Math.sqrt(Math.abs(ctx.getTransform().a * ctx.getTransform().d)) || 1;   // device pixels per design pixel
+        var cv = GW.worldMapCanvas(el.w * k, el.h * k, L[0], L[1], el.land || '#3a3a3a');
+        ctx.drawImage(cv, x0, y0, el.w, el.h);
+      }
+      var mx = x0 + (env.sim.lon + 180) / 360 * el.w, my = y0 + (L[0] - env.sim.lat) / (L[0] - L[1]) * el.h;
       ctx.fillStyle = q(el.marker); ctx.strokeStyle = q(el.marker); ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(mx, my, el.msize, 0, Math.PI * 2); ctx.fill();
       if (el.ring !== false) { ctx.beginPath(); ctx.arc(mx, my, el.msize + 3, 0, Math.PI * 2); ctx.stroke(); }
@@ -795,24 +811,29 @@
     box: function (el) { return { x: el.x - el.w / 2, y: el.y - el.h / 2, w: el.w, h: el.h }; },
     fields: function () {
       return [
-        { t: 'imagepick' },
-        { t: 'note', text: 'Shows where you are on a flat world map. The location comes from your phone (the weather location) or a GPS fix, and is Istanbul until the watch has one.' },
+        { t: 'note', text: 'Shows where you are on a flat world map. The location comes from your phone (the weather location) or a GPS fix, and is Istanbul until the watch has one. Resize it with Width and Height: the map is redrawn sharp at any size. Height 0.385 × width keeps the proportions.' },
+        { k: 'land', t: 'color', label: 'Land color' },
         { k: 'marker', t: 'color', label: 'Dot color' },
         { k: 'msize', t: 'num', label: 'Dot size', min: 1, max: 12 },
         { k: 'ring', t: 'check', label: 'Ring around the dot' },
-        { t: 'row', fields: [{ k: 'latN', t: 'num', label: 'Map top latitude', min: 1, max: 90 }, { k: 'latS', t: 'num', label: 'Map bottom latitude', min: -90, max: -1 }] },
         { t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 20, max: 280 }, { k: 'h', t: 'num', label: 'Height', min: 10, max: 280 }] },
-        { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] }
+        { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] },
+        { t: 'row', fields: [{ k: 'latN', t: 'num', label: 'Map top latitude', min: 1, max: 90 }, { k: 'latS', t: 'num', label: 'Map bottom latitude', min: -90, max: -1 }] },
+        { t: 'imagepick' }
       ];
     },
     gen: function (el, cg) {
       cg.helper('locNow');
-      var L = [], x0 = N(el.x - el.w / 2), y0 = N(el.y - el.h / 2), m = N(el.msize), ml = mapLat(el);
-      if (el.asset) L.push('dc.drawBitmap(' + x0 + ', ' + y0 + ', ' + cg.image(el.asset, N(el.w), N(el.h)) + ');');
+      var L = [], x0 = N(el.x - el.w / 2), y0 = N(el.y - el.h / 2), m = N(el.msize), ml = mapLat(el), w = N(el.w), h = N(el.h), id = el.asset;
+      if (!ownMap(el)) {   // the built-in map becomes an image of exactly the size it is drawn at
+        id = 'worldmap_' + [w, h, ml[0], ml[1], el.land || ''].join('_').replace(/[^0-9a-z_]/gi, '');
+        if (!GW.assets[id]) GW.assets[id] = { img: GW.worldMapCanvas(w, h, ml[0], ml[1], el.land || '#3a3a3a'), w: w, h: h, synthetic: true };
+      }
+      L.push('dc.drawBitmap(' + x0 + ', ' + y0 + ', ' + cg.image(id, w, h) + ');');
       L.push('var loc = locNow();');
       L.push('if (loc != null) {');
-      L.push('    var mx = ' + x0 + ' + ((loc[1] + 180.0) / 360.0 * ' + N(el.w) + '.0).toNumber();');
-      L.push('    var my = ' + y0 + ' + (((' + ml[0] + '.0 - loc[0]) / ' + (ml[0] - ml[1]) + '.0) * ' + N(el.h) + '.0).toNumber();');
+      L.push('    var mx = ' + x0 + ' + ((loc[1] + 180.0) / 360.0 * ' + w + '.0).toNumber();');
+      L.push('    var my = ' + y0 + ' + (((' + ml[0] + '.0 - loc[0]) / ' + (ml[0] - ml[1]) + '.0) * ' + h + '.0).toNumber();');
       L.push('    dc.setColor(' + GW.mcColor(el.marker) + ', Graphics.COLOR_TRANSPARENT);');
       L.push('    dc.fillCircle(mx, my, ' + m + ');');
       if (el.ring !== false) { L.push('    dc.setPenWidth(2);', '    dc.drawCircle(mx, my, ' + (m + 3) + ');', '    dc.setPenWidth(1);'); }
