@@ -475,13 +475,13 @@
           chips.appendChild(h('button', { class: 'chip', text: s[2], onclick: function () {
             // the new cell snaps into the chosen slot and fills it, so a heart-rate color covers the whole field
             var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h);
-            GW.addElement('dfcell', { name: s[2], src: s[0], label: s[2].toUpperCase(), vfont: ft.v, lfont: ft.l, dx: ft.dx, zone: s[0] === 'hr', x: 0, y: 0, w: sl.w, h: sl.h });
+            GW.addElement('dfcell', { name: s[2], src: s[0], label: s[2].toUpperCase(), vfont: ft.v, lfont: ft.l, dx: ft.dx, dy: ft.dy, zone: s[0] === 'hr', x: 0, y: 0, w: sl.w, h: sl.h });
           } }));
         });
       });
       var gf = $('addGrid'); gf.innerHTML = '';
       ['dfcell', 'shape'].forEach(function (k) {
-        gf.appendChild(h('button', { class: 'addbtn', onclick: function () { GW.addElement(k, k === 'shape' ? { name: 'Divider', kind: 'line', x: 20, y: 140, x2: 260, y2: 140, color: '#aaaaaa', pen: 1 } : (function () { var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h); return { name: 'Data cell', src: 'timer', vfont: ft.v, lfont: ft.l, dx: ft.dx, x: 0, y: 0, w: sl.w, h: sl.h }; })()); } }, [h('i', { text: T[k].icon }), k === 'shape' ? 'Line / box' : 'Data cell']));
+        gf.appendChild(h('button', { class: 'addbtn', onclick: function () { GW.addElement(k, k === 'shape' ? { name: 'Divider', kind: 'line', x: 20, y: 140, x2: 260, y2: 140, color: '#aaaaaa', pen: 1 } : (function () { var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h); return { name: 'Data cell', src: 'timer', vfont: ft.v, lfont: ft.l, dx: ft.dx, dy: ft.dy, x: 0, y: 0, w: sl.w, h: sl.h }; })()); } }, [h('i', { text: T[k].icon }), k === 'shape' ? 'Line / box' : 'Data cell']));
       });
       return;
     }
@@ -553,6 +553,12 @@
   // Fonts and sideways shift for a data cell that fills a slot: the biggest number font that still fits the part of the slot
   // that is visible on the round screen, with the text centred on that visible part.
   function fitFonts(w, h) {
+    var ft = fitFonts0(w, h), sl = GW.dfSlot(GW.design);
+    // 8 fields: the side-by-side cells sit against the curve of the bezel, so nudge their text inwards
+    if (sl.layout.id === '8fields' && sl.w < 280) { ft = Object.assign({}, ft, { dx: sl.x === 0 ? 7 : -7, dy: 2 }); }
+    return ft;
+  }
+  function fitFonts0(w, h) {
     var sl = GW.dfSlot(GW.design), R = 126, nums = GW.SYS_FONTS.filter(function (f) { return f[2] === 'n'; }).map(function (f) { return f[0]; });
     var labs = h >= 100 ? ['FONT_TINY', 'FONT_XTINY'] : ['FONT_XTINY'];
     function visible(y) {   // visible x-range of the slot on row y (design coordinates are slot-relative)
