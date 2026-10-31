@@ -23,8 +23,6 @@
         });
         ctx.restore();
       });
-      ctx.strokeStyle = '#999999'; ctx.lineWidth = 1;
-      L.slots.forEach(function (r) { ctx.strokeRect(r[0] + 0.5, r[1] + 0.5, r[2] - 1, r[3] - 1); });
       ctx.restore();
       return;
     }
@@ -44,8 +42,6 @@
     });
     if (inSlot) {
       ctx.restore();
-      ctx.strokeStyle = '#999999'; ctx.lineWidth = 1;
-      slot.layout.slots.forEach(function (r) { ctx.strokeRect(r[0] + 0.5, r[1] + 0.5, r[2] - 1, r[3] - 1); });
     }
     ctx.restore();
   };
