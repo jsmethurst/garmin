@@ -214,7 +214,7 @@
       },
       // a copy of a bitmap font whose glyph images are rotated (for the rotated export); returns the names to pass to rotTxt
       rotFont: function (id, deg) {
-        var f = GW.customFont(id), rid = id + '_r' + Math.round(deg), info = GW.rotFontInfo(f, deg), met = GW.fontMetrics(f);
+        var f = GW.customFont(id), rid = id + '_r' + (deg < 0 ? 'n' + Math.round(-deg) : Math.round(deg)), info = GW.rotFontInfo(f, deg), met = GW.fontMetrics(f);
         if (!st.fseen[rid]) {
           st.fseen[rid] = 1; st.fonts.push(Object.assign({}, f, { id: rid, rot: deg }));
           var ents = met.chars.split('').map(function (ch) {

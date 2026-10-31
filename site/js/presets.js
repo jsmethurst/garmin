@@ -19,6 +19,63 @@
   function cell(x, y, w, h, src, label, vfont, o) { return E('dfcell', Object.assign({ name: label, x: x, y: y, w: w, h: h, src: src, label: label, vfont: vfont }, o || {})); }
   function cellDesign(name, els) { var d = D(name, '#ffffff', [], els); d.kind = 'datafield'; d.dfTheme = 'light'; d.dfUnits = 'watch'; d.dfAutoLap = false; d.dfLapM = 1000; return d; }
 
+  // ---- Bosphorus variations: the clock is centred exactly on the screen, the data is arranged around it ----
+  var BOS = { INK: '#000000', MID: '#555555', ACC: '#ff5500', TIME_PX: 84, TIME_SP: -4 };
+  function bosFonts(valPx, labPx) {
+    return [font('fTime', 'Libre Baskerville', 700, BOS.TIME_PX, 'digits', BOS.TIME_SP), font('fDate', 'DM Sans', 500, 22, 'basic'),
+      font('fLab', 'DM Sans', 500, labPx, 'basic'), font('fVal', 'DM Sans', 500, valPx, 'basic'), font('fSun', 'DM Sans', 500, 20, 'basic')];
+  }
+  // y that puts the digits' ink (not the line box) on `target`; x nudged for the negative letter spacing
+  function bosTime(fonts) {
+    var f = fonts[0], y = 140, x = 140 + BOS.TIME_SP / 2;
+    try {
+      var m = GW.fontMetrics(f), top = 999, bot = -999;
+      '0123456789'.split('').forEach(function (d) { var g = m.glyphs[d]; if (g && !g.blank) { top = Math.min(top, g.y0); bot = Math.max(bot, g.y0 + g.h); } });
+      if (top < 999) y = 140 - 1 - ((top + bot) / 2 - (m.desc - m.asc) / 2);
+    } catch (e) { }
+    return txt(x, Math.round(y * 10) / 10, 'time', 'fTime', BOS.INK, { name: 'Time', hmode: 'h24', lz: true });
+  }
+  function bosSunRow(y) {
+    return [E('sunicon', { name: 'Sunrise icon', x: 66, y: y, r: 6, kind: 'rise', color: BOS.ACC }), txt(84, y, 'sunrise', 'fSun', BOS.INK, { name: 'Sunrise', justify: 'L' }),
+      E('sunicon', { name: 'Sunset icon', x: 156, y: y, r: 6, kind: 'set', color: BOS.ACC }), txt(174, y, 'sunset', 'fSun', BOS.INK, { name: 'Sunset', justify: 'L' })];
+  }
+  function bosRing() { return E('arc', { name: 'Steps ring', cx: 140, cy: 140, r: 135, pen: 3, start: 0, sweep: 360, source: 'steps', color: BOS.ACC, track: '#aaaaaa', round: false }); }
+  function bosDate(y) { return txt(140, y, 'date', 'fDate', BOS.ACC, { name: 'Date', fmt: 'ddd DD MMM', tr: true }); }
+  // label above value
+  function bosCell(x, yl, yv, text, src, o) {
+    var lab = text === 'zone' ? txt(x, yl, 'nyZone', 'fLab', BOS.MID, { name: 'Zone' }) : label(x, yl, text, 'fLab', BOS.MID, { name: text });
+    return [lab, txt(x, yv, src, 'fVal', BOS.INK, Object.assign({ name: text === 'zone' ? 'New York time' : text }, o || {}))];
+  }
+  // label turned to read upward, to the left of the value (value is left-aligned)
+  function bosSideCell(xl, y, text, src, o) {
+    var lab = text === 'zone' ? txt(xl + 6, y, 'nyZone', 'fLab', BOS.MID, { name: 'Zone', rot: -90 }) : label(xl + 6, y, text, 'fLab', BOS.MID, { name: text, rot: -90 });
+    return [lab, txt(xl + 17, y, src, 'fVal', BOS.INK, Object.assign({ name: text === 'zone' ? 'New York time' : text, justify: 'L' }, o || {}))];
+  }
+  function bosVariant(kind) {
+    var fonts = bosFonts(22, kind === 3 ? 11 : 13), els = [bosRing()], flat = function (a) { els = els.concat(a); };
+    if (kind === 1) {
+      els.push(bosDate(38)); flat(bosSunRow(72)); els.push(bosTime(fonts));
+      [55, 111, 167, 223].forEach(function (x, i) {
+        var c = [['NABIZ', 'hr'], ['ADIM', 'steps'], ['zone', 'nyTime'], ['PİL', 'batteryDays', { suffix: 'G' }]][i];
+        flat(bosCell(x, 192, 209, c[0], c[1], c[2]));
+      });
+      flat(bosCell(111, 228, 245, 'SON KM', 'lastKm')); flat(bosCell(169, 228, 245, 'TEMPO', 'lastPace'));
+    } else {
+      els.push(bosDate(35)); flat(bosSunRow(63));
+      // EDT: zone label and time side by side under the sun row
+      els.push(txt(134, 89, 'nyZone', 'fLab', BOS.MID, { name: 'Zone', justify: 'R' }), txt(142, 89, 'nyTime', 'fSun', BOS.INK, { name: 'New York time', justify: 'L' }));
+      els.push(bosTime(fonts));
+      if (kind === 2) {
+        flat(bosCell(64, 192, 209, 'ADIM', 'steps')); flat(bosCell(140, 192, 209, 'NABIZ', 'hr')); flat(bosCell(216, 192, 209, 'PİL', 'batteryDays', { suffix: 'G' }));
+        flat(bosCell(100, 228, 245, 'SON KM', 'lastKm')); flat(bosCell(180, 228, 245, 'TEMPO', 'lastPace'));
+      } else {
+        flat(bosSideCell(34, 199, 'ADIM', 'steps')); flat(bosSideCell(110, 199, 'NABIZ', 'hr')); flat(bosSideCell(186, 199, 'PİL', 'batteryDays', { suffix: 'G' }));
+        flat(bosSideCell(76, 235, 'SON KM', 'lastKm')); flat(bosSideCell(152, 235, 'TEMPO', 'lastPace'));
+      }
+    }
+    return D(['', 'Bosphorus Even', 'Bosphorus Top', 'Bosphorus Vertical'][kind], '#ffffff', fonts, els);
+  }
+
   GW.PRESETS = [
     { id: 'orbit', name: 'Orbit', blurb: 'Four nested rings: steps, battery, how much of the day and the year is gone.',
       build: function () {
@@ -136,6 +193,9 @@
           txt(140, 188, 'battery', S, '#005500', { prefix: 'BAT ', suffix: '%' })
         ]);
       } },
+    { id: 'bos1', name: 'Bosphorus Even', build: function () { return bosVariant(1); } },
+    { id: 'bos2', name: 'Bosphorus Top', build: function () { return bosVariant(2); } },
+    { id: 'bos3', name: 'Bosphorus Vertical', build: function () { return bosVariant(3); } },
     { id: 'bigdata', name: 'Bosphorus',
       build: function () {
         var INK = '#000000', MID = '#555555', RULE = '#aaaaaa', ACC = '#ff5500';
