@@ -770,43 +770,52 @@
   };
 
   // ================= WORLD MAP + "you are here" =================
+  // the built-in world map (public-domain Natural Earth outlines, drawn flat: 360° wide, from 80°N to 58°S)
+  GW.ensureWorldMap = function () {
+    if (!GW.assets.worldmap && GW.WORLD_MAP_URL) {
+      var img = new Image(), a = { dataUrl: GW.WORLD_MAP_URL, img: img, w: 88, h: 34 };
+      GW.assets.worldmap = a; img.onload = function () { GW.touch(false); }; img.src = GW.WORLD_MAP_URL;
+    }
+    return GW.assets.worldmap ? 'worldmap' : null;
+  };
+  function mapLat(el) { var n = el.latN == null ? 90 : el.latN, s = el.latS == null ? -90 : el.latS; return [n, s]; }
   T.worldmap = {
     label: 'World map + location', icon: '◍',
-    defaults: function () { return { type: 'worldmap', name: 'World map', x: 140, y: 140, w: 120, h: 60, asset: null, marker: '#ff0000', msize: 4 }; },
+    defaults: function () { return { type: 'worldmap', name: 'World map', x: 140, y: 246, w: 88, h: 34, asset: GW.ensureWorldMap(), marker: '#ff5500', msize: 2, ring: false, latN: 80, latS: -58 }; },
     pos: [['x', 'y']],
     draw: function (ctx, el, env) {
-      var a = GW.assets[el.asset];
+      var a = GW.assets[el.asset], L = mapLat(el);
       if (a) ctx.drawImage(a.img, el.x - el.w / 2, el.y - el.h / 2, el.w, el.h);
       else { ctx.strokeStyle = '#888'; ctx.setLineDash([4, 3]); ctx.strokeRect(el.x - el.w / 2, el.y - el.h / 2, el.w, el.h); ctx.setLineDash([]); }
-      var mx = el.x - el.w / 2 + (env.sim.lon + 180) / 360 * el.w, my = el.y - el.h / 2 + (90 - env.sim.lat) / 180 * el.h;
+      var mx = el.x - el.w / 2 + (env.sim.lon + 180) / 360 * el.w, my = el.y - el.h / 2 + (L[0] - env.sim.lat) / (L[0] - L[1]) * el.h;
       ctx.fillStyle = q(el.marker); ctx.strokeStyle = q(el.marker); ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(mx, my, el.msize, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(mx, my, el.msize + 3, 0, Math.PI * 2); ctx.stroke();
+      if (el.ring !== false) { ctx.beginPath(); ctx.arc(mx, my, el.msize + 3, 0, Math.PI * 2); ctx.stroke(); }
     },
     box: function (el) { return { x: el.x - el.w / 2, y: el.y - el.h / 2, w: el.w, h: el.h }; },
     fields: function () {
       return [
         { t: 'imagepick' },
-        { t: 'note', text: 'Use a flat world map (equirectangular, whole world 360° × 180°; most free “plate carrée” maps work). Your location comes from the last weather sync or GPS fix.' },
-        { k: 'marker', t: 'color', label: 'Marker color' },
-        { k: 'msize', t: 'num', label: 'Marker size', min: 1, max: 12 },
+        { t: 'note', text: 'Shows where you are on a flat world map. The location comes from your phone (the weather location) or a GPS fix, and is Istanbul until the watch has one.' },
+        { k: 'marker', t: 'color', label: 'Dot color' },
+        { k: 'msize', t: 'num', label: 'Dot size', min: 1, max: 12 },
+        { k: 'ring', t: 'check', label: 'Ring around the dot' },
+        { t: 'row', fields: [{ k: 'latN', t: 'num', label: 'Map top latitude', min: 1, max: 90 }, { k: 'latS', t: 'num', label: 'Map bottom latitude', min: -90, max: -1 }] },
         { t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 20, max: 280 }, { k: 'h', t: 'num', label: 'Height', min: 10, max: 280 }] },
         { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] }
       ];
     },
     gen: function (el, cg) {
       cg.helper('locNow');
-      var L = [], x0 = N(el.x - el.w / 2), y0 = N(el.y - el.h / 2), m = N(el.msize);
+      var L = [], x0 = N(el.x - el.w / 2), y0 = N(el.y - el.h / 2), m = N(el.msize), ml = mapLat(el);
       if (el.asset) L.push('dc.drawBitmap(' + x0 + ', ' + y0 + ', ' + cg.image(el.asset, N(el.w), N(el.h)) + ');');
       L.push('var loc = locNow();');
       L.push('if (loc != null) {');
       L.push('    var mx = ' + x0 + ' + ((loc[1] + 180.0) / 360.0 * ' + N(el.w) + '.0).toNumber();');
-      L.push('    var my = ' + y0 + ' + ((90.0 - loc[0]) / 180.0 * ' + N(el.h) + '.0).toNumber();');
+      L.push('    var my = ' + y0 + ' + (((' + ml[0] + '.0 - loc[0]) / ' + (ml[0] - ml[1]) + '.0) * ' + N(el.h) + '.0).toNumber();');
       L.push('    dc.setColor(' + GW.mcColor(el.marker) + ', Graphics.COLOR_TRANSPARENT);');
       L.push('    dc.fillCircle(mx, my, ' + m + ');');
-      L.push('    dc.setPenWidth(2);');
-      L.push('    dc.drawCircle(mx, my, ' + (m + 3) + ');');
-      L.push('    dc.setPenWidth(1);');
+      if (el.ring !== false) { L.push('    dc.setPenWidth(2);', '    dc.drawCircle(mx, my, ' + (m + 3) + ');', '    dc.setPenWidth(1);'); }
       L.push('}');
       return L;
     }

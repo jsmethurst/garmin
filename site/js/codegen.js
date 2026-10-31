@@ -91,7 +91,7 @@
       code: 'function locNow() {\n        var loc = null;\n        var ai = Activity.getActivityInfo();\n        if (ai != null && ai.currentLocation != null) { loc = ai.currentLocation.toDegrees(); }\n' +
         '        if ((loc == null || (loc[0].toFloat() == 0.0 && loc[1].toFloat() == 0.0)) && _wx != null && _wx.observationLocationPosition != null) {\n            loc = _wx.observationLocationPosition.toDegrees();\n        }\n' +
         '        if (loc != null && (loc[0].toFloat() != 0.0 || loc[1].toFloat() != 0.0)) {\n            _lat = loc[0].toFloat();\n            _lon = loc[1].toFloat();\n        }\n' +
-        '        return (_lat != null) ? [_lat, _lon] : null;\n    }'
+        '        // until the watch has a location (phone weather or GPS) the dot sits on Istanbul\n        return (_lat != null) ? [_lat, _lon] : [41.01, 28.98];\n    }'
     },
     sunStr: {
       needs: ['wx'], imports: ['Toybox.Position'],
