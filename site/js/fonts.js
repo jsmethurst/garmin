@@ -201,7 +201,7 @@
       var g = p.g, w = rot ? p.bb.w : g.w, h = rot ? p.bb.h : g.h;
       var xo = rot ? (g.blank ? 0 : p.bb.bx + rot.lm) : g.x0 + (g.dx || 0), yo = g.blank ? 0 : (rot ? rot.base + p.bb.by : met.asc + g.y0);
       lines.push('char id=' + g.code + ' x=' + p.x + ' y=' + p.y + ' width=' + w + ' height=' + h +
-        ' xoffset=' + xo + ' yoffset=' + yo + ' xadvance=' + g.adv + ' page=0 chnl=15');
+        ' xoffset=' + xo + ' yoffset=' + yo + ' xadvance=' + (rot ? Math.max(g.adv, xo + w + 1) : g.adv) + ' page=0 chnl=15');   // a turned glyph is wider than its advance, and the watch cuts each glyph off at its advance
     });
     return { name: name, fnt: lines.join('\n') + '\n', canvas: atlas, size: size };
   };
