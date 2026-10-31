@@ -475,13 +475,13 @@
           chips.appendChild(h('button', { class: 'chip', text: s[2], onclick: function () {
             // the new cell snaps into the chosen slot and fills it, so a heart-rate color covers the whole field
             var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h);
-            GW.addElement('dfcell', { name: s[2], src: s[0], label: s[2].toUpperCase(), vfont: ft.v, lfont: ft.l, dx: ft.dx, dy: ft.dy, zone: s[0] === 'hr', x: 0, y: 0, w: sl.w, h: sl.h });
+            GW.addElement('dfcell', { name: s[2], src: s[0], label: s[2].toUpperCase(), vfont: ft.v, lfont: ft.l, dx: ft.dx, dy: ft.dy, bB: !!(ft.b && ft.b.bB), bT: !!(ft.b && ft.b.bT), bR: !!(ft.b && ft.b.bR), zone: s[0] === 'hr', x: 0, y: 0, w: sl.w, h: sl.h });
           } }));
         });
       });
       var gf = $('addGrid'); gf.innerHTML = '';
       ['dfcell', 'shape'].forEach(function (k) {
-        gf.appendChild(h('button', { class: 'addbtn', onclick: function () { GW.addElement(k, k === 'shape' ? { name: 'Divider', kind: 'line', x: 20, y: 140, x2: 260, y2: 140, color: '#aaaaaa', pen: 1 } : (function () { var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h); return { name: 'Data cell', src: 'timer', vfont: ft.v, lfont: ft.l, dx: ft.dx, dy: ft.dy, x: 0, y: 0, w: sl.w, h: sl.h }; })()); } }, [h('i', { text: T[k].icon }), k === 'shape' ? 'Line / box' : 'Data cell']));
+        gf.appendChild(h('button', { class: 'addbtn', onclick: function () { GW.addElement(k, k === 'shape' ? { name: 'Divider', kind: 'line', x: 20, y: 140, x2: 260, y2: 140, color: '#aaaaaa', pen: 1 } : (function () { var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h); return { name: 'Data cell', src: 'timer', vfont: ft.v, lfont: ft.l, dx: ft.dx, dy: ft.dy, bB: !!(ft.b && ft.b.bB), bT: !!(ft.b && ft.b.bT), bR: !!(ft.b && ft.b.bR), x: 0, y: 0, w: sl.w, h: sl.h }; })()); } }, [h('i', { text: T[k].icon }), k === 'shape' ? 'Line / box' : 'Data cell']));
       });
       return;
     }
@@ -556,6 +556,11 @@
     var ft = fitFonts0(w, h), sl = GW.dfSlot(GW.design);
     // 8 fields: the side-by-side cells sit against the curve of the bezel, so nudge their text inwards
     if (sl.layout.id === '8fields' && sl.w < 280) { ft = Object.assign({}, ft, { dx: sl.x === 0 ? 7 : -7, dy: 2 }); }
+    // 8 fields: Garmin's dividing lines - under the top field, over the bottom field, and one down the middle joining them
+    if (sl.layout.id === '8fields') {
+      var si = GW.design.dfSlot || 0, last = sl.layout.slots.length - 1;
+      ft = Object.assign({}, ft, { b: { bB: si === 0, bT: si === last, bR: si > 0 && si < last && sl.x === 0 } });
+    }
     return ft;
   }
   function fitFonts0(w, h) {
