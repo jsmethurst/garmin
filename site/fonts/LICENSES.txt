@@ -9,6 +9,8 @@ Bundled typefaces (all licensed under the SIL Open Font License 1.1, https://ope
   Press Start 2P    (c) 2012 The Press Start 2P Project Authors
   DM Sans           (c) 2014 The DM Sans Project Authors
   Libre Baskerville (c) 2012 The Libre Baskerville Project Authors
+  Spectral          (c) 2017 Production Type
+  Source Serif 4    (c) 2014 Adobe
 
 Files are the Latin and Latin-ext subsets distributed by Fontsource (https://fontsource.org).
 Bitmap fonts that the tool generates from these faces for your watchface are derivative
