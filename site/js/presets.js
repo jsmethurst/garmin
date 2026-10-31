@@ -142,14 +142,16 @@
       build: function () { return GW.clone(BOSPHORUS); } },
     { id: 'run', name: 'Run screen', kind: 'datafield',
       build: function () {
-        // rows are laid out so each cell holds its label and value with room to spare; the round screen narrows the top and bottom rows
+        // laid out like Garmin's own data screen: heart rate on top, four cells in a grid (clockwise from the top left: elapsed time,
+        // distance, last lap pace, average pace), current lap pace on the bottom, with thin red rules between the rows
+        var RED = '#aa0000';
         var d = cellDesign('Run Screen', [
-          cell(50, 20, 180, 54, 'timer', 'TIMER', 'FONT_NUMBER_MILD'),
-          cell(20, 74, 120, 54, 'hr', 'HEART RATE', 'FONT_NUMBER_MILD', { zone: true }),
-          cell(140, 74, 120, 54, 'dist', 'DISTANCE', 'FONT_NUMBER_MILD'),
-          cell(40, 132, 200, 66, 'lapPace', 'LAP PACE', 'FONT_NUMBER_MEDIUM'),
-          cell(52, 198, 88, 60, 'avgPace', 'AVG PACE', 'FONT_NUMBER_MILD'),
-          cell(140, 198, 88, 60, 'lastLap', 'LAST LAP', 'FONT_NUMBER_MILD')
+          cell(20, 8, 240, 60, 'hr', 'HEART RATE', 'FONT_NUMBER_MILD', { lfont: 'FONT_TINY', zone: true, bB: true, bcolor: RED }),
+          cell(10, 68, 130, 68, 'elapsed', 'ELAPSED TIME', 'FONT_NUMBER_MILD', { lfont: 'FONT_TINY', bB: true, bR: true, bcolor: RED }),
+          cell(140, 68, 130, 68, 'dist', 'DISTANCE', 'FONT_NUMBER_MILD', { lfont: 'FONT_TINY', bB: true, bcolor: RED }),
+          cell(10, 136, 130, 68, 'avgPace', 'AVERAGE PACE', 'FONT_NUMBER_MILD', { lfont: 'FONT_TINY', bB: true, bR: true, bcolor: RED }),
+          cell(140, 136, 130, 68, 'lastLap', 'LAST LAP PACE', 'FONT_NUMBER_MILD', { lfont: 'FONT_TINY', bB: true, bcolor: RED }),
+          cell(40, 204, 200, 62, 'lapPace', 'LAP PACE', 'FONT_NUMBER_MILD', { lfont: 'FONT_TINY' })
         ]);
         d.dfAutoLap = true; d.dfLapM = 1000;
         return d;

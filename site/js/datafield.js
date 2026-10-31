@@ -82,7 +82,7 @@
     label: 'Data cell', icon: '▭',
     defaults: function () {
       return { type: 'dfcell', name: 'Timer', x: 40, y: 90, w: 200, h: 100, src: 'timer', label: 'TIMER', labelPos: 'above', lfont: 'FONT_XTINY', vfont: 'FONT_NUMBER_MEDIUM',
-        align: 'C', color: null, lcolor: null, fill: null, zone: false, bT: false, bB: false, bL: false, bR: false };
+        align: 'C', color: null, lcolor: null, bcolor: null, fill: null, zone: false, bT: false, bB: false, bL: false, bR: false };
     },
     pos: [['x', 'y']],
     box: function (el) { return { x: el.x, y: el.y, w: el.w, h: el.h }; },
@@ -93,7 +93,7 @@
       if (el.fill) { ctx.fillStyle = q(el.fill); ctx.fillRect(el.x, el.y, el.w, el.h); }
       var key = el.src, z = key === 'hr' || key === 'zone' ? zoneOf(s.runHr) : 0;
       if (el.zone && z >= 1) { ctx.fillStyle = q(ZFILL[z - 1]); ctx.fillRect(el.x, el.y, el.w, el.h); fg = lab = z === 5 ? '#ffffff' : '#000000'; }
-      ctx.strokeStyle = q(th.line); ctx.lineWidth = 1; ctx.lineCap = 'butt';
+      ctx.strokeStyle = q(el.bcolor || th.line); ctx.lineWidth = 1; ctx.lineCap = 'butt';
       function ln(x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1 + 0.5, y1 + 0.5); ctx.lineTo(x2 + 0.5, y2 + 0.5); ctx.stroke(); }
       if (el.bT) ln(el.x, el.y, el.x + el.w, el.y);
       if (el.bB) ln(el.x, el.y + el.h, el.x + el.w, el.y + el.h);
@@ -124,6 +124,7 @@
       if (hr) f.push({ k: 'zone', t: 'check', label: 'Fill the cell with the heart-rate zone colour' });
       f.push({ t: 'h', label: 'Divider lines' });
       f.push({ t: 'row', fields: [{ k: 'bT', t: 'check', label: 'Top' }, { k: 'bB', t: 'check', label: 'Bottom' }, { k: 'bL', t: 'check', label: 'Left' }, { k: 'bR', t: 'check', label: 'Right' }] });
+      f.push({ k: 'bcolor', t: 'optcolor', label: 'Line colour', noneLabel: 'screen default' });
       f.push({ t: 'h', label: 'Position and size' });
       f.push({ t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (left)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (top)', min: -50, max: 330 }] });
       f.push({ t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 10, max: 360 }, { k: 'h', t: 'num', label: 'Height', min: 10, max: 360 }] });
@@ -150,7 +151,7 @@
           '    fg = (z == 5) ? 0xFFFFFF : 0x000000;', '    lab = fg;', '}');
       }
       if (el.bT || el.bB || el.bL || el.bR) {
-        out.push('dc.setPenWidth(1);', 'dc.setColor(_dLine, Graphics.COLOR_TRANSPARENT);');
+        out.push('dc.setPenWidth(1);', 'dc.setColor(' + (el.bcolor ? GW.mcColor(el.bcolor) : '_dLine') + ', Graphics.COLOR_TRANSPARENT);');
         if (el.bT) out.push('dc.drawLine(x, y, x + w, y);');
         if (el.bB) out.push('dc.drawLine(x, y + h, x + w, y + h);');
         if (el.bL) out.push('dc.drawLine(x, y, x, y + h);');
