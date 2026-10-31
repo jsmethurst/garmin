@@ -202,7 +202,7 @@
   Array.prototype.forEach.call(document.querySelectorAll('#modes button'), function (b) { b.addEventListener('click', function () { GW.setMode(b.dataset.mode); }); });
   GW.on('structure', function () {
     syncMode();
-    GW.renderLayers(); GW.renderPanel(); schedule();
+    GW.renderLayers(); GW.renderPanel(); schedule(); GW.renderSlotCard();
     $('designName').value = GW.design.name;
   });
   GW.on('select', function (id) {

@@ -75,8 +75,9 @@
     if (n && L.hasV) { L.vy += fh(el.vfont) * 0.09; if (L.hasL) L.ly += el.labelPos === 'below' ? 3 : -3; }
     return L;
   }
+  GW.dfRows = layout;   // the editor uses this to centre new cells on the part of a slot that is visible on the round screen
   var PAD = 6, GAP = 3;   // GAP: space between a cell's label and its value
-  function ax(el) { return el.align === 'L' ? el.x + PAD : (el.align === 'R' ? el.x + el.w - PAD : el.x + el.w / 2); }
+  function ax(el) { return (el.align === 'L' ? el.x + PAD : (el.align === 'R' ? el.x + el.w - PAD : el.x + el.w / 2)) + (el.dx || 0); }
 
   // Rotated cell (the rotated export): the box, rules and zone fill become polygons / lines, and the text uses bitmap copies of the
   // system fonts (the same typeface the preview draws them in), because Garmin's own fonts cannot be turned.
@@ -169,6 +170,7 @@
       f.push({ t: 'h', label: 'Position and size' });
       f.push({ t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (left)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (top)', min: -50, max: 330 }] });
       f.push({ t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 10, max: 360 }, { k: 'h', t: 'num', label: 'Height', min: 10, max: 360 }] });
+      f.push({ k: 'dx', t: 'numopt', label: 'Shift text sideways (px)', ph: '0' });
       return f;
     },
     gen: function (el, cg) {
@@ -202,7 +204,7 @@
       var lf = cg.font(el.lfont), vf = cg.font(el.vfont);
       var just = el.align === 'L' ? 'Graphics.TEXT_JUSTIFY_LEFT' : (el.align === 'R' ? 'Graphics.TEXT_JUSTIFY_RIGHT' : 'Graphics.TEXT_JUSTIFY_CENTER');
       just += ' | Graphics.TEXT_JUSTIFY_VCENTER';
-      var tx = el.align === 'L' ? 'x + dfs(' + PAD + ')' : (el.align === 'R' ? 'x + w - dfs(' + PAD + ')' : 'x + w / 2');
+      var tx = (el.align === 'L' ? 'x + dfs(' + PAD + ')' : (el.align === 'R' ? 'x + w - dfs(' + PAD + ')' : 'x + w / 2')) + (el.dx ? ' + dfs(' + N(el.dx) + ')' : '');
       var below = el.labelPos === 'below';
       out.push('var lh = ' + (L.hasL ? 'dc.getFontHeight(' + lf + ')' : '0') + ';', 'var vh = ' + (L.hasV ? 'dc.getFontHeight(' + vf + ')' : '0') + ';',
         'var g = ' + (L.gap ? 'dfs(' + L.gap + ')' : '0') + ';', 'var top = y + (h - lh - vh - g) / 2;');

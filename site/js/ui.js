@@ -469,13 +469,14 @@
     if (GW.modeOf() === 'field') {
       DFQUICK.forEach(function (q) {
         chips.appendChild(h('button', { class: 'chip', text: q[0], onclick: function () {
-          var n = GW.design.elements.length;
-          GW.addElement('dfcell', { name: q[0], src: q[1], label: q[0].toUpperCase(), vfont: q[2], zone: q[1] === 'hr', y: 40 + (n % 4) * 30 });
+          // the new cell snaps into the chosen slot and fills it, so a heart-rate colour covers the whole field
+          var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h);
+          GW.addElement('dfcell', { name: q[0], src: q[1], label: q[0].toUpperCase(), vfont: ft.v, lfont: ft.l, dx: ft.dx, zone: q[1] === 'hr', x: 0, y: 0, w: sl.w, h: sl.h });
         } }));
       });
       var gf = $('addGrid'); gf.innerHTML = '';
       ['dfcell', 'shape'].forEach(function (k) {
-        gf.appendChild(h('button', { class: 'addbtn', onclick: function () { GW.addElement(k, k === 'shape' ? { name: 'Divider', kind: 'line', x: 20, y: 140, x2: 260, y2: 140, color: '#aaaaaa', pen: 1 } : { name: 'Data cell', src: 'timer' }); } }, [h('i', { text: T[k].icon }), k === 'shape' ? 'Line / box' : 'Data cell']));
+        gf.appendChild(h('button', { class: 'addbtn', onclick: function () { GW.addElement(k, k === 'shape' ? { name: 'Divider', kind: 'line', x: 20, y: 140, x2: 260, y2: 140, color: '#aaaaaa', pen: 1 } : (function () { var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h); return { name: 'Data cell', src: 'timer', vfont: ft.v, lfont: ft.l, dx: ft.dx, x: 0, y: 0, w: sl.w, h: sl.h }; })()); } }, [h('i', { text: T[k].icon }), k === 'shape' ? 'Line / box' : 'Data cell']));
       });
       return;
     }
@@ -518,13 +519,43 @@
     var box = h('div', { html: svg });
     Array.prototype.forEach.call(box.querySelectorAll('rect'), function (r) { r.addEventListener('click', function () { d.dfSlot = parseInt(r.getAttribute('data-i'), 10); GW.commit(true); }); });
     var sl = L.slots[si];
-    return h('div', { class: 'f' }, [h('label', { text: 'Screen layout' }), sel, box, h('div', { class: 'muted small', text: 'Field ' + (si + 1) + ' of ' + L.slots.length + ' · ' + sl[2] + ' × ' + sl[3] + ' px' })]);
+    return h('div', { class: 'f' }, [sel, box, h('div', { class: 'muted small', text: 'Field ' + (si + 1) + ' of ' + L.slots.length + ' · ' + sl[2] + ' × ' + sl[3] + ' px' })]);
+  }
+  // the "Screen layout" card in the left column (data fields only)
+  GW.renderSlotCard = function () {
+    var card = $('slotCard'); if (!card) return;
+    card.innerHTML = '';
+    if (GW.modeOf() !== 'field') return;
+    card.appendChild(h('h3', { text: 'Screen layout' }));
+    card.appendChild(slotPicker(GW.design));
+  };
+  // Fonts and sideways shift for a data cell that fills a slot: the biggest number font that still fits the part of the slot
+  // that is visible on the round screen, with the text centred on that visible part.
+  function fitFonts(w, h) {
+    var sl = GW.dfSlot(GW.design), R = 126, nums = GW.SYS_FONTS.filter(function (f) { return f[2] === 'n'; }).map(function (f) { return f[0]; });
+    var labs = h >= 100 ? ['FONT_TINY', 'FONT_XTINY'] : ['FONT_XTINY'];
+    function visible(y) {   // visible x-range of the slot on row y (design coordinates are slot-relative)
+      var dy = sl.y + y - 140, half = Math.sqrt(Math.max(0, R * R - dy * dy));
+      return [Math.max(sl.x, 140 - half) - sl.x, Math.min(sl.x + w, 140 + half) - sl.x];
+    }
+    var best = null, smallest = null;
+    labs.forEach(function (lab) {
+      nums.forEach(function (n) {
+        var el = { x: 0, y: 0, w: w, h: h, src: 'timer', label: 'HEART RATE', labelPos: 'above', lfont: lab, vfont: n };
+        var L = GW.dfRows(el), a = visible(L.ly), b = visible(L.vy), lo = Math.max(a[0], b[0]), hi = Math.min(a[1], b[1]);
+        var vh = GW.sysFont(n).box, lh = GW.sysFont(lab).box;
+        var fits = lh + 3 + vh + 10 <= h && vh * 0.55 * 4 <= hi - lo - 8 && lh * 0.6 * 10 <= hi - lo - 8;
+        var cand = { v: n, l: lab, vh: vh, dx: Math.round((lo + hi) / 2 - w / 2) };
+        if (fits && (!best || vh > best.vh)) best = cand;
+        if (!smallest) smallest = cand;
+      });
+    });
+    return best || smallest;
   }
 
   // ---------------------------------------------------------------- data field settings
   function renderFieldSettings(p) {
     var d = GW.design;
-    p.appendChild(slotPicker(d));
     if (GW.dfSlot(d).full) p.appendChild(rotationField(d));
     p.appendChild(field('Screen colours', segCtl([['light', 'Light'], ['auto', 'Match watch'], ['dark', 'Dark']], d.dfTheme || 'light', function (v) { d.dfTheme = v; GW.commit(true); })));
     p.appendChild(field('Units', segCtl([['watch', 'Match watch'], ['metric', 'Metric'], ['imperial', 'Imperial']], d.dfUnits || 'watch', function (v) { d.dfUnits = v; GW.commit(true); })));
