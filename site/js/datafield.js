@@ -114,7 +114,8 @@
     }
     if (el.bT || el.bB || el.bL || el.bR) {
       out.push('dc.setPenWidth(1);', 'dc.setColor(' + (el.bcolor ? GW.mcColor(el.bcolor) : '_dLine') + ', Graphics.COLOR_TRANSPARENT);');
-      [[el.bT, 0, 1], [el.bR, 1, 2], [el.bB, 3, 2], [el.bL, 0, 3]].forEach(function (b) { if (b[0]) out.push('dc.drawLine(' + pt(box[b[1]]) + ', ' + pt(box[b[2]]) + ');'); });
+      // bottom and right lines sit on the last pixel row / column inside the field (anything past the edge is clipped away)
+      [[el.bT, P(el.x, el.y), P(el.x + el.w, el.y)], [el.bR, P(el.x + el.w - 1, el.y), P(el.x + el.w - 1, el.y + el.h)], [el.bB, P(el.x, el.y + el.h - 1), P(el.x + el.w, el.y + el.h - 1)], [el.bL, P(el.x, el.y), P(el.x, el.y + el.h)]].forEach(function (b) { if (b[0]) out.push('dc.drawLine(' + pt(b[1]) + ', ' + pt(b[2]) + ');'); });
     }
     var just = { L: 0, C: 1, R: 2 }[el.align] == null ? 1 : { L: 0, C: 1, R: 2 }[el.align];
     function text(fontId, str, color, localY) {
@@ -152,9 +153,9 @@
       ctx.strokeStyle = q(el.bcolor || th.line); ctx.lineWidth = 1; ctx.lineCap = 'butt';
       function ln(x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1 + 0.5, y1 + 0.5); ctx.lineTo(x2 + 0.5, y2 + 0.5); ctx.stroke(); }
       if (bT) ln(el.x, el.y, el.x + el.w, el.y);
-      if (bB) ln(el.x, el.y + el.h, el.x + el.w, el.y + el.h);
+      if (bB) ln(el.x, el.y + el.h - 1, el.x + el.w, el.y + el.h - 1);
       if (bL) ln(el.x, el.y, el.x, el.y + el.h);
-      if (bR) ln(el.x + el.w, el.y, el.x + el.w, el.y + el.h);
+      if (bR) ln(el.x + el.w - 1, el.y, el.x + el.w - 1, el.y + el.h);
       var L = nudge(el, layout(el)), x = ax(el), al = el.align === 'L' ? 'L' : (el.align === 'R' ? 'R' : 'C');
       if (L.hasL) GW.drawText(ctx, el.lfont, el.label, x, L.ly, al, q(lab));
       if (L.hasV) {
@@ -211,9 +212,9 @@
       if (el.bT || el.bB || el.bL || el.bR) {
         out.push('dc.setPenWidth(1);', 'dc.setColor(' + (el.bcolor ? GW.mcColor(el.bcolor) : '_dLine') + ', Graphics.COLOR_TRANSPARENT);');
         if (el.bT) out.push('dc.drawLine(x, y, x + w, y);');
-        if (el.bB) out.push('dc.drawLine(x, y + h, x + w, y + h);');
+        if (el.bB) out.push('dc.drawLine(x, y + h - 1, x + w, y + h - 1);');
         if (el.bL) out.push('dc.drawLine(x, y, x, y + h);');
-        if (el.bR) out.push('dc.drawLine(x + w, y, x + w, y + h);');
+        if (el.bR) out.push('dc.drawLine(x + w - 1, y, x + w - 1, y + h);');
       }
       var lf = cg.font(el.lfont), vf = cg.font(el.vfont);
       var just = el.align === 'L' ? 'Graphics.TEXT_JUSTIFY_LEFT' : (el.align === 'R' ? 'Graphics.TEXT_JUSTIFY_RIGHT' : 'Graphics.TEXT_JUSTIFY_CENTER');
