@@ -4,7 +4,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var cv = $('cv'), ctx = cv.getContext('2d');
   var opts = { snap: true, grid: false };
-  var hoverId = null, drag = null, guides = { x: false, y: false };
+  var hoverId = null, drag = null, guides = { xs: [], ys: [] };
 
   // ---------- drawing ----------
   var drawQ = false;
@@ -30,9 +30,12 @@
         ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, GW.SIZE); ctx.moveTo(0, i); ctx.lineTo(GW.SIZE, i); ctx.stroke();
       }
     }
-    if (guides.x || guides.y) {
+    if (guides.xs.length || guides.ys.length) {
       ctx.strokeStyle = 'rgba(232,89,12,.9)'; ctx.lineWidth = 1 / k; ctx.setLineDash([4 / k, 3 / k]);
-      ctx.beginPath(); if (guides.x) { ctx.moveTo(140, 0); ctx.lineTo(140, GW.SIZE); } if (guides.y) { ctx.moveTo(0, 140); ctx.lineTo(GW.SIZE, 140); } ctx.stroke();
+      ctx.beginPath();
+      guides.xs.forEach(function (x) { ctx.moveTo(x, 0); ctx.lineTo(x, GW.SIZE); });
+      guides.ys.forEach(function (y) { ctx.moveTo(0, y); ctx.lineTo(GW.SIZE, y); });
+      ctx.stroke();
     }
     function outline(el, col, w, dash) {
       var b = safeBox(el); if (!b) return;
@@ -68,6 +71,23 @@
     }
     return null;
   }
+  // Snap the moving element's edges and centre to the screen centre and to the edges / centres of the other elements.
+  function snapMove(el, b, dx, dy) {
+    var T = 4, tx = [140], ty = [140];
+    GW.design.elements.forEach(function (o) {
+      if (o === el || o.hidden) return;
+      var ob = safeBox(o); if (!ob || (ob.w >= 270 && ob.h >= 270)) return;   // skip full-screen elements (rings, hands)
+      tx.push(ob.x, ob.x + ob.w / 2, ob.x + ob.w); ty.push(ob.y, ob.y + ob.h / 2, ob.y + ob.h);
+    });
+    function best(own, targets) {
+      var res = null;
+      own.forEach(function (c) { targets.forEach(function (t) { var d = t - c; if (Math.abs(d) <= T && (!res || Math.abs(d) < Math.abs(res.d))) res = { d: d, t: t }; }); });
+      return res;
+    }
+    var nx = b.x + dx, ny = b.y + dy;
+    var sx = best([nx, nx + b.w / 2, nx + b.w], tx), sy = best([ny, ny + b.h / 2, ny + b.h], ty);
+    return { dx: dx + (sx ? sx.d : 0), dy: dy + (sy ? sy.d : 0), xs: sx ? [sx.t] : [], ys: sy ? [sy.t] : [] };
+  }
   cv.addEventListener('pointerdown', function (e) {
     var p = toDesign(e), el = pick(p.x, p.y);
     GW.closeColor();
@@ -75,7 +95,7 @@
     if (GW.selId !== el.id) GW.select(el.id);
     var pairs = GW.posPairs(el);
     if (!pairs.length) return; // whole-face elements are selected but not dragged
-    drag = { id: el.id, sx: p.x, sy: p.y, moved: false, orig: pairs.map(function (pr) { return [pr[0], pr[1], el[pr[0]], el[pr[1]]]; }) };
+    drag = { id: el.id, sx: p.x, sy: p.y, moved: false, box: safeBox(el), orig: pairs.map(function (pr) { return [pr[0], pr[1], el[pr[0]], el[pr[1]]]; }) };
     cv.setPointerCapture(e.pointerId);
   });
   cv.addEventListener('pointermove', function (e) {
@@ -86,11 +106,9 @@
       var dx = p.x - drag.sx, dy = p.y - drag.sy;
       if (!drag.moved && Math.hypot(dx, dy) < 1.5) return;
       drag.moved = true;
-      var first = drag.orig[0], nx = first[2] + dx, ny = first[3] + dy;
-      guides.x = guides.y = false;
-      if (opts.snap && !e.shiftKey) {
-        if (Math.abs(nx - 140) < 4) { dx += 140 - nx; guides.x = true; }
-        if (Math.abs(ny - 140) < 4) { dy += 140 - ny; guides.y = true; }
+      guides.xs = []; guides.ys = [];
+      if (opts.snap && !e.shiftKey && drag.box) {
+        var sn = snapMove(el, drag.box, dx, dy); dx = sn.dx; dy = sn.dy; guides.xs = sn.xs; guides.ys = sn.ys;
       }
       drag.orig.forEach(function (o) { el[o[0]] = Math.round(o[2] + dx); el[o[1]] = Math.round(o[3] + dy); });
       GW.emit('drag');
@@ -101,7 +119,7 @@
   });
   function endDrag() {
     if (!drag) return;
-    var moved = drag.moved; drag = null; guides.x = guides.y = false;
+    var moved = drag.moved; drag = null; guides.xs = []; guides.ys = [];
     if (moved) GW.history.commit();
     schedule();
   }
