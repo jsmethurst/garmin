@@ -19,68 +19,8 @@
   function cell(x, y, w, h, src, label, vfont, o) { return E('dfcell', Object.assign({ name: label, x: x, y: y, w: w, h: h, src: src, label: label, vfont: vfont }, o || {})); }
   function cellDesign(name, els) { var d = D(name, '#ffffff', [], els); d.kind = 'datafield'; d.dfTheme = 'light'; d.dfUnits = 'watch'; d.dfAutoLap = false; d.dfLapM = 1000; return d; }
 
-  // ---- Bosphorus variations: the clock is centred exactly on the screen, the data is arranged around it ----
-  var BOS = { INK: '#000000', MID: '#555555', ACC: '#ff5500', TIME_PX: 84, TIME_SP: -4 };
-  function bosFonts(valPx, labPx) {
-    return [font('fTime', 'Libre Baskerville', 700, BOS.TIME_PX, 'digits', BOS.TIME_SP), font('fDate', 'DM Sans', 500, 22, 'basic'),
-      font('fLab', 'DM Sans', 500, labPx, 'basic'), font('fVal', 'DM Sans', 500, valPx, 'basic'), font('fSun', 'DM Sans', 500, 20, 'basic')];
-  }
-  // y that puts the digits' ink (not the line box) on `target`; x nudged for the negative letter spacing
-  function bosTime(fonts) {
-    var f = fonts[0], y = 140, x = 140 + BOS.TIME_SP / 2;
-    try {
-      var m = GW.fontMetrics(f), top = 999, bot = -999;
-      '0123456789'.split('').forEach(function (d) { var g = m.glyphs[d]; if (g && !g.blank) { top = Math.min(top, g.y0); bot = Math.max(bot, g.y0 + g.h); } });
-      if (top < 999) y = 140 - 1 - ((top + bot) / 2 - (m.desc - m.asc) / 2);
-    } catch (e) { }
-    return txt(x, Math.round(y * 10) / 10, 'time', 'fTime', BOS.INK, { name: 'Time', hmode: 'h24', lz: true });
-  }
-  function bosSunRow(y) {
-    return [E('sunicon', { name: 'Sunrise icon', x: 66, y: y, r: 6, kind: 'rise', color: BOS.ACC }), txt(84, y, 'sunrise', 'fSun', BOS.INK, { name: 'Sunrise', justify: 'L' }),
-      E('sunicon', { name: 'Sunset icon', x: 156, y: y, r: 6, kind: 'set', color: BOS.ACC }), txt(174, y, 'sunset', 'fSun', BOS.INK, { name: 'Sunset', justify: 'L' })];
-  }
-  function bosRing() { return E('arc', { name: 'Steps ring', cx: 140, cy: 140, r: 135, pen: 3, start: 0, sweep: 360, source: 'steps', color: BOS.ACC, track: '#aaaaaa', round: false }); }
-  function bosDate(y) { return txt(140, y, 'date', 'fDate', BOS.ACC, { name: 'Date', fmt: 'ddd DD MMM', tr: true }); }
-  // label above value
-  function bosCell(x, yl, yv, text, src, o) {
-    var lab = text === 'zone' ? txt(x, yl, 'nyZone', 'fLab', BOS.MID, { name: 'Zone' }) : label(x, yl, text, 'fLab', BOS.MID, { name: text });
-    return [lab, txt(x, yv, src, 'fVal', BOS.INK, Object.assign({ name: text === 'zone' ? 'New York time' : text }, o || {}))];
-  }
-  // label to the left of the value, set in two short lines when the word is long; the value is left-aligned
-  var BOS_BREAK = { ADIM: ['AD', 'IM'], NABIZ: ['NA', 'BIZ'], TEMPO: ['TEM', 'PO'], 'SON KM': ['SON', 'KM'] };
-  function bosSideCell(xv, y, text, src, o) {
-    var lines = BOS_BREAK[text] || [text], out = [];
-    lines.forEach(function (t, i) {
-      var ly = lines.length === 1 ? y : y + (i === 0 ? -6.5 : 6.5);
-      out.push(label(xv - 4, ly, t, 'fLab', BOS.MID, { name: text + (lines.length > 1 ? ' ' + (i + 1) : ''), justify: 'R' }));
-    });
-    out.push(txt(xv, y, src, 'fVal', BOS.INK, Object.assign({ name: text + ' value', justify: 'L' }, o || {})));
-    return out;
-  }
-  function bosVariant(kind) {
-    var fonts = bosFonts(22, kind === 3 ? 11 : 13), els = [bosRing()], flat = function (a) { els = els.concat(a); };
-    if (kind === 1) {
-      els.push(bosDate(38)); flat(bosSunRow(72)); els.push(bosTime(fonts));
-      [55, 111, 167, 223].forEach(function (x, i) {
-        var c = [['NABIZ', 'hr'], ['ADIM', 'steps'], ['zone', 'nyTime'], ['PİL', 'batteryDays', { suffix: 'G' }]][i];
-        flat(bosCell(x, 192, 209, c[0], c[1], c[2]));
-      });
-      flat(bosCell(111, 228, 245, 'SON KM', 'lastKm')); flat(bosCell(169, 228, 245, 'TEMPO', 'lastPace'));
-    } else {
-      els.push(bosDate(35)); flat(bosSunRow(63));
-      // EDT: zone label and time side by side under the sun row
-      els.push(txt(140, 89, 'nyTime', 'fSun', BOS.INK, { name: 'New York time' }), txt(108, 89, 'nyZone', 'fLab', BOS.MID, { name: 'Zone', justify: 'R' }));   // time centred, zone just left of it
-      els.push(bosTime(fonts));
-      if (kind === 2) {
-        flat(bosCell(64, 192, 209, 'ADIM', 'steps')); flat(bosCell(140, 192, 209, 'NABIZ', 'hr')); flat(bosCell(216, 192, 209, 'PİL', 'batteryDays', { suffix: 'G' }));
-        flat(bosCell(100, 228, 245, 'SON KM', 'lastKm')); flat(bosCell(180, 228, 245, 'TEMPO', 'lastPace'));
-      } else {
-        flat(bosSideCell(62, 199, 'ADIM', 'steps')); flat(bosSideCell(145, 199, 'NABIZ', 'hr')); flat(bosSideCell(205, 199, 'PİL', 'batteryDays', { suffix: 'G' }));
-        flat(bosSideCell(92, 235, 'SON KM', 'lastKm')); flat(bosSideCell(176, 235, 'TEMPO', 'lastPace'));
-      }
-    }
-    return D(['', 'Bosphorus Even', 'Bosphorus Top', 'Bosphorus Vertical'][kind], '#ffffff', fonts, els);
-  }
+  // the one Bosphorus face (exported from the editor)
+  var BOSPHORUS = {"name":"Bosphorus","bg":"#ffffff","bgImage":null,"fonts":[{"id":"fTime","family":"Libre Baskerville","weight":700,"px":84,"glyphs":"digits","spacing":-3,"tabular":true},{"id":"fDate","family":"DM Sans","weight":500,"px":22,"glyphs":"basic","spacing":0},{"id":"fLab","family":"DM Sans","weight":500,"px":13,"glyphs":"basic","spacing":0},{"id":"fVal","family":"DM Sans","weight":500,"px":22,"glyphs":"basic","spacing":0},{"id":"fSun","family":"DM Sans","weight":500,"px":20,"glyphs":"basic","spacing":0},{"id":"f_spectral700_e57","family":"Spectral","weight":700,"px":84,"glyphs":"digits","spacing":0,"bold":0,"tabular":false}],"elements":[{"id":"eysp853","hidden":false,"locked":false,"type":"arc","name":"Steps ring","cx":140,"cy":140,"r":135,"pen":3,"start":0,"sweep":360,"dir":"cw","source":"steps","min":null,"max":null,"color":"#ff5500","track":"#aaaaaa","round":false},{"id":"e2sblwl","hidden":false,"locked":false,"type":"text","name":"Date","x":140,"y":37,"source":"date","font":"fDate","color":"#ff5500","justify":"C","prefix":"","suffix":"","upper":false,"hmode":"auto","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"HELLO","tr":true},{"id":"e5tshgp","hidden":false,"locked":false,"type":"sunicon","name":"Sunrise icon","x":63,"y":63,"r":6,"kind":"rise","color":"#ff5500","rot":0},{"id":"ecb7tb6","hidden":false,"locked":false,"type":"text","name":"Sunrise","x":81,"y":63,"source":"sunrise","font":"fSun","color":"#000000","justify":"L","prefix":"","suffix":"","upper":false,"hmode":"auto","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"HELLO"},{"id":"e34m122","hidden":false,"locked":false,"type":"sunicon","name":"Sunset icon","x":157,"y":63,"r":6,"kind":"set","color":"#ff5500","rot":0},{"id":"eho5mx2","hidden":false,"locked":false,"type":"text","name":"Sunset","x":175,"y":63,"source":"sunset","font":"fSun","color":"#000000","justify":"L","prefix":"","suffix":"","upper":false,"hmode":"auto","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"HELLO"},{"id":"e5q3tp6","hidden":false,"locked":false,"type":"text","name":"New York time","x":140,"y":89,"source":"nyTime","font":"fSun","color":"#000000","justify":"C","prefix":"","suffix":"","upper":false,"hmode":"auto","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"HELLO"},{"id":"epfcr8w","hidden":false,"locked":false,"type":"text","name":"Zone","x":110,"y":89,"source":"nyZone","font":"fLab","color":"#555555","justify":"R","prefix":"","suffix":"","upper":false,"hmode":"auto","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"HELLO","fontSize":0},{"id":"eezwwuv","hidden":false,"locked":false,"type":"text","name":"Time","x":140,"y":140,"source":"time","font":"f_spectral700_e57","color":"#000000","justify":"C","prefix":"","suffix":"","upper":false,"hmode":"h24","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"HELLO","fontSize":101},{"id":"eg8ysys","hidden":false,"locked":false,"type":"text","name":"ADIM","x":72,"y":192,"source":"custom","font":"fLab","color":"#555555","justify":"C","prefix":"","suffix":"","upper":false,"hmode":"auto","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"ADIM"},{"id":"es9rs41","hidden":false,"locked":false,"type":"text","name":"ADIM","x":72,"y":209,"source":"steps","font":"fVal","color":"#000000","justify":"C","prefix":"","suffix":"","upper":false,"hmode":"auto","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"HELLO"},{"id":"er5h6mz","hidden":false,"locked":false,"type":"text","name":"NABIZ","x":140,"y":192,"source":"custom","font":"fLab","color":"#555555","justify":"C","prefix":"","suffix":"","upper":false,"hmode":"auto","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"NABIZ"},{"id":"expaney","hidden":false,"locked":false,"type":"text","name":"NABIZ","x":140,"y":209,"source":"hr","font":"fVal","color":"#000000","justify":"C","prefix":"","suffix":"","upper":false,"hmode":"auto","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"HELLO"},{"id":"e5d8iap","hidden":false,"locked":false,"type":"text","name":"PİL","x":210,"y":192,"source":"custom","font":"fLab","color":"#555555","justify":"C","prefix":"","suffix":"","upper":false,"hmode":"auto","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"PİL"},{"id":"em6n0to","hidden":false,"locked":false,"type":"text","name":"PİL","x":210,"y":209,"source":"batteryDays","font":"fVal","color":"#000000","justify":"C","prefix":"","suffix":"G","upper":false,"hmode":"auto","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"HELLO"},{"id":"eiemdne","hidden":false,"locked":false,"type":"text","name":"SON KM","x":107,"y":230,"source":"custom","font":"fLab","color":"#555555","justify":"C","prefix":"","suffix":"","upper":false,"hmode":"auto","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"SON KM"},{"id":"e1pbe4a","hidden":false,"locked":false,"type":"text","name":"SON KM","x":107,"y":247,"source":"lastKm","font":"fVal","color":"#000000","justify":"C","prefix":"","suffix":"","upper":false,"hmode":"auto","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"HELLO"},{"id":"ev8ejnd","hidden":false,"locked":false,"type":"text","name":"TEMPO","x":173,"y":230,"source":"custom","font":"fLab","color":"#555555","justify":"C","prefix":"","suffix":"","upper":false,"hmode":"auto","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"TEMPO"},{"id":"e3luig8","hidden":false,"locked":false,"type":"text","name":"TEMPO","x":173,"y":247,"source":"lastPace","font":"fVal","color":"#000000","justify":"C","prefix":"","suffix":"","upper":false,"hmode":"auto","lz":true,"secs":false,"sep":":","fmt":"ddd DD MMM","unit":"auto","text":"HELLO"}]};
 
   GW.PRESETS = [
     { id: 'orbit', name: 'Orbit', blurb: 'Four nested rings: steps, battery, how much of the day and the year is gone.',
@@ -199,46 +139,8 @@
           txt(140, 188, 'battery', S, '#005500', { prefix: 'BAT ', suffix: '%' })
         ]);
       } },
-    { id: 'bos1', name: 'Bosphorus Even', build: function () { return bosVariant(1); } },
-    { id: 'bos2', name: 'Bosphorus Top', build: function () { return bosVariant(2); } },
-    { id: 'bos3', name: 'Bosphorus Vertical', build: function () { return bosVariant(3); } },
     { id: 'bigdata', name: 'Bosphorus',
-      build: function () {
-        var INK = '#000000', MID = '#555555', RULE = '#aaaaaa', ACC = '#ff5500';
-        var fonts = [
-          font('fTime', 'Libre Baskerville', 700, 78, 'digits', -4),
-          font('fDate', 'DM Sans', 500, 18, 'basic'),
-          font('fLab', 'DM Sans', 500, 12, 'basic'),
-          font('fVal', 'DM Sans', 500, 20, 'basic'),
-          font('fSun', 'DM Sans', 500, 16, 'basic'),
-          font('fSans24', 'DM Sans', 500, 24, 'basic')   // spare size, pick it for any text in the Inspector
-        ];
-        function lab(x, y, t) { return label(x, y, t, 'fLab', MID, { name: t }); }
-        function val(x, y, source, o) { return txt(x, y, source, 'fVal', INK, o); }
-        var cols = [70, 140, 210];
-        var face = D('Bosphorus', '#ffffff', fonts, [
-          E('arc', { name: 'Steps ring', cx: 140, cy: 140, r: 135, pen: 3, start: 0, sweep: 360, source: 'steps', color: ACC, track: RULE, round: false }),
-          txt(140, 40, 'date', 'fDate', ACC, { name: 'Date', fmt: 'ddd DD MMM', tr: true }),
-          txt(140, 88, 'time', 'fTime', INK, { name: 'Time', hmode: 'h24', lz: true }),
-          line(60, 128, 220, 128, RULE, 1, 'Rule'),
-          line(105, 136, 105, 202, RULE, 1, 'Divider'), line(175, 136, 175, 202, RULE, 1, 'Divider'),
-          line(60, 167, 220, 167, RULE, 1, 'Rule'),
-          line(60, 207, 220, 207, RULE, 1, 'Rule'),
-          lab(cols[0], 140, 'NABIZ'), val(cols[0], 155, 'hr'),
-          lab(cols[1], 140, 'ADIM'), val(cols[1], 155, 'steps'),
-          lab(cols[2], 140, 'PİL'), val(cols[2], 155, 'batteryDays', { suffix: 'G' }),
-          lab(cols[0], 180, 'SON KM'), val(cols[0], 195, 'lastKm'),
-          lab(cols[1], 180, 'TEMPO'), val(cols[1], 195, 'lastPace'),
-          txt(cols[2], 180, 'nyZone', 'fLab', MID, { name: 'Zone' }), val(cols[2], 195, 'nyTime', { name: 'New York time' }),
-          E('sunicon', { name: 'Sunrise icon', x: 84, y: 227, r: 6, kind: 'rise', color: ACC }),
-          txt(97, 227, 'sunrise', 'fSun', INK, { name: 'Sunrise', justify: 'L' }),
-          E('sunicon', { name: 'Sunset icon', x: 166, y: 227, r: 6, kind: 'set', color: ACC }),
-          txt(179, 227, 'sunset', 'fSun', INK, { name: 'Sunset', justify: 'L' })
-        ]);
-        // the date stays up top; the time and the data sit lower
-        face.elements.forEach(function (e) { if (e.type !== 'arc' && e.name !== 'Date') { e.y += 13; if (e.y2 != null) e.y2 += 13; } });
-        return face;
-      } },
+      build: function () { return GW.clone(BOSPHORUS); } },
     { id: 'run', name: 'Run screen', kind: 'datafield', blurb: 'Data field for runs in Garmin\u2019s own style: timer, HR zone colour, distance, lap / average / last-lap pace. Auto-laps every km.',
       build: function () { return fieldDesign('Run Screen', { name: 'Run screen', autoLap: true }); } },
     { id: 'race', name: 'Race screen', kind: 'datafield', blurb: 'Same screen, but it only laps when you press Lap: for km flags on a race course.',
