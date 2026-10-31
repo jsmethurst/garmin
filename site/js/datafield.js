@@ -149,7 +149,7 @@
       if (el.fill) { ctx.fillStyle = q(el.fill); ctx.fillRect(el.x, el.y, el.w, el.h); }
       var key = el.src, z = key === 'hr' || key === 'zone' ? zoneOf(s.runHr) : 0;
       if (el.zone && z >= 1) { ctx.fillStyle = q(ZFILL[z - 1]); ctx.fillRect(el.x, el.y, el.w, el.h); fg = lab = z === 5 ? '#ffffff' : '#000000'; }
-      var E = GW.dfEdges(d, GW.elSlot(el, d)), bT = el.bT || E.bT, bB = el.bB || E.bB, bL = el.bL || E.bL, bR = el.bR || E.bR;
+      var bT = el.bT, bB = el.bB, bL = el.bL, bR = el.bR;
       ctx.strokeStyle = q(el.bcolor || th.line); ctx.lineWidth = 1; ctx.lineCap = 'butt';
       function ln(x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1 + 0.5, y1 + 0.5); ctx.lineTo(x2 + 0.5, y2 + 0.5); ctx.stroke(); }
       if (bT) ln(el.x, el.y, el.x + el.w, el.y);

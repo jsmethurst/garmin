@@ -25,8 +25,16 @@
   GW.elSlot = function (el, design) { return el.slot == null ? (design.dfSlot || 0) : el.slot; };
   // Garmin's own dividing lines of a layout, drawn by the cells that sit next to them: {bT,bB,bL,bR} for one slot
   GW.dfEdges = function (design, i) {
-    var L = GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0], e = (L.edges && design.dfLines !== false && L.edges[i]) || '';
+    var L = GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0], e = (L.edges && L.edges[i]) || '';
     return { bT: e.indexOf('T') >= 0, bB: e.indexOf('B') >= 0, bL: e.indexOf('L') >= 0, bR: e.indexOf('R') >= 0 };
+  };
+  // give the cells of a design the layout's dividing lines (they stay ordinary per-cell settings the inspector can change)
+  GW.applyEdges = function (design) {
+    design.elements.forEach(function (el) {
+      if (el.type !== 'dfcell') return;
+      var E = GW.dfEdges(design, GW.elSlot(el, design));
+      ['bT', 'bB', 'bL', 'bR'].forEach(function (k) { if (E[k]) el[k] = true; });
+    });
   };
   GW.slotRect = function (design, i) {
     var L = GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0], r = L.slots[i] || L.slots[0];

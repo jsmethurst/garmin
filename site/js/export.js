@@ -185,11 +185,6 @@
     return jobs.reduce(function (p, j) {
       return p.then(function () {
         var d = GW.clone(design);
-        if (design.kind === 'datafield') d.elements.forEach(function (el) {   // the layout's dividing lines become the cells' own borders
-          if (el.type !== 'dfcell') return;
-          var E = GW.dfEdges(design, GW.elSlot(el, design));
-          el.bT = el.bT || E.bT; el.bB = el.bB || E.bB; el.bL = el.bL || E.bL; el.bR = el.bR || E.bR;
-        });
         if (j.flat) {
           // every cell moves from its field into screen coordinates, then the single full-screen field is turned
           d.elements.forEach(function (el) {

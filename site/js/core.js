@@ -146,6 +146,7 @@ window.GW = window.GW || {};
     function fin() {
       GW.design = Object.assign(GW.blankDesign(), d);
       if (GW.design.kind === 'datafield') GW.design.elements.forEach(function (e) { if (e.slot == null) e.slot = GW.design.dfSlot || 0; });
+      if (GW.design.kind === 'datafield' && !GW.design.dfEdgesApplied) { GW.applyEdges(GW.design); GW.design.dfEdgesApplied = true; }   // older designs: put the layout's dividing lines on the cells once
       GW.design.elements = (GW.design.elements || []).filter(function (e) { return GW.types[e.type]; }); // drop element types that no longer exist
       GW.design.fonts = GW.design.fonts || [];
       GW.selId = null;

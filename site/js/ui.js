@@ -475,13 +475,13 @@
           chips.appendChild(h('button', { class: 'chip', text: s[2], onclick: function () {
             // the new cell snaps into the chosen slot and fills it, so a heart-rate color covers the whole field
             var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h);
-            GW.addElement('dfcell', { name: s[2], src: s[0], label: s[2].toUpperCase(), vfont: ft.v, lfont: ft.l, dx: ft.dx, dy: ft.dy, zone: s[0] === 'hr', x: 0, y: 0, w: sl.w, h: sl.h });
+            GW.addElement('dfcell', { name: s[2], src: s[0], label: s[2].toUpperCase(), vfont: ft.v, lfont: ft.l, dx: ft.dx, dy: ft.dy, bT: ft.e.bT, bB: ft.e.bB, bL: ft.e.bL, bR: ft.e.bR, zone: s[0] === 'hr', x: 0, y: 0, w: sl.w, h: sl.h });
           } }));
         });
       });
       var gf = $('addGrid'); gf.innerHTML = '';
       ['dfcell', 'shape'].forEach(function (k) {
-        gf.appendChild(h('button', { class: 'addbtn', onclick: function () { GW.addElement(k, k === 'shape' ? { name: 'Divider', kind: 'line', x: 20, y: 140, x2: 260, y2: 140, color: '#aaaaaa', pen: 1 } : (function () { var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h); return { name: 'Data cell', src: 'timer', vfont: ft.v, lfont: ft.l, dx: ft.dx, dy: ft.dy, x: 0, y: 0, w: sl.w, h: sl.h }; })()); } }, [h('i', { text: T[k].icon }), k === 'shape' ? 'Line / box' : 'Data cell']));
+        gf.appendChild(h('button', { class: 'addbtn', onclick: function () { GW.addElement(k, k === 'shape' ? { name: 'Divider', kind: 'line', x: 20, y: 140, x2: 260, y2: 140, color: '#aaaaaa', pen: 1 } : (function () { var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h); return { name: 'Data cell', src: 'timer', vfont: ft.v, lfont: ft.l, dx: ft.dx, dy: ft.dy, bT: ft.e.bT, bB: ft.e.bB, bL: ft.e.bL, bR: ft.e.bR, x: 0, y: 0, w: sl.w, h: sl.h }; })()); } }, [h('i', { text: T[k].icon }), k === 'shape' ? 'Line / box' : 'Data cell']));
       });
       return;
     }
@@ -517,7 +517,7 @@
     var lay = GW.DF_LAYOUTS, li = lay[d.dfLayout] ? d.dfLayout : 0, L = lay[li], si = L.slots[d.dfSlot] ? d.dfSlot : 0;
     var sel = h('select', {}, lay.map(function (l, i) { return h('option', { value: i, text: l.name }); }));
     sel.value = li;
-    sel.addEventListener('change', function () { d.dfLayout = parseInt(sel.value, 10); d.dfSlot = 0; GW.commit(true); });
+    sel.addEventListener('change', function () { d.dfLayout = parseInt(sel.value, 10); d.dfSlot = 0; GW.applyEdges(d); GW.commit(true); });
     var used = {}; d.elements.forEach(function (e) { if (e.type === 'dfcell') used[GW.elSlot(e, d)] = 1; });
     var svg = '<svg viewBox="0 0 280 280" width="150" height="150" style="display:block;margin:6px 0 0"><defs><clipPath id="sc"><circle cx="140" cy="140" r="139"/></clipPath></defs><g clip-path="url(#sc)">' +
       L.slots.map(function (r, i) { return '<rect data-i="' + i + '" x="' + r[0] + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '" fill="' + (i === si ? '#c2410c' : (used[i] ? '#e7c9b0' : '#f7f6f2')) + '" stroke="#6b6860" stroke-width="2" style="cursor:pointer"/>'; }).join('') +
@@ -546,7 +546,6 @@
     card.appendChild(h('h3', { text: 'Screen settings' }));
     var rest = h('div', { style: 'display:flex;flex-direction:column;gap:10px' });
     rest.appendChild(rotationField(d));
-    if (GW.DF_LAYOUTS[d.dfLayout] && GW.DF_LAYOUTS[d.dfLayout].edges) rest.appendChild(field('Dividing lines', segCtl([['on', 'Garmin lines'], ['off', 'None']], d.dfLines === false ? 'off' : 'on', function (v) { d.dfLines = v === 'on'; GW.commit(true); })));
     rest.appendChild(field('Screen colors', segCtl([['light', 'Light'], ['auto', 'Match watch'], ['dark', 'Dark']], d.dfTheme || 'light', function (v) { d.dfTheme = v; GW.commit(true); })));
     rest.appendChild(field('Units', segCtl([['watch', 'Match watch'], ['metric', 'Metric'], ['imperial', 'Imperial']], d.dfUnits || 'watch', function (v) { d.dfUnits = v; GW.commit(true); })));
     card.appendChild(rest);
@@ -557,7 +556,7 @@
     var ft = fitFonts0(w, h), sl = GW.dfSlot(GW.design);
     // 8 fields: the side-by-side cells sit against the curve of the bezel, so nudge their text inwards
     if (sl.layout.id === '8fields' && sl.w < 280) { ft = Object.assign({}, ft, { dx: sl.x === 0 ? 7 : -7, dy: 2 }); }
-    return ft;
+    return Object.assign({}, ft, { e: GW.dfEdges(GW.design, GW.design.dfSlot || 0) });   // the layout's dividing lines for this field
   }
   function fitFonts0(w, h) {
     var sl = GW.dfSlot(GW.design), R = 126, nums = GW.SYS_FONTS.filter(function (f) { return f[2] === 'n'; }).map(function (f) { return f[0]; });
