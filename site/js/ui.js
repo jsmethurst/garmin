@@ -521,8 +521,6 @@
   }
 
   // ---------------------------------------------------------------- face tab
-  function getSaves() { try { return JSON.parse(localStorage.getItem('gw.saves') || '[]'); } catch (e) { return []; } }
-  function putSaves(a) { try { localStorage.setItem('gw.saves', JSON.stringify(a)); return true; } catch (e) { GW.toast('Browser storage is full: delete a snapshot or use Save to download.'); return false; } }
   function renderFace(p) {
     var d = GW.design;
     var bg = h('button', { class: 'swatch', type: 'button' }, [h('i', { style: 'background:' + GW.q(d.bg) }), h('span', { text: GW.q(d.bg) })]);
@@ -537,22 +535,6 @@
     p.appendChild(h('div', { class: 'f' }, [h('label', { text: 'Background image (optional)' }),
       h('div', { class: 'dropzone', onclick: function () { file.click(); }, text: d.bgImage ? 'Replace image…' : 'Choose a 280×280 image…' }), file,
       d.bgImage ? h('button', { class: 'btn sm', text: 'Remove background image', onclick: function () { d.bgImage = null; GW.commit(true); } }) : null]));
-    p.appendChild(h('h4', { text: 'Saved in this browser' }));
-    var nameIn = h('input', { type: 'text', value: d.name, maxlength: 40, 'aria-label': 'Snapshot name' });
-    p.appendChild(h('div', { class: 'row' }, [nameIn, h('button', { class: 'btn', style: 'flex:none', text: 'Save snapshot', onclick: function () {
-      var a = getSaves().filter(function (x) { return x.name !== nameIn.value; });
-      a.unshift({ name: nameIn.value || 'Untitled', ts: Date.now(), data: GW.serialize() });
-      if (putSaves(a)) { GW.toast('Snapshot saved'); GW.renderPanel(); }
-    } })]));
-    getSaves().forEach(function (sv, i) {
-      p.appendChild(h('div', { class: 'layer', style: 'cursor:default' }, [
-        h('span', { class: 'nm', text: sv.name + ' · ' + new Date(sv.ts).toLocaleDateString() }),
-        h('button', { class: 'btn sm', text: 'Load', onclick: function () {
-          GW.loadFrom(JSON.parse(JSON.stringify(sv.data)), function () { GW.fontsReady().then(function () { GW.touch(true); GW.toast('Loaded ' + sv.name); }); });
-        } }),
-        h('button', { 'aria-label': 'Delete snapshot', title: 'Delete', text: '×', onclick: function () { var a = getSaves(); a.splice(i, 1); putSaves(a); GW.renderPanel(); } })
-      ]));
-    });
     p.appendChild(h('h4', { text: 'Start over' }));
     p.appendChild(h('div', { class: 'row' }, [
       h('button', { class: 'btn', text: 'Presets…', onclick: function () { GW.openPresets(); } }),
@@ -632,16 +614,30 @@
 
   GW.openPresets = function () {
     var grid = h('div', { class: 'presets' });
-    var fld = GW.modeOf() === 'field';
+    var kind = GW.modeOf(), fld = kind === 'field';
+    function load(fn) { fn(function () { GW.fontsReady().then(function () { GW.touch(true); closeModal(); GW.history.commit(); }); }); }
+    function card(thumb, name, saved, onload) {
+      var kids = [thumb, h('b', { text: name })];
+      if (saved) kids.push(h('span', { class: 'muted small', text: 'saved' }));
+      var c = h('button', { class: 'pcard', onclick: function () { load(onload); GW.toast(name + ' loaded. Ctrl+Z undoes it.'); } }, kids);
+      if (!saved) return c;
+      var wrap = h('div', { class: 'pwrap' }, [c, h('button', { class: 'pdel', title: 'Delete this saved layout' + (GW.PRESETS.some(function (x) { return x.name.toLowerCase() === name.toLowerCase(); }) ? ' (the built-in one comes back)' : ''), 'aria-label': 'Delete ' + name, text: '×', onclick: function () {
+        GW.layouts.remove(name, kind); GW.openPresets();
+      } })]);
+      return wrap;
+    }
+    function blankThumb(color) { var c = document.createElement('canvas'); c.width = c.height = 120; var x = c.getContext('2d'); x.fillStyle = color; x.fillRect(0, 0, 120, 120); c.style.width = c.style.height = '120px'; return c; }
+    var shown = {};
     GW.PRESETS.forEach(function (p) {
       if ((p.kind === 'datafield') !== fld) return;
-      var thumb;
-      if (p.id === 'blank' || p.id === 'blankfield') { var c = document.createElement('canvas'); c.width = c.height = 120; c.getContext('2d').fillStyle = p.id === 'blank' ? '#000' : '#fff'; c.getContext('2d').fillRect(0, 0, 120, 120); c.style.width = c.style.height = '120px'; thumb = c; }
-      else thumb = GW.thumb(p.build(), 140);
-      var card = h('button', { class: 'pcard', onclick: function () {
-        GW.applyPreset(p.id, function () { GW.fontsReady().then(function () { GW.touch(true); closeModal(); GW.toast(p.name + ' loaded. Ctrl+Z undoes it.'); GW.history.commit(); }); });
-      } }, [thumb, h('b', { text: p.name })]);
-      grid.appendChild(card);
+      var saved = GW.layouts.find(p.name, kind);
+      if (saved) shown[p.name.toLowerCase()] = 1;
+      var thumb = p.id === 'blank' || p.id === 'blankfield' ? blankThumb(p.id === 'blank' ? '#000' : '#fff') : GW.thumb(saved ? saved.data.design : p.build(), 140);
+      grid.appendChild(card(thumb, p.name, !!saved, function (done) { GW.applyPreset(p.id, done); }));
+    });
+    GW.layouts.all().forEach(function (l) {
+      if (l.kind !== kind || shown[l.name.toLowerCase()]) return;
+      grid.appendChild(card(GW.thumb(l.data.design, 140), l.name, true, function (done) { GW.loadFrom(GW.clone(l.data), done); }));
     });
     modal(fld ? 'Layouts' : 'Presets', grid);
   };
@@ -799,6 +795,11 @@
     render();
   };
 
+  GW.saveLayout = function () {
+    var r = GW.layouts.save();
+    if (!r.ok) { GW.toast('The browser is out of storage. Use Download to keep a file instead.'); return; }
+    GW.toast(r.updated ? 'Updated “' + r.name + '”' : 'Saved “' + r.name + '” as a new layout');
+  };
   GW.saveFile = function () {
     var blob = new Blob([JSON.stringify(GW.serialize())], { type: 'application/json' });
     GW.download(blob, GW.slug(GW.design.name) + '.watchface.json');

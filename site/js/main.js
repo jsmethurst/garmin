@@ -134,7 +134,7 @@
     if (mod && k === 'y' && !typing) { e.preventDefault(); GW.history.redo(); return; }
     if (typing || document.querySelector('.modal')) return;
     if (mod && k === 'd') { e.preventDefault(); GW.duplicateSelected(); return; }
-    if (mod && k === 's') { e.preventDefault(); GW.saveFile(); return; }
+    if (mod && k === 's') { e.preventDefault(); GW.saveLayout(); return; }
     var el = GW.selected();
     if (!el) return;
     if (k === 'delete' || k === 'backspace') { e.preventDefault(); GW.deleteSelected(); return; }
@@ -194,7 +194,8 @@
   $('btnUndo').addEventListener('click', function () { GW.history.undo(); });
   $('btnRedo').addEventListener('click', function () { GW.history.redo(); });
   $('btnExport').addEventListener('click', GW.openExport);
-  $('btnSave').addEventListener('click', GW.saveFile);
+  $('btnSave').addEventListener('click', GW.saveLayout);
+  $('btnDownload').addEventListener('click', GW.saveFile);
   $('btnOpen').addEventListener('click', function () { $('fileOpen').click(); });
   $('fileOpen').addEventListener('change', function () {
     var f = this.files[0]; if (!f) return;

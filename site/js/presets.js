@@ -163,7 +163,8 @@
 
   GW.applyPreset = function (id, done) {
     var p = GW.PRESETS.filter(function (x) { return x.id === id; })[0]; if (!p) return;
-    var d = p.build();
-    GW.loadFrom({ design: d, assets: {} }, done);
+    var saved = GW.layouts && GW.layouts.find(p.name, p.kind === 'datafield' ? 'field' : 'watch');   // a saved layout with this name replaces the built-in
+    GW.loadFrom(saved ? GW.clone(saved.data) : { design: p.build(), assets: {} }, done);
   };
+
 })(window.GW);

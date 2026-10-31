@@ -176,6 +176,9 @@ body[data-mode=field] .tgl.live { display: none; }
 .presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
 .pcard { background: var(--panel); border: 1px solid var(--line2); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
 .pcard:hover { background: var(--hover); }
+.pwrap { position: relative; display: flex; } .pwrap .pcard { flex: 1; }
+.pdel { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border: 1px solid var(--line2); border-radius: var(--radius); background: var(--panel); color: var(--muted); line-height: 1; }
+.pdel:hover { color: var(--danger); background: var(--hover); }
 .pcard canvas { border-radius: 50%; box-shadow: 0 0 0 3px #1d1d1b; }
 .pcard b { font-size: 15px; } .pcard span { font-size: 12.5px; color: var(--muted); }
 .steps { counter-reset: s; display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }

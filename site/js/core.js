@@ -159,6 +159,26 @@ window.GW = window.GW || {};
       img.src = assets[id];
     });
   };
+  // ---------- saved layouts (the library behind the Save button) ----------
+  // Saving under a name that already exists, a built-in preset's name included, updates that layout; a new name adds one.
+  var LKEY = 'gw.layouts.v1';
+  function lkey(n) { return String(n || '').trim().toLowerCase(); }
+  GW.layouts = {
+    all: function () { try { return JSON.parse(localStorage.getItem(LKEY) || '[]'); } catch (e) { return []; } },
+    find: function (name, kind) { return GW.layouts.all().filter(function (l) { return l.kind === kind && lkey(l.name) === lkey(name); })[0] || null; },
+    save: function () {
+      var d = GW.design, kind = GW.modeOf(), name = String(d.name || '').trim() || 'Untitled', list = GW.layouts.all(), updated = false;
+      var entry = { name: name, kind: kind, ts: Date.now(), data: GW.serialize() };
+      for (var i = 0; i < list.length; i++) if (list[i].kind === kind && lkey(list[i].name) === lkey(name)) { list[i] = entry; updated = true; break; }
+      if (!updated) list.push(entry);
+      try { localStorage.setItem(LKEY, JSON.stringify(list)); } catch (e) { return { ok: false, name: name }; }
+      return { ok: true, updated: updated, name: name };
+    },
+    remove: function (name, kind) {
+      var list = GW.layouts.all().filter(function (l) { return !(l.kind === kind && lkey(l.name) === lkey(name)); });
+      try { localStorage.setItem(LKEY, JSON.stringify(list)); } catch (e) { }
+    }
+  };
   GW.loadSaved = function (mode) {
     try { var s = localStorage.getItem(KEYS[mode || 'watch']); return s ? JSON.parse(s) : null; } catch (e) { return null; }
   };
