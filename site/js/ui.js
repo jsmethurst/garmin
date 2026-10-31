@@ -135,11 +135,26 @@
       });
       sel.appendChild(g2);
     }
-    sel.appendChild(h('option', { value: '__new', text: '＋ New typeface…' }));
+    // every bundled typeface can be picked straight from here; it is added to the design when chosen
+    var g3 = h('optgroup', { label: 'Add another typeface' });
+    GW.FONT_FAMILIES.forEach(function (fam) {
+      fam.weights.forEach(function (w) {
+        var have = GW.design.fonts.some(function (c) { return c.family === fam.family && c.weight === w; });
+        if (!have) g3.appendChild(h('option', { value: '__fam|' + fam.family + '|' + w, text: fam.family + ' ' + w }));
+      });
+    });
+    if (g3.children.length) sel.appendChild(g3);
+    sel.appendChild(h('option', { value: '__new', text: '＋ Upload or design your own…' }));
     var cur = GW.customFont(el[f.k]);
     sel.value = cur && reps[keyOf(cur)] ? reps[keyOf(cur)].id : el[f.k];
     sel.addEventListener('change', function () {
       if (sel.value === '__new') { sel.value = cur && reps[keyOf(cur)] ? reps[keyOf(cur)].id : el[f.k]; GW.setTab('fonts'); return; }
+      if (sel.value.indexOf('__fam|') === 0) {
+        var parts = sel.value.split('|'), base = cur || { px: 22, glyphs: 'basic' };
+        var nfont = { id: 'f_' + parts[1].toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) + parts[2] + '_' + GW.uid('').slice(0, 3), family: parts[1], weight: Number(parts[2]), px: el.fontSize || base.px, glyphs: base.glyphs === 'nums' || base.glyphs === 'digits' ? base.glyphs : 'basic', spacing: 0 };
+        GW.design.fonts.push(nfont); el[f.k] = nfont.id; el.fontSize = null;
+        fireChange(true); GW.touch(false); GW.fontsReady().then(function () { GW.touch(true); }); return;
+      }
       var oldPx = el.fontSize || (cur && cur.px), nf = GW.customFont(sel.value);
       el[f.k] = sel.value;
       if (nf && oldPx && nf.px !== oldPx) el.fontSize = oldPx;   // switching typeface keeps the size you had
