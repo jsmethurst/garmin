@@ -172,13 +172,19 @@
     gl.addEventListener('change', function () { base.glyphs = gl.value; fireChange(true); });
     return field('Characters', gl);
   }
-  // fattens a light typeface (such as Xanh Mono, which only has one thin weight) by outlining each glyph
+  // fattens a light typeface by outlining each glyph
   function fThicken(el) {
     var base = GW.customFont(el.font); if (!base) return null;
     var i = h('input', { type: 'number', min: 0, max: 8, step: 1, value: base.bold || 0 });
     i.addEventListener('input', function () { var v = parseInt(i.value); if (!isNaN(v)) { base.bold = Math.max(0, v); GW.touch(false); } });
     i.addEventListener('change', function () { fireChange(true); });
     return field('Thicken (px)', i);
+  }
+  function fTabular(el) {
+    var base = GW.customFont(el.font); if (!base) return null;
+    var c = h('input', { type: 'checkbox' }); c.checked = !!base.tabular;
+    c.addEventListener('change', function () { base.tabular = c.checked; fireChange(true); });
+    return h('label', { class: 'chk' }, [c, 'Even digit widths (the time never changes width)']);
   }
   function fSpacing(el) {
     var base = GW.customFont(el.font); if (!base) return null;
@@ -337,6 +343,7 @@
       case 'glyphs': return fGlyphs(el);
       case 'spacing': return fSpacing(el);
       case 'thicken': return fThicken(el);
+      case 'tabular': return fTabular(el);
       case 'color': return fColor(el, f);
       case 'optcolor': return fOptColor(el, f);
       case 'track': return fTrack(el, f);

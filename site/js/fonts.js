@@ -26,8 +26,6 @@
     { family: 'Chakra Petch', weights: [600] },
     { family: 'Press Start 2P', weights: [400] },
     { family: 'Libre Baskerville', weights: [700] },
-    { family: 'Xanh Mono', weights: [400] },
-    { family: 'Cutive Mono', weights: [400] },
     { family: 'DM Sans', weights: [500, 700] }
   ];
   GW.GLYPH_SETS = {
@@ -71,7 +69,7 @@
   // ---------- glyph metrics (shared by preview + export) ----------
   var scratch = document.createElement('canvas').getContext('2d');
   var cache = {};
-  function key(f) { return [f.family, f.weight, f.px, f.glyphs, f.spacing || 0, f.bold || 0].join('|'); }
+  function key(f) { return [f.family, f.weight, f.px, f.glyphs, f.spacing || 0, f.bold || 0, f.tabular ? 1 : 0].join('|'); }
 
   GW.fontMetrics = function (f) {
     var k = key(f);
@@ -90,6 +88,11 @@
       if (!blank) { asc = Math.max(asc, -y0); desc = Math.max(desc, y1); }
       glyphs[ch] = { code: ch.charCodeAt(0), x0: x0, y0: y0, w: blank ? 0 : Math.max(1, x1 - x0), h: blank ? 0 : Math.max(1, y1 - y0),
         adv: Math.max(1, Math.round(m.width + (f.spacing || 0))), blank: blank };
+    }
+    if (f.tabular) {   // even digit widths: every digit gets the widest digit's cell, with its glyph centred in it (so the time never changes width)
+      var W = 0, dg = '0123456789'.split('');
+      dg.forEach(function (d) { if (glyphs[d]) W = Math.max(W, glyphs[d].adv); });
+      dg.forEach(function (d) { var g = glyphs[d]; if (g) { g.dx = Math.round((W - g.adv) / 2); g.adv = W; } });
     }
     if (asc + desc === 0) { asc = Math.round(f.px * 0.75); desc = Math.round(f.px * 0.2); ok = false; }
     var res = { asc: asc, desc: desc, lineHeight: asc + desc, glyphs: glyphs, chars: chars, ready: ok };
@@ -130,7 +133,7 @@
       for (var i = 0; i < text.length; i++) {
         var g = met.glyphs[text[i]];
         if (!g) { cx += Math.round(cf.px * 0.5); continue; }
-        if (!g.blank) { ctx.fillText(text[i], cx, base); if (cf.bold) { ctx.lineWidth = cf.bold; ctx.lineJoin = 'round'; ctx.strokeStyle = color; ctx.strokeText(text[i], cx, base); } }
+        if (!g.blank) { var gx = cx + (g.dx || 0); ctx.fillText(text[i], gx, base); if (cf.bold) { ctx.lineWidth = cf.bold; ctx.lineJoin = 'round'; ctx.strokeStyle = color; ctx.strokeText(text[i], gx, base); } }
         cx += g.adv;
       }
     } else {
@@ -148,7 +151,7 @@
     met.chars.split('').forEach(function (ch) {
       var g = met.glyphs[ch];
       if (g.blank) { glyphs[ch] = { blank: true, w: 0, h: 0, bx: 0, by: 0 }; return; }
-      var pts = [[g.x0, g.y0], [g.x0 + g.w, g.y0], [g.x0 + g.w, g.y0 + g.h], [g.x0, g.y0 + g.h]].map(function (p) { return [p[0] * c - p[1] * s, p[0] * s + p[1] * c]; });
+      var gx0 = g.x0 + (g.dx || 0), pts = [[gx0, g.y0], [gx0 + g.w, g.y0], [gx0 + g.w, g.y0 + g.h], [gx0, g.y0 + g.h]].map(function (p) { return [p[0] * c - p[1] * s, p[0] * s + p[1] * c]; });
       var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
       var bx = Math.floor(Math.min.apply(null, xs)) - 1, by = Math.floor(Math.min.apply(null, ys)) - 1;
       var bx2 = Math.ceil(Math.max.apply(null, xs)) + 1, by2 = Math.ceil(Math.max.apply(null, ys)) + 1;
@@ -183,7 +186,7 @@
       if (p.g.blank) return;
       var ox = p.x - p.g.x0, oy = p.y - p.g.y0;
       if (f.bold) { c.lineWidth = f.bold; c.lineJoin = 'round'; c.strokeStyle = '#ffffff'; }
-      if (rot) { c.save(); c.translate(p.x - p.bb.bx, p.y - p.bb.by); c.rotate(f.rot * Math.PI / 180); c.fillText(p.ch, 0, 0); if (f.bold) c.strokeText(p.ch, 0, 0); c.restore(); }
+      if (rot) { c.save(); c.translate(p.x - p.bb.bx, p.y - p.bb.by); c.rotate(f.rot * Math.PI / 180); c.fillText(p.ch, p.g.dx || 0, 0); if (f.bold) c.strokeText(p.ch, p.g.dx || 0, 0); c.restore(); }
       else { c.fillText(p.ch, ox, oy); if (f.bold) c.strokeText(p.ch, ox, oy); }
     });
     var name = f.id, base = rot ? rot.base : met.asc, lineH = rot ? rot.lineHeight : met.lineHeight;
@@ -194,7 +197,7 @@
     lines.push('chars count=' + placed.length);
     placed.forEach(function (p) {
       var g = p.g, w = rot ? p.bb.w : g.w, h = rot ? p.bb.h : g.h;
-      var xo = rot ? (g.blank ? 0 : p.bb.bx + rot.lm) : g.x0, yo = g.blank ? 0 : (rot ? rot.base + p.bb.by : met.asc + g.y0);
+      var xo = rot ? (g.blank ? 0 : p.bb.bx + rot.lm) : g.x0 + (g.dx || 0), yo = g.blank ? 0 : (rot ? rot.base + p.bb.by : met.asc + g.y0);
       lines.push('char id=' + g.code + ' x=' + p.x + ' y=' + p.y + ' width=' + w + ' height=' + h +
         ' xoffset=' + xo + ' yoffset=' + yo + ' xadvance=' + g.adv + ' page=0 chnl=15');
     });
