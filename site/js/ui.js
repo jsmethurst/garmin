@@ -750,7 +750,8 @@
         buildOne(results[i], format).then(function (j) {
           if (!j.ok) { finish(); say((j.message || 'Build failed.') + (many ? ' (' + results[i].name + ')' : ''), j.log || ''); return; }
           var bin = atob(j.prg), u = new Uint8Array(bin.length); for (var k = 0; k < bin.length; k++) u[k] = bin.charCodeAt(k);
-          GW.download(new Blob([u], { type: 'application/octet-stream' }), j.name);
+          var dlName = fileBase(many ? results[i] : null) + (/\.[a-z0-9]+$/i.exec(j.name) || ['.prg'])[0];
+          GW.download(new Blob([u], { type: 'application/octet-stream' }), dlName); j.name = dlName;
           done.push(j.name + ' (' + Math.round(u.length / 1024) + ' KB)'); log += (j.log || '') + '\n';
           setTimeout(function () { next(i + 1); }, 400); // let the browser start each download
         }).catch(function (e) { finish(); say('Build failed: ' + e.message); });
@@ -781,6 +782,11 @@
     return field('Rotation', segCtl([['none', 'Upright'], ['r30', 'Rotated 30° right']], GW.rotChoice(d), function (v) { d.rotate = v; GW.commit(false); GW.renderPanel(); GW.renderFieldSettings(); }));
   }
 
+  // download file names follow the name of the layout (several versions get their label added)
+  function fileBase(r) {
+    var b = String(GW.design.name || '').replace(/[\\\/:*?"<>|]+/g, '').trim() || 'Layout';
+    return r && r.label ? b + ' - ' + r.label.replace(/\s*\(.*\)/, '').replace(/[^\w\u00b0 ]+/g, '') : b;
+  }
   GW.openExport = function () {
     var body = h('div', {}, [h('p', { class: 'muted', text: 'Building your project…' })]);
     modal('Get it on your watch', body);
@@ -789,7 +795,7 @@
       GW.buildVariants(GW.design).then(function (results) {
         var first = results[0], many = results.length > 1;
         GW.history.commit();
-        var zipName = (many ? GW.slug(GW.design.name) + '-versions' : first.name) + '-fenix6x.zip';
+        var zipName = fileBase(null) + '.zip';
         var all = []; results.forEach(function (r) { r.files.forEach(function (f) { all.push({ path: r.name + '/' + f.path, data: f.data, exec: f.exec }); }); });
         var blob = GW.zip(all), nFiles = all.length;
         body.innerHTML = '';
