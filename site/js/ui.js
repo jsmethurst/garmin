@@ -85,7 +85,6 @@
     var p = $('panel'); p.innerHTML = '';
     if (tab === 'inspect') renderInspector(p);
     else if (tab === 'face') (GW.modeOf() === 'field' ? renderFieldSettings : renderFace)(p);
-    else if (tab === 'fonts') renderFonts(p);
     else renderSim(p);
   };
 
@@ -114,44 +113,47 @@
   }
   function field(label, control) { return h('div', { class: 'f' }, [label ? h('label', { text: label }) : null, control]); }
 
+  function slugId(fam, w) { return 'f_' + fam.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) + w + '_' + GW.uid('').slice(0, 3); }
+  // One menu holds every typeface: Garmin's built-ins, each bundled typeface and weight, and any font file you uploaded.
+  // Picking one that is not in the design yet adds it. The size is its own field.
   function fFont(el, f) {
     var sel = h('select', { 'data-k': f.k });
-    var g1 = h('optgroup', { label: 'Garmin built-in (fixed sizes, preview is approximate)' });
+    var g1 = h('optgroup', { label: 'Garmin built-in (fixed sizes)' });
     GW.SYS_FONTS.forEach(function (s) { g1.appendChild(h('option', { value: s[0], text: s[0].replace('FONT_', '').replace(/_/g, ' ').toLowerCase() + ' · ~' + Math.round(s[1] * GW.SIZE / 260) + 'px' })); });
     sel.appendChild(g1);
-    // bitmap typefaces: one entry per typeface + weight + character set; the size is its own field
-    var reps = {}, order = [];
-    GW.design.fonts.forEach(function (c) {
-      var k = [c.family, c.weight, c.glyphs, c.spacing || 0, c.bold || 0].join('|');
-      if (!reps[k]) { reps[k] = c; order.push(k); }
-    });
-    function keyOf(c) { return [c.family, c.weight, c.glyphs, c.spacing || 0, c.bold || 0].join('|'); }
-    function label(c) { return (c.label || c.family) + (c.upload ? '' : ' ' + c.weight); }
-    if (order.length) {
-      var g2 = h('optgroup', { label: 'Your typefaces' });
-      order.forEach(function (k) {
-        var c = reps[k], twin = order.some(function (o) { return o !== k && label(reps[o]) === label(c); });
-        g2.appendChild(h('option', { value: c.id, text: label(c) + (twin ? ' · ' + GW.GLYPH_SETS[c.glyphs].label.split(' (')[0] : '') }));
-      });
-      sel.appendChild(g2);
-    }
-    // every bundled typeface can be picked straight from here; it is added to the design when chosen
-    var g3 = h('optgroup', { label: 'Add another typeface' });
-    GW.FONT_FAMILIES.forEach(function (fam) {
+    function inDesign(fam, w) { return GW.design.fonts.filter(function (c) { return c.family === fam && Number(c.weight) === Number(w); })[0]; }
+    var g2 = h('optgroup', { label: 'Typefaces' });
+    GW.FONT_FAMILIES.slice().sort(function (a, b) { return a.family < b.family ? -1 : 1; }).forEach(function (fam) {
       fam.weights.forEach(function (w) {
-        var have = GW.design.fonts.some(function (c) { return c.family === fam.family && c.weight === w; });
-        if (!have) g3.appendChild(h('option', { value: '__fam|' + fam.family + '|' + w, text: fam.family + ' ' + w }));
+        var have = inDesign(fam.family, w);
+        g2.appendChild(h('option', { value: have ? have.id : '__fam|' + fam.family + '|' + w, text: fam.family + ' ' + w }));
       });
     });
-    if (g3.children.length) sel.appendChild(g3);
-    sel.appendChild(h('option', { value: '__new', text: '＋ Upload or design your own…' }));
+    GW.design.fonts.filter(function (c) { return c.upload; }).forEach(function (c) { g2.appendChild(h('option', { value: c.id, text: c.label || c.family })); });
+    sel.appendChild(g2);
+    sel.appendChild(h('option', { value: '__up', text: '＋ Upload a font file…' }));
+    var up = h('input', { type: 'file', accept: '.ttf,.otf,.woff,.woff2', hidden: true });
     var cur = GW.customFont(el[f.k]);
-    sel.value = cur && reps[keyOf(cur)] ? reps[keyOf(cur)].id : el[f.k];
+    function restore() { var rep = cur && !cur.upload ? inDesign(cur.family, cur.weight) : cur; sel.value = rep ? rep.id : el[f.k]; }
+    restore();
+    up.addEventListener('change', function () {
+      var file = up.files[0]; if (!file) return;
+      var fr = new FileReader();
+      fr.onload = function () {
+        var id = GW.uid('u'), family = 'upl_' + id;
+        GW.registerUploadedFont(family, fr.result).then(function () {
+          GW.assets[id] = { dataUrl: fr.result, font: true };
+          var nf = { id: 'f_' + id, family: family, label: file.name.replace(/\.[^.]+$/, ''), weight: 400, px: el.fontSize || (cur && cur.px) || 22, glyphs: cur && cur.glyphs ? cur.glyphs : 'basic', spacing: 0, upload: true, asset: id };
+          GW.design.fonts.push(nf); el[f.k] = nf.id; el.fontSize = null; fireChange(true); GW.toast('Font loaded: ' + nf.label);
+        }).catch(function () { GW.toast('Could not read that font file.'); });
+      };
+      fr.readAsDataURL(file);
+    });
     sel.addEventListener('change', function () {
-      if (sel.value === '__new') { sel.value = cur && reps[keyOf(cur)] ? reps[keyOf(cur)].id : el[f.k]; GW.setTab('fonts'); return; }
+      if (sel.value === '__up') { restore(); up.click(); return; }
       if (sel.value.indexOf('__fam|') === 0) {
         var parts = sel.value.split('|'), base = cur || { px: 22, glyphs: 'basic' };
-        var nfont = { id: 'f_' + parts[1].toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) + parts[2] + '_' + GW.uid('').slice(0, 3), family: parts[1], weight: Number(parts[2]), px: el.fontSize || base.px, glyphs: base.glyphs === 'nums' || base.glyphs === 'digits' ? base.glyphs : 'basic', spacing: 0 };
+        var nfont = { id: slugId(parts[1], parts[2]), family: parts[1], weight: Number(parts[2]), px: el.fontSize || base.px, glyphs: base.glyphs === 'nums' || base.glyphs === 'digits' ? base.glyphs : 'basic', spacing: 0 };
         GW.design.fonts.push(nfont); el[f.k] = nfont.id; el.fontSize = null;
         fireChange(true); GW.touch(false); GW.fontsReady().then(function () { GW.touch(true); }); return;
       }
@@ -160,7 +162,22 @@
       if (nf && oldPx && nf.px !== oldPx) el.fontSize = oldPx;   // switching typeface keeps the size you had
       fireChange(true); GW.touch(false);
     });
-    return field(f.label, sel);
+    return h('div', { class: 'f' }, [h('label', { text: f.label }), sel, up]);
+  }
+  // character set and letter spacing belong to the typeface entry, so they are edited from the text that uses it
+  function fGlyphs(el) {
+    var base = GW.customFont(el.font); if (!base) return null;
+    var gl = h('select', {}, Object.keys(GW.GLYPH_SETS).map(function (k) { return h('option', { value: k, text: GW.GLYPH_SETS[k].label }); }));
+    gl.value = base.glyphs;
+    gl.addEventListener('change', function () { base.glyphs = gl.value; fireChange(true); });
+    return field('Characters', gl);
+  }
+  function fSpacing(el) {
+    var base = GW.customFont(el.font); if (!base) return null;
+    var i = h('input', { type: 'number', min: -10, max: 20, step: 1, value: base.spacing || 0 });
+    i.addEventListener('input', function () { var v = parseInt(i.value); if (!isNaN(v)) { base.spacing = v; GW.touch(false); } });
+    i.addEventListener('change', function () { fireChange(false); });
+    return field('Letter spacing', i);
   }
 
   function fColor(el, f) {
@@ -309,6 +326,8 @@
       case 'font': return fFont(el, f);
       case 'dfsrc': return fDfSrc(el, f);
       case 'sysfont': return fSysFont(el, f);
+      case 'glyphs': return fGlyphs(el);
+      case 'spacing': return fSpacing(el);
       case 'color': return fColor(el, f);
       case 'optcolor': return fOptColor(el, f);
       case 'track': return fTrack(el, f);
@@ -345,7 +364,7 @@
       var cf = GW.customFont(el.font), chars = GW.GLYPH_SETS[cf.glyphs].chars, shown = '';
       try { shown = T.text.string(el, GW.env()); } catch (e) { }
       var miss = shown.split('').filter(function (c, i, a) { return chars.indexOf(c) < 0 && a.indexOf(c) === i; });
-      if (miss.length) p.appendChild(h('div', { class: 'note warn', text: 'Missing from this font’s character set: ' + miss.join(' ') + '. Pick a bigger set in the Fonts tab (“Full” or the Turkish one).' }));
+      if (miss.length) p.appendChild(h('div', { class: 'note warn', text: 'Missing from this font’s character set: ' + miss.join(' ') + '. Pick a bigger set under Characters (“Full” or the Turkish one).' }));
     }
     t.fields(el).forEach(function (f) { var n = renderField(el, f); if (n) p.appendChild(n); });
     p.appendChild(h('div', { class: 'row' }, [
@@ -526,105 +545,6 @@
   }
 
   // ---------------------------------------------------------------- fonts tab
-  var newFont = { family: 'Orbitron', weight: 900, px: 48, glyphs: 'digits', spacing: 0, upload: null };
-  function fontUsage(id) { return GW.design.elements.filter(function (e) { return e.type === 'text' && e.font === id; }).length; }
-  function atlasInfo(f) {
-    try { var r = GW.rasterizeFont(f); return r.size + '×' + r.size + ' atlas'; } catch (e) { return ''; }
-  }
-  function sample(canvas, f) {
-    var d = window.devicePixelRatio || 1, w = 300, hh = 64;
-    GW.previewFonts[f.id || '__preview'] = f; if (!f.id) f = Object.assign({ id: '__preview' }, f);
-    canvas.width = w * d; canvas.height = hh * d;
-    var x = canvas.getContext('2d'); x.scale(d, d);
-    x.fillStyle = '#000'; x.fillRect(0, 0, w, hh);
-    var txt = f.glyphs === 'nums' ? '0123456789' : (f.glyphs === 'digits' ? '10:09 28.5°' : 'Sat 10:09 ABC');
-    var sc = Math.min(1, (hh - 6) / Math.max(1, GW.fontMetrics(f).lineHeight), (w - 10) / Math.max(1, textW(f, txt)));
-    x.save(); x.translate(6, 0); x.scale(sc, sc);
-    GW.drawText(x, f.id || '__preview', txt, 0, hh / 2 / sc, 'L', '#ffffff');
-    x.restore();
-  }
-  function textW(f, t) { var m = GW.fontMetrics(f), w = 0; for (var i = 0; i < t.length; i++) { var g = m.glyphs[t[i]]; w += g ? g.adv : 0; } return w; }
-
-  function famOptions(sel) {
-    GW.FONT_FAMILIES.forEach(function (f) { sel.appendChild(h('option', { value: f.family, text: f.family })); });
-    GW.design.fonts.filter(function (f) { return f.upload; }).forEach(function (f) { sel.appendChild(h('option', { value: f.family, text: '(uploaded) ' + f.label })); });
-  }
-
-  function renderFonts(p) {
-    GW.design.fonts.forEach(function (f) {
-      var cv = h('canvas');
-      var used = fontUsage(f.id);
-      var sizeIn = h('input', { type: 'number', min: 8, max: 160, value: f.px }), gl = h('select', {}, Object.keys(GW.GLYPH_SETS).map(function (k) { return h('option', { value: k, text: GW.GLYPH_SETS[k].label }); }));
-      gl.value = f.glyphs;
-      var wsel = h('select', {});
-      var fam = GW.FONT_FAMILIES.filter(function (x) { return x.family === f.family; })[0];
-      (fam ? fam.weights : [f.weight]).forEach(function (w) { wsel.appendChild(h('option', { value: w, text: String(w) })); });
-      wsel.value = f.weight;
-      var sp = h('input', { type: 'number', min: -10, max: 20, value: f.spacing || 0 });
-      function apply() { f.px = clamp(parseInt(sizeIn.value) || 24, 6, 200); f.glyphs = gl.value; f.weight = Number(wsel.value); f.spacing = parseInt(sp.value) || 0; GW.touch(false); sample(cv, f); GW.history.commit(); GW.renderPanel(); }
-      [sizeIn, gl, wsel, sp].forEach(function (i) { i.addEventListener('change', apply); });
-      p.appendChild(h('div', { class: 'fontcard' }, [
-        h('div', { class: 'meta' }, [h('b', { text: f.family }), h('span', { text: used + ' use' + (used === 1 ? '' : 's') })]), cv,
-        h('div', { class: 'row' }, [field('Size px', sizeIn), field('Weight', wsel), field('Spacing', sp)]),
-        field('Characters', gl),
-        h('div', { class: 'meta' }, [h('span', { text: atlasInfo(f) + ' · line ' + GW.fontMetrics(f).lineHeight + 'px' }),
-          h('button', { class: 'btn sm danger', text: 'Delete', onclick: function () {
-            GW.design.elements.forEach(function (e) { if (e.font === f.id) e.font = 'FONT_NUMBER_MEDIUM'; });
-            GW.design.fonts = GW.design.fonts.filter(function (x) { return x !== f; }); GW.commit(true);
-          } })])
-      ]));
-      requestAnimationFrame(function () { sample(cv, f); });
-    });
-
-    p.appendChild(h('h4', { text: 'New bitmap font' }));
-    var fam = h('select', {}); famOptions(fam); fam.value = newFont.family;
-    var wsel = h('select', {});
-    function fillW() {
-      wsel.innerHTML = '';
-      var f = GW.FONT_FAMILIES.filter(function (x) { return x.family === fam.value; })[0];
-      (f ? f.weights : [400]).forEach(function (w) { wsel.appendChild(h('option', { value: w, text: String(w) })); });
-      wsel.value = f && f.weights.indexOf(newFont.weight) >= 0 ? newFont.weight : (f ? f.weights[f.weights.length - 1] : 400);
-      newFont.weight = Number(wsel.value);
-    }
-    fillW();
-    var px = h('input', { type: 'number', min: 8, max: 160, value: newFont.px });
-    var gl = h('select', {}, Object.keys(GW.GLYPH_SETS).map(function (k) { return h('option', { value: k, text: GW.GLYPH_SETS[k].label }); })); gl.value = newFont.glyphs;
-    fam.addEventListener('change', function () { newFont.family = fam.value; fillW(); prev(); });
-    wsel.addEventListener('change', function () { newFont.weight = Number(wsel.value); prev(); });
-    px.addEventListener('input', function () { newFont.px = clamp(parseInt(px.value) || 24, 6, 200); prev(); });
-    gl.addEventListener('change', function () { newFont.glyphs = gl.value; prev(); });
-    var cv = h('canvas');
-    function prev() { sample(cv, Object.assign({ id: '__preview' }, newFont)); }
-    var up = h('input', { type: 'file', accept: '.ttf,.otf,.woff,.woff2', hidden: true });
-    up.addEventListener('change', function () {
-      var file = up.files[0]; if (!file) return;
-      var fr = new FileReader();
-      fr.onload = function () {
-        var id = GW.uid('u'), family = 'upl_' + id;
-        GW.registerUploadedFont(family, fr.result).then(function () {
-          GW.assets[id] = { dataUrl: fr.result, font: true };
-          var f = { id: 'f_' + id, family: family, label: file.name.replace(/\.[^.]+$/, ''), weight: 400, px: newFont.px, glyphs: newFont.glyphs, spacing: 0, upload: true, asset: id };
-          GW.design.fonts.push(f);
-          GW.commit(true); GW.toast('Font loaded: ' + f.label);
-        }).catch(function () { GW.toast('Could not read that font file.'); });
-      };
-      fr.readAsDataURL(file);
-    });
-    p.appendChild(h('div', { class: 'fontcard' }, [cv,
-      field('Typeface', fam),
-      h('div', { class: 'row' }, [field('Weight', wsel), field('Size px', px)]),
-      field('Characters', gl),
-      h('div', { class: 'row' }, [
-        h('button', { class: 'btn', text: '＋ Add font', onclick: function () {
-          var id = 'f_' + newFont.family.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) + newFont.px + '_' + GW.uid('').slice(0, 3);
-          GW.design.fonts.push({ id: id, family: newFont.family, weight: newFont.weight, px: newFont.px, glyphs: newFont.glyphs, spacing: 0 });
-          var sel = GW.selected(); if (sel && sel.type === 'text') sel.font = id;
-          GW.commit(true); GW.toast('Font added' + (sel && sel.type === 'text' ? ' and applied to the selected text' : ''));
-        } }),
-        h('button', { class: 'btn', text: 'Use my own TTF/OTF…', onclick: function () { up.click(); } })]), up]));
-    requestAnimationFrame(prev);
-  }
-
   // ---------------------------------------------------------------- sim tab
   var SIMVARS = [
     ['steps', 'Steps', 0, 30000, 50], ['stepGoal', 'Step goal', 2000, 30000, 500], ['calories', 'Calories', 0, 4000, 10], ['floors', 'Floors', 0, 40, 1],

@@ -111,7 +111,7 @@ button { cursor: pointer; }
 .tgl { display: flex; gap: 6px; align-items: center; color: var(--muted); cursor: pointer; }
 .tgl input { accent-color: var(--accent); }
 .hint { margin: 0; text-align: center; max-width: 520px; }
-body[data-mode=field] .tgl.live, body[data-mode=field] #tabs [data-tab=fonts] { display: none; }
+body[data-mode=field] .tgl.live { display: none; }
 
 /* right panel */
 .tabs { display: flex; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }

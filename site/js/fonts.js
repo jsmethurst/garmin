@@ -51,7 +51,7 @@
     return face.load().then(function (f) { document.fonts.add(f); return f; });
   };
 
-  GW.previewFonts = {}; // transient fonts shown in the Fonts tab before they are added
+  GW.previewFonts = {}; // derived size variants of bitmap fonts
   GW.customFont = function (id) {
     var fs = GW.design.fonts;
     for (var i = 0; i < fs.length; i++) if (fs[i].id === id) return fs[i];

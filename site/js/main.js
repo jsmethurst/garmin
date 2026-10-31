@@ -164,7 +164,6 @@
     $('designName').setAttribute('aria-label', field ? 'Data field name' : 'Watchface name');
     $('btnPresets').textContent = field ? 'Layouts' : 'Presets';
     document.title = (field ? 'Data Fields' : 'Watch Faces') + ' · Garmin Studio';
-    if (field && document.querySelector('#tabs button.on').dataset.tab === 'fonts') GW.setTab('inspect');
     GW.renderAdd();
   }
   GW.setMode = function (m) {
