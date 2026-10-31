@@ -173,10 +173,13 @@
       var slots = Object.keys(used).map(Number).filter(function (i) { return L.slots[i]; }).sort();
       if (!slots.length) slots = [design.dfSlot || 0];
       var multi = L.slots.length > 1;
+      if (design.dfFree) { jobs.push({ flat: true, tilt: ch === 'r30' ? 30 : 0, key: ch === 'r30' ? 'r30' : 'free', label: 'whole screen (use the 1 field layout)' }); }
+      else {
       // upright: one project per field of the layout
       if (ch !== 'r30') slots.forEach(function (i) { jobs.push({ slot: i, tilt: 0, multi: multi, key: multi ? 's' + i : 'main', label: multi ? 'field ' + (i + 1) : 'upright' }); });
       // rotated: the whole screen (every field) becomes one full-screen field turned as a whole
       if (ch !== 'none') jobs.push({ flat: true, tilt: 30, key: 'r30', label: multi ? 'rotated 30\u00b0, whole screen (use the 1 field layout)' : '30\u00b0' });
+      }
     } else {
       var ch0 = GW.rotChoice(design);
       (ch0 === 'r30' ? [30] : [0]).forEach(function (a) { jobs.push({ slot: null, tilt: a, key: a ? 'r' + a : 'main', label: a ? a + '\u00b0' : 'upright' }); });
