@@ -97,7 +97,9 @@
   function bitmapOf(sysId) {
     var f = GW.sysFont(sysId); if (!f) return sysId;
     var id = 'bf_' + sysId.toLowerCase().replace('font_', '');
-    GW.previewFonts[id] = { id: id, family: f.family, weight: f.weight, px: f.px, glyphs: /NUMBER/.test(sysId) ? 'digits' : 'full', spacing: 0 };
+    // turned thin strokes break up on the watch's 64-colour screen, so small text gets a heavier stroke
+    var num = /NUMBER/.test(sysId);
+    GW.previewFonts[id] = { id: id, family: f.family, weight: f.weight, px: f.px, glyphs: num ? 'digits' : 'full', spacing: 0, bold: num ? 0 : 1 };
     return id;
   }
   function genRot(el, cg, L, id) {
