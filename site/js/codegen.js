@@ -165,7 +165,6 @@
         '                vals[6 - d] = v;\n            }\n        }\n        return vals;\n    }'
     }
   };
-  if (GW.RUNFIELD_SRC) H.fld = { code: GW.RUNFIELD_SRC.code, members: GW.RUNFIELD_SRC.members }; // run data field methods
   // Battery: slow-changing values are worked out once, not on every redraw. The sun times and the New York time are recalculated
   // when the minute changes, heart rate at most every 5 seconds.
   H.sunStr.code = H.sunStr.code.replace('function sunStr(mode) {', 'function sunCalc(mode) {') +

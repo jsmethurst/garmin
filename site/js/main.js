@@ -173,7 +173,7 @@
     var saved = GW.loadSaved(m);
     var done = function () { GW.fontsReady().then(function () { GW.touch(true); GW.emit('history'); }); };
     if (saved && saved.design && saved.design.elements && GW.modeOf(saved.design) === m) GW.loadFrom(saved, done);
-    else GW.applyPreset(m === 'field' ? 'f3' : 'orbit', done);
+    else GW.applyPreset(m === 'field' ? 'run' : 'orbit', done);
   };
   Array.prototype.forEach.call(document.querySelectorAll('#modes button'), function (b) { b.addEventListener('click', function () { GW.setMode(b.dataset.mode); }); });
   GW.on('structure', function () {
@@ -285,7 +285,7 @@
       GW.fontsReady().then(function () { GW.touch(true); GW.emit('history'); document.documentElement.classList.add('ready'); });
     }
     if (saved && saved.design && saved.design.elements && GW.modeOf(saved.design) === mode) GW.loadFrom(saved, done);
-    else GW.applyPreset(mode === 'field' ? 'f3' : 'orbit', done);
+    else GW.applyPreset(mode === 'field' ? 'run' : 'orbit', done);
   });
   GW.stage = { schedule: schedule, opts: opts };
 })(window.GW);

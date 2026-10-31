@@ -66,8 +66,8 @@
   // vertical layout shared by preview and generator: returns y centres of label and value
   function layout(el) {
     var hasV = el.src !== 'none', hasL = el.labelPos !== 'none' && el.label !== '';
-    var lh = hasL ? fh(el.lfont) : 0, vh = hasV ? fh(el.vfont) : 0, top = el.y + (el.h - lh - vh) / 2;
-    return { hasV: hasV, hasL: hasL, ly: top + (el.labelPos === 'below' ? vh : 0) + lh / 2, vy: top + (el.labelPos === 'below' ? 0 : lh) + vh / 2 };
+    var lh = hasL ? fh(el.lfont) : 0, vh = hasV ? fh(el.vfont) : 0, gap = hasL && hasV ? GAP : 0, top = el.y + (el.h - lh - vh - gap) / 2;
+    return { hasV: hasV, hasL: hasL, gap: gap, ly: top + (el.labelPos === 'below' ? vh + gap : 0) + lh / 2, vy: top + (el.labelPos === 'below' ? 0 : lh + gap) + vh / 2 };
   }
   // the preview's number fonts are drawn a little larger than Garmin's, so nudge them apart (preview only)
   function nudge(el, L) {
@@ -75,7 +75,7 @@
     if (n && L.hasV) { L.vy += fh(el.vfont) * 0.09; if (L.hasL) L.ly += el.labelPos === 'below' ? 3 : -3; }
     return L;
   }
-  var PAD = 6;
+  var PAD = 6, GAP = 3;   // GAP: space between a cell's label and its value
   function ax(el) { return el.align === 'L' ? el.x + PAD : (el.align === 'R' ? el.x + el.w - PAD : el.x + el.w / 2); }
 
   T.dfcell = {
@@ -162,14 +162,14 @@
       var tx = el.align === 'L' ? 'x + dfs(' + PAD + ')' : (el.align === 'R' ? 'x + w - dfs(' + PAD + ')' : 'x + w / 2');
       var below = el.labelPos === 'below';
       out.push('var lh = ' + (L.hasL ? 'dc.getFontHeight(' + lf + ')' : '0') + ';', 'var vh = ' + (L.hasV ? 'dc.getFontHeight(' + vf + ')' : '0') + ';',
-        'var top = y + (h - lh - vh) / 2;');
+        'var g = ' + (L.gap ? 'dfs(' + L.gap + ')' : '0') + ';', 'var top = y + (h - lh - vh - g) / 2;');
       if (L.hasL) {
         out.push('dc.setColor(lab, Graphics.COLOR_TRANSPARENT);',
-          'dc.drawText(' + tx + ', top + ' + (below ? 'vh + ' : '') + 'lh / 2, ' + lf + ', ' + JSON.stringify(el.label) + ', ' + just + ');');
+          'dc.drawText(' + tx + ', top + ' + (below ? 'vh + g + ' : '') + 'lh / 2, ' + lf + ', ' + JSON.stringify(el.label) + ', ' + just + ');');
       }
       if (L.hasV) {
         out.push('dc.setColor(fg, Graphics.COLOR_TRANSPARENT);',
-          'dc.drawText(' + tx + ', top + ' + (below ? '' : 'lh + ') + 'vh / 2, dfF(s, ' + vf + '), s, ' + just + ');');
+          'dc.drawText(' + tx + ', top + ' + (below ? '' : 'lh + g + ') + 'vh / 2, dfF(s, ' + vf + '), s, ' + just + ');');
       }
       return out;
     }
