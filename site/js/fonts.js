@@ -31,10 +31,11 @@
   GW.GLYPH_SETS = {
     nums: { label: 'Digits 0-9 only (smallest)', chars: '0123456789' },
     digits: { label: 'Digits + : . - + % ° /', chars: ' 0123456789:.-+%°/' },
-    tr: { label: 'Digits + A-Z + Turkish capitals', chars: ' 0123456789:.-+%°/ABCDEFGHIJKLMNOPQRSTUVWXYZÇĞİŞÖÜ' },
-    basic: { label: 'Digits + A-Z', chars: ' 0123456789:.-+%°/ABCDEFGHIJKLMNOPQRSTUVWXYZ' },
-    full: { label: 'Full ASCII + °', chars: (function () { var s = ''; for (var i = 32; i < 127; i++) s += String.fromCharCode(i); return s + '°'; })() }
+    basic: { label: 'Digits + A-Z + Turkish capitals', chars: ' 0123456789:.-+%°/ABCDEFGHIJKLMNOPQRSTUVWXYZÇĞİŞÖÜ' },
+    full: { label: 'Full ASCII + ° + Turkish letters', chars: (function () { var s = ''; for (var i = 32; i < 127; i++) s += String.fromCharCode(i); return s + '°ÇĞİŞÖÜçğıöşü'; })() }
   };
+
+  Object.defineProperty(GW.GLYPH_SETS, 'tr', { value: GW.GLYPH_SETS.basic, enumerable: false }); // older designs used this id for the Turkish set
 
   // ---------- ensure web fonts are loaded before drawing ----------
   GW.fontsReady = function () {

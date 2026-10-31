@@ -141,11 +141,11 @@
         var INK = '#000000', MID = '#555555', RULE = '#aaaaaa', ACC = '#ff5500';
         var fonts = [
           font('fTime', 'Libre Baskerville', 700, 78, 'digits', -4),
-          font('fDate', 'DM Sans', 500, 18, 'tr'),
-          font('fLab', 'DM Sans', 500, 12, 'tr'),
+          font('fDate', 'DM Sans', 500, 18, 'basic'),
+          font('fLab', 'DM Sans', 500, 12, 'basic'),
           font('fVal', 'DM Sans', 500, 20, 'basic'),
           font('fSun', 'DM Sans', 500, 16, 'basic'),
-          font('fSans24', 'DM Sans', 500, 24, 'tr')   // spare size, pick it for any text in the Inspector
+          font('fSans24', 'DM Sans', 500, 24, 'basic')   // spare size, pick it for any text in the Inspector
         ];
         function lab(x, y, t) { return label(x, y, t, 'fLab', MID, { name: t }); }
         function val(x, y, source, o) { return txt(x, y, source, 'fVal', INK, o); }

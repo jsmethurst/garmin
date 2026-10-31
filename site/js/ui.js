@@ -311,13 +311,11 @@
       h('button', { class: 'btn danger', title: 'Delete (Del)', text: '🗑', onclick: function () { GW.deleteSelected(); } })
     ]));
     if (el.type === 'text' && GW.customFont(el.font)) {
-      var cf = GW.customFont(el.font), chars = GW.GLYPH_SETS[cf.glyphs].chars, s = GW.sources[el.source];
-      if (s && s.id !== 'custom' && cf.glyphs === 'nums' && ['time', 'date', 'battery', 'steps'].indexOf(el.source) >= 0 && (el.source === 'time' || el.source === 'date' || el.prefix || el.suffix)) {
-        p.appendChild(h('div', { class: 'note warn', text: 'This font only has digits 0-9, so “:” and letters will not draw. Pick a bigger glyph set in the Fonts tab.' }));
-      } else if (el.source === 'custom' || el.prefix || el.suffix) {
-        var miss = ((el.prefix || '') + (el.source === 'custom' ? (el.text || '') : '') + (el.suffix || '')).split('').filter(function (c) { return chars.indexOf(el.upper ? c.toUpperCase() : c) < 0; });
-        if (miss.length) p.appendChild(h('div', { class: 'note warn', text: 'Missing glyphs in this bitmap font: ' + miss.join(' ') }));
-      }
+      // any character the chosen bitmap font does not contain simply does not draw on the watch
+      var cf = GW.customFont(el.font), chars = GW.GLYPH_SETS[cf.glyphs].chars, shown = '';
+      try { shown = T.text.string(el, GW.env()); } catch (e) { }
+      var miss = shown.split('').filter(function (c, i, a) { return chars.indexOf(c) < 0 && a.indexOf(c) === i; });
+      if (miss.length) p.appendChild(h('div', { class: 'note warn', text: 'Missing from this font’s character set: ' + miss.join(' ') + '. Pick a bigger set in the Fonts tab (“Full” or the Turkish one).' }));
     }
     t.fields(el).forEach(function (f) { var n = renderField(el, f); if (n) p.appendChild(n); });
     p.appendChild(h('div', { class: 'row' }, [
