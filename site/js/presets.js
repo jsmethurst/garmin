@@ -144,14 +144,15 @@
           font('fDate', 'DM Sans', 500, 18, 'tr'),
           font('fLab', 'DM Sans', 500, 12, 'tr'),
           font('fVal', 'DM Sans', 500, 20, 'basic'),
-          font('fSun', 'DM Sans', 500, 16, 'basic')
+          font('fSun', 'DM Sans', 500, 16, 'basic'),
+          font('fSans24', 'DM Sans', 500, 24, 'tr')   // spare size, pick it for any text in the Inspector
         ];
         function lab(x, y, t) { return label(x, y, t, 'fLab', MID, { name: t }); }
         function val(x, y, source, o) { return txt(x, y, source, 'fVal', INK, o); }
         var cols = [70, 140, 210];
         var face = D('Bosphorus', '#ffffff', fonts, [
           E('arc', { name: 'Steps ring', cx: 140, cy: 140, r: 135, pen: 3, start: 0, sweep: 360, source: 'steps', color: ACC, track: RULE, round: false }),
-          txt(140, 34, 'date', 'fDate', ACC, { name: 'Date', fmt: 'ddd DD MMM', tr: true }),
+          txt(140, 40, 'date', 'fDate', ACC, { name: 'Date', fmt: 'ddd DD MMM', tr: true }),
           txt(140, 88, 'time', 'fTime', INK, { name: 'Time', hmode: 'h24', lz: true }),
           line(60, 128, 220, 128, RULE, 1, 'Rule'),
           line(105, 136, 105, 202, RULE, 1, 'Divider'), line(175, 136, 175, 202, RULE, 1, 'Divider'),
