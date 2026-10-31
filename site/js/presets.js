@@ -46,10 +46,16 @@
     var lab = text === 'zone' ? txt(x, yl, 'nyZone', 'fLab', BOS.MID, { name: 'Zone' }) : label(x, yl, text, 'fLab', BOS.MID, { name: text });
     return [lab, txt(x, yv, src, 'fVal', BOS.INK, Object.assign({ name: text === 'zone' ? 'New York time' : text }, o || {}))];
   }
-  // label turned to read upward, to the left of the value (value is left-aligned)
-  function bosSideCell(xl, y, text, src, o) {
-    var lab = text === 'zone' ? txt(xl + 6, y, 'nyZone', 'fLab', BOS.MID, { name: 'Zone', rot: -90 }) : label(xl + 6, y, text, 'fLab', BOS.MID, { name: text, rot: -90 });
-    return [lab, txt(xl + 17, y, src, 'fVal', BOS.INK, Object.assign({ name: text === 'zone' ? 'New York time' : text, justify: 'L' }, o || {}))];
+  // label to the left of the value, set in two short lines when the word is long; the value is left-aligned
+  var BOS_BREAK = { ADIM: ['AD', 'IM'], NABIZ: ['NA', 'BIZ'], TEMPO: ['TEM', 'PO'], 'SON KM': ['SON', 'KM'] };
+  function bosSideCell(xv, y, text, src, o) {
+    var lines = BOS_BREAK[text] || [text], out = [];
+    lines.forEach(function (t, i) {
+      var ly = lines.length === 1 ? y : y + (i === 0 ? -6.5 : 6.5);
+      out.push(label(xv - 4, ly, t, 'fLab', BOS.MID, { name: text + (lines.length > 1 ? ' ' + (i + 1) : ''), justify: 'R' }));
+    });
+    out.push(txt(xv, y, src, 'fVal', BOS.INK, Object.assign({ name: text + ' value', justify: 'L' }, o || {})));
+    return out;
   }
   function bosVariant(kind) {
     var fonts = bosFonts(22, kind === 3 ? 11 : 13), els = [bosRing()], flat = function (a) { els = els.concat(a); };
@@ -63,14 +69,14 @@
     } else {
       els.push(bosDate(35)); flat(bosSunRow(63));
       // EDT: zone label and time side by side under the sun row
-      els.push(txt(134, 89, 'nyZone', 'fLab', BOS.MID, { name: 'Zone', justify: 'R' }), txt(142, 89, 'nyTime', 'fSun', BOS.INK, { name: 'New York time', justify: 'L' }));
+      els.push(txt(140, 89, 'nyTime', 'fSun', BOS.INK, { name: 'New York time' }), txt(108, 89, 'nyZone', 'fLab', BOS.MID, { name: 'Zone', justify: 'R' }));   // time centred, zone just left of it
       els.push(bosTime(fonts));
       if (kind === 2) {
         flat(bosCell(64, 192, 209, 'ADIM', 'steps')); flat(bosCell(140, 192, 209, 'NABIZ', 'hr')); flat(bosCell(216, 192, 209, 'PİL', 'batteryDays', { suffix: 'G' }));
         flat(bosCell(100, 228, 245, 'SON KM', 'lastKm')); flat(bosCell(180, 228, 245, 'TEMPO', 'lastPace'));
       } else {
-        flat(bosSideCell(34, 199, 'ADIM', 'steps')); flat(bosSideCell(110, 199, 'NABIZ', 'hr')); flat(bosSideCell(186, 199, 'PİL', 'batteryDays', { suffix: 'G' }));
-        flat(bosSideCell(76, 235, 'SON KM', 'lastKm')); flat(bosSideCell(152, 235, 'TEMPO', 'lastPace'));
+        flat(bosSideCell(62, 199, 'ADIM', 'steps')); flat(bosSideCell(145, 199, 'NABIZ', 'hr')); flat(bosSideCell(205, 199, 'PİL', 'batteryDays', { suffix: 'G' }));
+        flat(bosSideCell(92, 235, 'SON KM', 'lastKm')); flat(bosSideCell(176, 235, 'TEMPO', 'lastPace'));
       }
     }
     return D(['', 'Bosphorus Even', 'Bosphorus Top', 'Bosphorus Vertical'][kind], '#ffffff', fonts, els);
