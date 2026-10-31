@@ -159,9 +159,9 @@
     });
     return d;
   };
-  // 'none' | 'r30' | 'both'
+  // 'none' | 'r30'
   GW.rotChoice = function (design) {
-    return design.rotate === 'r30' || design.rotate === 'both' ? design.rotate : 'none';
+    return design.rotate === 'r30' ? 'r30' : 'none';
   };
   // Resolves to an array of project results: upright, rotated 30 degrees to the right, or both.
   GW.buildVariants = function (design) {
@@ -179,7 +179,7 @@
       if (ch !== 'none') jobs.push({ flat: true, tilt: 30, key: 'r30', label: multi ? 'rotated 30\u00b0, whole screen (use the 1 field layout)' : '30\u00b0' });
     } else {
       var ch0 = GW.rotChoice(design);
-      (ch0 === 'r30' ? [30] : (ch0 === 'both' ? [0, 30] : [0])).forEach(function (a) { jobs.push({ slot: null, tilt: a, key: a ? 'r' + a : 'main', label: a ? a + '\u00b0' : 'upright' }); });
+      (ch0 === 'r30' ? [30] : [0]).forEach(function (a) { jobs.push({ slot: null, tilt: a, key: a ? 'r' + a : 'main', label: a ? a + '\u00b0' : 'upright' }); });
     }
     var out = [];
     return jobs.reduce(function (p, j) {

@@ -137,6 +137,7 @@ window.GW = window.GW || {};
   };
   GW.loadFrom = function (obj, done) {
     var d = obj.design || obj;
+    if (d.rotate === 'both') d.rotate = 'r30';   // the old "both" option is gone
     var assets = obj.assets || {};
     var ids = Object.keys(assets), n = ids.length;
     var fontOf = {};

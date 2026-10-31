@@ -772,7 +772,7 @@
 
   // Rotation is a setting of the design (Face / Field tab): upright, turned 30 degrees to the right, or both as separate faces.
   function rotationField(d) {
-    return field('Rotation', segCtl([['none', 'Upright'], ['r30', 'Rotated 30° right'], ['both', 'Both']], GW.rotChoice(d), function (v) { d.rotate = v; GW.commit(false); GW.renderPanel(); GW.renderFieldSettings(); }));
+    return field('Rotation', segCtl([['none', 'Upright'], ['r30', 'Rotated 30° right']], GW.rotChoice(d), function (v) { d.rotate = v; GW.commit(false); GW.renderPanel(); GW.renderFieldSettings(); }));
   }
 
   GW.openExport = function () {
