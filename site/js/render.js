@@ -9,10 +9,10 @@
     if (design.kind === 'datafield' && (GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0]).slots.length > 1) {
       // a screen layout with several fields: each slot shows its own cells; empty slots stay dim
       var L = GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0];
-      ctx.fillStyle = '#d8d8d8'; ctx.fillRect(0, 0, S, S);
+      ctx.fillStyle = GW.q(GW.dfTheme(design).bg); ctx.fillRect(0, 0, S, S);   // the gaps between fields show the screen's own color, as on the watch
       L.slots.forEach(function (r, i) {
         var els = design.elements.filter(function (e) { return !e.hidden && GW.elSlot(e, design) === i; });
-        if (!els.length) return;
+        if (!els.length) { ctx.fillStyle = '#d8d8d8'; ctx.fillRect(r[0], r[1], r[2], r[3]); return; }   // fields with nothing in them stay dim
         ctx.save(); ctx.translate(r[0], r[1]); ctx.beginPath(); ctx.rect(0, 0, r[2], r[3]); ctx.clip();
         ctx.fillStyle = GW.q(GW.dfTheme(design).bg); ctx.fillRect(0, 0, r[2], r[3]);
         els.forEach(function (el) {
