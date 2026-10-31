@@ -11,7 +11,7 @@
 </head>
 <body>
 <header class="topbar">
-  <div class="brand"><span class="word">Garmin Studio</span><small>fēnix 6X Pro · 280×280</small></div>
+  <div class="brand"><div class="brand-main"><span class="word">Garmin Studio</span><small>fēnix 6X Pro · 280×280</small></div><small class="stamp" id="stamp"></small></div>
   <nav class="modes" id="modes" aria-label="Section"><button type="button" data-mode="watch" class="on">Watch faces</button><button type="button" data-mode="field">Data fields</button></nav>
   <input id="designName" class="name" type="text" maxlength="40" spellcheck="false" aria-label="Watchface name" placeholder="Name your watchface">
   <div class="spacer"></div>
@@ -88,6 +88,7 @@
 <div id="colorPop" class="colorpop" hidden></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+<script src="js/version.js"></script>
 <script src="js/core.js"></script>
 <script src="js/sources.js"></script>
 <script src="js/fonts.js"></script>

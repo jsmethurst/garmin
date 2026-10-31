@@ -43,7 +43,9 @@ button { cursor: pointer; }
 
 /* top bar */
 .topbar { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 20; flex-wrap: wrap; }
-.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand { display: flex; flex-direction: column; gap: 0; line-height: 1.15; }
+.brand-main { display: flex; align-items: baseline; gap: 10px; }
+.brand .stamp { font-size: 10px; color: var(--muted); }
 .brand .word { font-weight: 700; font-size: 17px; letter-spacing: -.01em; }
 .brand small { color: var(--muted); font-size: 12px; }
 .modes { display: flex; gap: 0; border: 1px solid var(--line2); border-radius: var(--radius); overflow: hidden; margin-left: 6px; }

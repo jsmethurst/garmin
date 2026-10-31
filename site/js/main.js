@@ -266,6 +266,14 @@
     }).catch(fallback);
   }
 
+  // when this version was pushed (written by tools/stamp.sh), shown in your own time zone
+  (function () {
+    var el = $('stamp'), t = window.GW_BUILT && new Date(window.GW_BUILT);
+    if (!el || !t || isNaN(t)) return;
+    var now = new Date(), hm = GW.pad2(t.getHours()) + ':' + GW.pad2(t.getMinutes());
+    el.textContent = 'updated ' + (t.toDateString() === now.toDateString() ? '' : t.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ') + hm;
+  })();
+
   // ---------- boot ----------
   useDevicePicture();
   GW.renderAdd();
