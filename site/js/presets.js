@@ -144,12 +144,12 @@
       build: function () {
         // rows are laid out so each cell holds its label and value with room to spare; the round screen narrows the top and bottom rows
         var d = cellDesign('Run Screen', [
-          cell(50, 24, 180, 52, 'timer', 'TIMER', 'FONT_NUMBER_MILD', { bB: true }),
-          cell(20, 76, 120, 54, 'hr', 'HEART RATE', 'FONT_NUMBER_MILD', { zone: true, bB: true, bR: true }),
-          cell(140, 76, 120, 54, 'dist', 'DISTANCE', 'FONT_NUMBER_MILD', { bB: true }),
-          cell(40, 130, 200, 72, 'lapPace', 'LAP PACE', 'FONT_NUMBER_MEDIUM', { bB: true }),
-          cell(52, 202, 88, 56, 'avgPace', 'AVG PACE', 'FONT_NUMBER_MILD', { bR: true }),
-          cell(140, 202, 88, 56, 'lastLap', 'LAST LAP', 'FONT_NUMBER_MILD')
+          cell(50, 20, 180, 54, 'timer', 'TIMER', 'FONT_NUMBER_MILD'),
+          cell(20, 74, 120, 54, 'hr', 'HEART RATE', 'FONT_NUMBER_MILD', { zone: true }),
+          cell(140, 74, 120, 54, 'dist', 'DISTANCE', 'FONT_NUMBER_MILD'),
+          cell(40, 132, 200, 66, 'lapPace', 'LAP PACE', 'FONT_NUMBER_MEDIUM'),
+          cell(52, 198, 88, 60, 'avgPace', 'AVG PACE', 'FONT_NUMBER_MILD'),
+          cell(140, 198, 88, 60, 'lastLap', 'LAST LAP', 'FONT_NUMBER_MILD')
         ]);
         d.dfAutoLap = true; d.dfLapM = 1000;
         return d;
