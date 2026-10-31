@@ -809,8 +809,13 @@
       var own = ownMap(el), L = mapLat(el), x0 = el.x - el.w / 2, y0 = el.y - el.h / 2;
       if (own) ctx.drawImage(own.img, x0, y0, el.w, el.h);
       else {
-        var cv = GW.worldMapCanvas(el.w, el.h, L[0], L[1], el.land || '#3a3a3a', el.smooth);
-        ctx.save(); ctx.imageSmoothingEnabled = !!el.smooth; ctx.drawImage(cv, x0, y0, Math.round(el.w), Math.round(el.h)); ctx.restore();   // the preview shows the watch's real pixels
+        if (el.crisp) {   // hard pixel edges: shown at the watch's own pixel size
+          var cv = GW.worldMapCanvas(el.w, el.h, L[0], L[1], el.land || '#3a3a3a', false);
+          ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(cv, x0, y0, Math.round(el.w), Math.round(el.h)); ctx.restore();
+        } else {          // smooth edges: drawn at the screen's resolution so the preview is as clean as it can be
+          var tr = ctx.getTransform(), k = Math.sqrt(Math.abs(tr.a * tr.d)) || 1;
+          ctx.drawImage(GW.worldMapCanvas(el.w * k, el.h * k, L[0], L[1], el.land || '#3a3a3a', true), x0, y0, el.w, el.h);
+        }
       }
       var mx = x0 + (env.sim.lon + 180) / 360 * el.w, my = y0 + (L[0] - env.sim.lat) / (L[0] - L[1]) * el.h;
       ctx.fillStyle = q(el.marker); ctx.strokeStyle = q(el.marker); ctx.lineWidth = 2;
@@ -825,7 +830,7 @@
         { k: 'marker', t: 'color', label: 'Dot color' },
         { k: 'msize', t: 'num', label: 'Dot size', min: 1, max: 12 },
         { k: 'ring', t: 'check', label: 'Ring around the dot' },
-        { k: 'smooth', t: 'check', label: 'Soft edges (otherwise every pixel is land or empty)' },
+        { k: 'crisp', t: 'check', label: 'Hard pixel edges (no blending)' },
         { t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 20, max: 280 }, { k: 'h', t: 'num', label: 'Height', min: 10, max: 280 }] },
         { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] },
         { t: 'row', fields: [{ k: 'latN', t: 'num', label: 'Map top latitude', min: 1, max: 90 }, { k: 'latS', t: 'num', label: 'Map bottom latitude', min: -90, max: -1 }] },
@@ -836,8 +841,8 @@
       cg.helper('locNow');
       var L = [], x0 = N(el.x - el.w / 2), y0 = N(el.y - el.h / 2), m = N(el.msize), ml = mapLat(el), w = N(el.w), h = N(el.h), id = el.asset;
       if (!ownMap(el)) {   // the built-in map becomes an image of exactly the size it is drawn at
-        id = 'worldmap_' + [w, h, ml[0], ml[1], el.land || '', el.smooth ? 's' : ''].join('_').replace(/[^0-9a-z_]/gi, '');
-        if (!GW.assets[id]) GW.assets[id] = { img: GW.worldMapCanvas(w, h, ml[0], ml[1], el.land || '#3a3a3a', el.smooth), w: w, h: h, synthetic: true };
+        id = 'worldmap_' + [w, h, ml[0], ml[1], el.land || '', el.crisp ? 'c' : ''].join('_').replace(/[^0-9a-z_]/gi, '');
+        if (!GW.assets[id]) GW.assets[id] = { img: GW.worldMapCanvas(w, h, ml[0], ml[1], el.land || '#3a3a3a', !el.crisp), w: w, h: h, synthetic: true };
       }
       L.push('dc.drawBitmap(' + x0 + ', ' + y0 + ', ' + cg.image(id, w, h) + ');');
       L.push('var loc = locNow();');
