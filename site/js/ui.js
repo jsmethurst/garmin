@@ -730,6 +730,14 @@
         var all = []; results.forEach(function (r) { r.files.forEach(function (f) { all.push({ path: r.name + '/' + f.path, data: f.data, exec: f.exec }); }); });
         var blob = GW.zip(all), nFiles = all.length;
         body.innerHTML = '';
+        // Connect IQ's developer portal rejects an app id it already knows (even your own): a new id makes it a brand-new app
+        var idRow = h('div', { class: 'row', style: 'align-items:center;margin:0 0 14px;gap:10px' }, [
+          h('span', { class: 'muted small', text: 'App ID ' + (first.appId || '').slice(0, 8) + '…' + (many ? ' (+ one per version)' : '') }),
+          h('button', { class: 'btn sm', text: 'Generate a new app ID', title: 'Use this when the developer portal says the manifest id is already used by another app', onclick: function () {
+            delete GW.design.appId; GW.design.appIds = {}; GW.history.commit(); body.innerHTML = ''; body.appendChild(h('p', { class: 'muted', text: 'Building your project…' })); render();
+          } })
+        ]);
+        body.appendChild(idRow);
         if (GW.rotatable(GW.design)) body.appendChild(rotationPicker(function () { body.innerHTML = ''; body.appendChild(h('p', { class: 'muted', text: 'Building your project…' })); render(); }));
 
         var cur = null, codeBox = h('div', { class: 'code', text: '' }), tabs = h('div', { class: 'codetabs' }), vsel = null;
