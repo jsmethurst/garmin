@@ -1,4 +1,4 @@
-/* UI: panels, inspector, layers, fonts, colour picker, modals. */
+/* UI: panels, inspector, layers, fonts, color picker, modals. */
 (function (GW) {
   'use strict';
   var T = GW.types, clamp = GW.clamp;
@@ -27,7 +27,7 @@
     clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('show'); }, 2600);
   };
 
-  // ---------------------------------------------------------------- colour picker
+  // ---------------------------------------------------------------- color picker
   var sortedPalette = (function () {
     function hsl(hex) {
       var r = parseInt(hex.substr(1, 2), 16) / 255, g = parseInt(hex.substr(3, 2), 16) / 255, b = parseInt(hex.substr(5, 2), 16) / 255;
@@ -55,14 +55,14 @@
     sortedPalette.forEach(function (p) {
       grid.appendChild(h('button', { class: p === q ? 'on' : '', style: 'background:' + p, title: p, 'aria-label': p, onclick: function () { cb(p); GW.closeColor(); } }));
     });
-    var hex = h('input', { type: 'text', value: q || '', maxlength: 7, 'aria-label': 'Hex colour', placeholder: '#rrggbb' });
+    var hex = h('input', { type: 'text', value: q || '', maxlength: 7, 'aria-label': 'Hex color', placeholder: '#rrggbb' });
     hex.addEventListener('change', function () {
       var v = hex.value.trim(); if (v[0] !== '#') v = '#' + v;
       if (/^#[0-9a-fA-F]{6}$/.test(v)) { cb(GW.q(v)); GW.closeColor(); }
     });
     pop.appendChild(grid);
     pop.appendChild(h('div', { class: 'hex' }, [hex].concat(opts.none ? [h('button', { class: 'btn sm', text: 'None', onclick: function () { cb(null); GW.closeColor(); } })] : [])));
-    pop.appendChild(h('p', { text: 'Only these 64 colours exist on the fēnix 6X display; any hex is snapped to the nearest.' }));
+    pop.appendChild(h('p', { text: 'Only these 64 colors exist on the fēnix 6X display; any hex is snapped to the nearest.' }));
     pop.hidden = false;
     var r = anchor.getBoundingClientRect(), w = 252, ph = pop.offsetHeight;
     pop.style.left = clamp(r.left, 8, window.innerWidth - w - 8) + 'px';
@@ -235,7 +235,7 @@
   }
   function fTrack(el, f) {
     var mode = el.track === 'auto' ? 'auto' : (el.track === 'none' ? 'none' : 'custom');
-    var seg = segCtl([['auto', 'Auto'], ['none', 'None'], ['custom', 'Colour']], mode, function (v) {
+    var seg = segCtl([['auto', 'Auto'], ['none', 'None'], ['custom', 'Color']], mode, function (v) {
       el.track = v === 'custom' ? GW.dim(el.color, 0.35) : v; fireChange(true);
     });
     var kids = [seg];
@@ -454,6 +454,7 @@
   ];
   GW.addElement = function (type, over) {
     var el = GW.newElement(type, over);
+    if (GW.design.kind === 'datafield') el.slot = GW.design.dfSlot || 0;   // a cell belongs to the field it was added to
     GW.design.elements.push(el); GW.selId = el.id;
     GW.setTab('inspect'); GW.commit(true); GW.emit('select', el.id);
     return el;
@@ -469,7 +470,7 @@
     if (GW.modeOf() === 'field') {
       DFQUICK.forEach(function (q) {
         chips.appendChild(h('button', { class: 'chip', text: q[0], onclick: function () {
-          // the new cell snaps into the chosen slot and fills it, so a heart-rate colour covers the whole field
+          // the new cell snaps into the chosen slot and fills it, so a heart-rate color covers the whole field
           var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h);
           GW.addElement('dfcell', { name: q[0], src: q[1], label: q[0].toUpperCase(), vfont: ft.v, lfont: ft.l, dx: ft.dx, zone: q[1] === 'hr', x: 0, y: 0, w: sl.w, h: sl.h });
         } }));
@@ -513,8 +514,9 @@
     var sel = h('select', {}, lay.map(function (l, i) { return h('option', { value: i, text: l.name }); }));
     sel.value = li;
     sel.addEventListener('change', function () { d.dfLayout = parseInt(sel.value, 10); d.dfSlot = 0; GW.commit(true); });
+    var used = {}; d.elements.forEach(function (e) { if (e.type === 'dfcell') used[GW.elSlot(e, d)] = 1; });
     var svg = '<svg viewBox="0 0 280 280" width="150" height="150" style="display:block;margin:6px 0 0"><defs><clipPath id="sc"><circle cx="140" cy="140" r="139"/></clipPath></defs><g clip-path="url(#sc)">' +
-      L.slots.map(function (r, i) { return '<rect data-i="' + i + '" x="' + r[0] + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '" fill="' + (i === si ? '#c2410c' : '#f7f6f2') + '" stroke="#6b6860" stroke-width="2" style="cursor:pointer"/>'; }).join('') +
+      L.slots.map(function (r, i) { return '<rect data-i="' + i + '" x="' + r[0] + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '" fill="' + (i === si ? '#c2410c' : (used[i] ? '#e7c9b0' : '#f7f6f2')) + '" stroke="#6b6860" stroke-width="2" style="cursor:pointer"/>'; }).join('') +
       '</g><circle cx="140" cy="140" r="139" fill="none" stroke="#1d1d1b" stroke-width="3"/></svg>';
     var box = h('div', { html: svg });
     Array.prototype.forEach.call(box.querySelectorAll('rect'), function (r) { r.addEventListener('click', function () { d.dfSlot = parseInt(r.getAttribute('data-i'), 10); GW.commit(true); }); });
@@ -529,10 +531,18 @@
     var d = GW.design;
     card.appendChild(h('h3', { text: 'Screen layout' }));
     card.appendChild(slotPicker(d));
-    // whole-field settings live here, with the layout they belong to
-    var rest = h('div', { style: 'display:flex;flex-direction:column;gap:10px;margin-top:12px' });
+    GW.renderFieldSettings();
+  };
+  // the "Field settings" card in the right column: rotation, screen colors, units
+  GW.renderFieldSettings = function () {
+    var card = $('fieldSettings'); if (!card) return;
+    card.innerHTML = '';
+    if (GW.modeOf() !== 'field') return;
+    var d = GW.design;
+    card.appendChild(h('h3', { text: 'Field settings' }));
+    var rest = h('div', { style: 'display:flex;flex-direction:column;gap:10px' });
     if (GW.dfSlot(d).full) rest.appendChild(rotationField(d));
-    rest.appendChild(field('Screen colours', segCtl([['light', 'Light'], ['auto', 'Match watch'], ['dark', 'Dark']], d.dfTheme || 'light', function (v) { d.dfTheme = v; GW.commit(true); })));
+    rest.appendChild(field('Screen colors', segCtl([['light', 'Light'], ['auto', 'Match watch'], ['dark', 'Dark']], d.dfTheme || 'light', function (v) { d.dfTheme = v; GW.commit(true); })));
     rest.appendChild(field('Units', segCtl([['watch', 'Match watch'], ['metric', 'Metric'], ['imperial', 'Imperial']], d.dfUnits || 'watch', function (v) { d.dfUnits = v; GW.commit(true); })));
     card.appendChild(rest);
   };
@@ -567,7 +577,7 @@
     var d = GW.design;
     var bg = h('button', { class: 'swatch', type: 'button' }, [h('i', { style: 'background:' + GW.q(d.bg) }), h('span', { text: GW.q(d.bg) })]);
     bg.addEventListener('click', function () { GW.pickColor(bg, d.bg, function (c) { d.bg = c; GW.commit(true); }); });
-    p.appendChild(field('Background colour', bg));
+    p.appendChild(field('Background color', bg));
     p.appendChild(rotationField(d));
     var file = h('input', { type: 'file', accept: 'image/*', hidden: true });
     file.addEventListener('change', function () {
@@ -758,7 +768,7 @@
 
   // Rotation is a setting of the design (Face / Field tab): upright, turned 30 degrees to the right, or both as separate faces.
   function rotationField(d) {
-    return field('Rotation', segCtl([['none', 'Upright'], ['r30', 'Rotated 30° right'], ['both', 'Both']], GW.rotChoice(d), function (v) { d.rotate = v; GW.commit(false); GW.renderPanel(); }));
+    return field('Rotation', segCtl([['none', 'Upright'], ['r30', 'Rotated 30° right'], ['both', 'Both']], GW.rotChoice(d), function (v) { d.rotate = v; GW.commit(false); GW.renderPanel(); GW.renderFieldSettings(); }));
   }
 
   GW.openExport = function () {
@@ -779,7 +789,7 @@
         results.forEach(function (r) {
           var inp = h('input', { type: 'text', value: r.appId, maxlength: 32, spellcheck: 'false', class: 'mono', 'aria-label': 'App ID' });
           function setId(v) {
-            if (r.tilt) { GW.design.appIds = GW.design.appIds || {}; GW.design.appIds[r.tilt] = v; } else GW.design.appId = v;
+            r.setId(v);
             GW.history.commit(); body.innerHTML = ''; body.appendChild(h('p', { class: 'muted', text: 'Building your project…' })); render();
           }
           inp.addEventListener('change', function () {
@@ -788,7 +798,7 @@
             if (v !== r.appId) setId(v);
           });
           idBox.appendChild(h('div', { class: 'row', style: 'align-items:center;gap:8px;margin-top:4px' }, [
-            results.length > 1 || r.tilt ? h('span', { class: 'muted small', style: 'flex:none', text: r.tilt ? r.tilt + '°' : 'upright' }) : null,
+            results.length > 1 || r.tilt ? h('span', { class: 'muted small', style: 'flex:none', text: r.label }) : null,
             inp, h('button', { class: 'btn sm', style: 'flex:none', text: 'Generate new', onclick: function () { setId(GW.newAppId()); } })
           ]));
         });

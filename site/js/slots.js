@@ -21,4 +21,10 @@
     var L = GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0], r = L.slots[design.dfSlot] || L.slots[0];
     return { x: r[0], y: r[1], w: r[2], h: r[3], full: r[2] === 280 && r[3] === 280, layout: L };
   };
+  // which slot an element of a data-field design belongs to (older designs without one follow the slot that was current)
+  GW.elSlot = function (el, design) { return el.slot == null ? (design.dfSlot || 0) : el.slot; };
+  GW.slotRect = function (design, i) {
+    var L = GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0], r = L.slots[i] || L.slots[0];
+    return { x: r[0], y: r[1], w: r[2], h: r[3] };
+  };
 })(window.GW);

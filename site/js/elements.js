@@ -60,7 +60,7 @@
       f.push({ k: 'font', t: 'font', label: 'Typeface' });
       var bf = GW.customFont(el.font);
       if (bf) { f.push({ t: 'row', fields: [{ k: 'fontSize', t: 'numopt', label: 'Size (px)', ph: String(bf.px) }, { t: 'spacing' }, { t: 'thicken' }] }); f.push({ t: 'glyphs' }); f.push({ t: 'tabular' }); }
-      f.push({ k: 'color', t: 'color', label: 'Colour' });
+      f.push({ k: 'color', t: 'color', label: 'Color' });
       f.push({ k: 'justify', t: 'seg', label: 'Align on X', opts: [['L', 'Left'], ['C', 'Centre'], ['R', 'Right']] });
       f.push({ t: 'row', fields: [{ k: 'prefix', t: 'text', label: 'Before' }, { k: 'suffix', t: 'text', label: 'After' }] });
       f.push({ k: 'upper', t: 'check', label: 'UPPERCASE' });
@@ -149,7 +149,7 @@
         { t: 'row', fields: [{ k: 'min', t: 'numopt', label: 'Empty at', ph: s.goal || s.mcGoal ? '0' : String((s.range || [0])[0]) },
           { k: 'max', t: 'numopt', label: 'Full at', ph: s.mcGoal ? 'daily goal' : String((s.range || [0, 100])[1]) }] },
         { t: 'h', label: 'Look' },
-        { k: 'color', t: 'color', label: 'Fill colour' },
+        { k: 'color', t: 'color', label: 'Fill color' },
         { k: 'track', t: 'track', label: 'Track' },
         { k: 'round', t: 'check', label: 'Rounded ends' },
         { t: 'row', fields: [{ k: 'pen', t: 'num', label: 'Thickness', min: 1, max: 40 }, { k: 'r', t: 'num', label: 'Radius', min: 5, max: 200 }] },
@@ -228,10 +228,10 @@
         { k: 'count', t: 'seg', label: 'Marks', opts: [[12, '12'], [24, '24'], [48, '48'], [60, '60'], [120, '120']], num: true },
         { k: 'major', t: 'num', label: 'Big mark every', min: 0, max: 60 },
         { t: 'h', label: 'Small marks' },
-        { k: 'color', t: 'color', label: 'Colour' },
+        { k: 'color', t: 'color', label: 'Color' },
         { t: 'row', fields: [{ k: 'len', t: 'num', label: 'Length', min: 1, max: 40 }, { k: 'width', t: 'num', label: 'Width', min: 1, max: 8 }] },
         { t: 'h', label: 'Big marks' },
-        { k: 'majorColor', t: 'color', label: 'Colour' },
+        { k: 'majorColor', t: 'color', label: 'Color' },
         { t: 'row', fields: [{ k: 'majorLen', t: 'num', label: 'Length', min: 1, max: 40 }, { k: 'majorWidth', t: 'num', label: 'Width', min: 1, max: 8 }] },
         { t: 'h', label: 'Placement' },
         { k: 'r', t: 'range', label: 'Outer radius', min: 20, max: 200 },
@@ -321,17 +321,17 @@
       return [
         { k: 'style', t: 'seg', label: 'Hand style', opts: [['bar', 'Bar'], ['taper', 'Taper'], ['sword', 'Sword']] },
         { t: 'h', label: 'Hour hand' },
-        { k: 'hColor', t: 'color', label: 'Colour' },
+        { k: 'hColor', t: 'color', label: 'Color' },
         { t: 'row', fields: [{ k: 'hLen', t: 'num', label: 'Length', min: 10, max: 140 }, { k: 'hW', t: 'num', label: 'Width', min: 2, max: 30 }] },
         { t: 'h', label: 'Minute hand' },
-        { k: 'mColor', t: 'color', label: 'Colour' },
+        { k: 'mColor', t: 'color', label: 'Color' },
         { t: 'row', fields: [{ k: 'mLen', t: 'num', label: 'Length', min: 10, max: 140 }, { k: 'mW', t: 'num', label: 'Width', min: 2, max: 30 }] },
         { t: 'h', label: 'Second hand (only while awake)' },
         { k: 'sShow', t: 'check', label: 'Show second hand' },
-        el.sShow ? { k: 'sColor', t: 'color', label: 'Colour' } : null,
+        el.sShow ? { k: 'sColor', t: 'color', label: 'Color' } : null,
         el.sShow ? { t: 'row', fields: [{ k: 'sLen', t: 'num', label: 'Length', min: 10, max: 140 }, { k: 'sTail', t: 'num', label: 'Tail', min: 0, max: 60 }, { k: 'sW', t: 'num', label: 'Width', min: 1, max: 8 }] } : null,
         { t: 'h', label: 'Centre cap' },
-        { k: 'hubColor', t: 'color', label: 'Colour' },
+        { k: 'hubColor', t: 'color', label: 'Color' },
         { k: 'hub', t: 'num', label: 'Radius (0 = none)', min: 0, max: 20 },
         { t: 'h', label: 'Pivot' },
         { t: 'row', fields: [{ k: 'cx', t: 'num', label: 'X', min: 0, max: 280 }, { k: 'cy', t: 'num', label: 'Y', min: 0, max: 280 }] }
@@ -406,7 +406,7 @@
       return x >= b.x - o && x <= b.x + b.w + o && y >= b.y - o && y <= b.y + b.h + o && !(x > b.x + o && x < b.x + b.w - o && y > b.y + o && y < b.y + b.h - o);
     },
     fields: function (el) {
-      var f = [{ k: 'kind', t: 'seg', label: 'Shape', opts: [['rect', 'Box'], ['circle', 'Circle'], ['line', 'Line']] }, { k: 'color', t: 'color', label: 'Colour' }];
+      var f = [{ k: 'kind', t: 'seg', label: 'Shape', opts: [['rect', 'Box'], ['circle', 'Circle'], ['line', 'Line']] }, { k: 'color', t: 'color', label: 'Color' }];
       if (el.kind !== 'line') f.push({ k: 'fill', t: 'check', label: 'Filled' });
       if (el.kind === 'line' || !el.fill) f.push({ k: 'pen', t: 'num', label: 'Line width', min: 1, max: 30 });
       if (el.kind === 'rect') {
@@ -506,10 +506,10 @@
     fields: function (el) {
       return [
         { k: 'source', t: 'select', label: 'Chart of', opts: Object.keys(BC).map(function (k) { return [k, BC[k].label]; }) },
-        { k: 'color', t: 'color', label: 'Bar colour' },
-        { k: 'todayColor', t: 'color', label: 'Today colour' },
+        { k: 'color', t: 'color', label: 'Bar color' },
+        { k: 'todayColor', t: 'color', label: 'Today color' },
         el.source === 'steps' ? { k: 'goal', t: 'check', label: 'Show step-goal line' } : null,
-        el.goal && el.source === 'steps' ? { k: 'goalColor', t: 'color', label: 'Goal line colour' } : null,
+        el.goal && el.source === 'steps' ? { k: 'goalColor', t: 'color', label: 'Goal line color' } : null,
         { t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 16, max: 280 }, { k: 'h', t: 'num', label: 'Height', min: 6, max: 140 }, { k: 'gap', t: 'num', label: 'Gap', min: 0, max: 8 }] },
         { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] }
       ].filter(Boolean);
@@ -552,9 +552,9 @@
     box: function (el) { return { x: el.x - el.w / 2, y: el.y - el.h / 2, w: el.w, h: el.h }; },
     fields: function (el) {
       return [
-        { k: 'ramp', t: 'check', label: 'Garmin-style colour ramp' },
-        !el.ramp ? { k: 'color', t: 'color', label: 'Lit colour' } : null,
-        { k: 'off', t: 'color', label: 'Unlit colour' },
+        { k: 'ramp', t: 'check', label: 'Garmin-style color ramp' },
+        !el.ramp ? { k: 'color', t: 'color', label: 'Lit color' } : null,
+        { k: 'off', t: 'color', label: 'Unlit color' },
         { t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 20, max: 280 }, { k: 'h', t: 'num', label: 'Height', min: 2, max: 40 }, { k: 'gap', t: 'num', label: 'Gap', min: 0, max: 10 }] },
         { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] }
       ].filter(Boolean);
@@ -746,7 +746,7 @@
     fields: function () {
       return [
         { k: 'size', t: 'range', label: 'Size', min: 16, max: 120 },
-        { k: 'mono', t: 'optcolor', label: 'Single colour (optional)' },
+        { k: 'mono', t: 'optcolor', label: 'Single color (optional)' },
         { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] },
         { t: 'note', text: 'Drawn from shapes on the watch, so it costs no image memory. Change the preview weather in the Test data tab.' }
       ];
@@ -788,7 +788,7 @@
       return [
         { t: 'imagepick' },
         { t: 'note', text: 'Use a flat world map (equirectangular, whole world 360° × 180°; most free “plate carrée” maps work). Your location comes from the last weather sync or GPS fix.' },
-        { k: 'marker', t: 'color', label: 'Marker colour' },
+        { k: 'marker', t: 'color', label: 'Marker color' },
         { k: 'msize', t: 'num', label: 'Marker size', min: 1, max: 12 },
         { t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 20, max: 280 }, { k: 'h', t: 'num', label: 'Height', min: 10, max: 280 }] },
         { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] }
@@ -854,7 +854,7 @@
     fields: function () {
       return [
         { k: 'kind', t: 'seg', label: 'Sun', opts: [['rise', 'Rising'], ['set', 'Setting']] },
-        { k: 'color', t: 'color', label: 'Colour' },
+        { k: 'color', t: 'color', label: 'Color' },
         { k: 'r', t: 'range', label: 'Size', min: 3, max: 30 },
         { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y', min: -50, max: 330 }] }
       ];

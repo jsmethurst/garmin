@@ -158,15 +158,15 @@
         { k: 'vfont', t: 'sysfont', label: 'Value font' },
         { k: 'lfont', t: 'sysfont', label: 'Label font', only: 't' },
         { k: 'align', t: 'seg', label: 'Alignment', opts: [['L', 'Left'], ['C', 'Centre'], ['R', 'Right']] },
-        { t: 'h', label: 'Colours' },
-        { k: 'color', t: 'optcolor', label: 'Value colour', noneLabel: 'screen default' },
-        { k: 'lcolor', t: 'optcolor', label: 'Label colour', noneLabel: 'screen default' },
+        { t: 'h', label: 'Colors' },
+        { k: 'color', t: 'optcolor', label: 'Value color', noneLabel: 'screen default' },
+        { k: 'lcolor', t: 'optcolor', label: 'Label color', noneLabel: 'screen default' },
         { k: 'fill', t: 'optcolor', label: 'Cell background', noneLabel: 'none' }
       ];
-      if (hr) f.push({ k: 'zone', t: 'check', label: 'Fill the cell with the heart-rate zone colour' });
+      if (hr) f.push({ k: 'zone', t: 'check', label: 'Fill the cell with the heart-rate zone color' });
       f.push({ t: 'h', label: 'Divider lines' });
       f.push({ t: 'row', fields: [{ k: 'bT', t: 'check', label: 'Top' }, { k: 'bB', t: 'check', label: 'Bottom' }, { k: 'bL', t: 'check', label: 'Left' }, { k: 'bR', t: 'check', label: 'Right' }] });
-      f.push({ k: 'bcolor', t: 'optcolor', label: 'Line colour', noneLabel: 'screen default' });
+      f.push({ k: 'bcolor', t: 'optcolor', label: 'Line color', noneLabel: 'screen default' });
       f.push({ t: 'h', label: 'Position and size' });
       f.push({ t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (left)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (top)', min: -50, max: 330 }] });
       f.push({ t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 10, max: 360 }, { k: 'h', t: 'num', label: 'Height', min: 10, max: 360 }] });
@@ -368,7 +368,7 @@
       '        return "";',
       '    }',
       '',
-      '    // screen setup: scale to the field, pick light or dark colours and clear',
+      '    // screen setup: scale to the field, pick light or dark colors and clear',
       '    function dfBegin(dc as Dc) as Void {',
       '        var w = dc.getWidth();',
       '        var h = dc.getHeight();',

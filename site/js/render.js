@@ -6,6 +6,28 @@
     var S = GW.SIZE;
     (design.fonts || []).forEach(function (f) { GW.previewFonts[f.id] = f; }); // lets thumbnails of other designs resolve their fonts
     ctx.save();
+    if (design.kind === 'datafield' && (GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0]).slots.length > 1) {
+      // a screen layout with several fields: each slot shows its own cells; empty slots stay dim
+      var L = GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0];
+      ctx.fillStyle = '#d8d8d8'; ctx.fillRect(0, 0, S, S);
+      L.slots.forEach(function (r, i) {
+        var els = design.elements.filter(function (e) { return !e.hidden && GW.elSlot(e, design) === i; });
+        if (!els.length) return;
+        ctx.save(); ctx.translate(r[0], r[1]); ctx.beginPath(); ctx.rect(0, 0, r[2], r[3]); ctx.clip();
+        ctx.fillStyle = GW.q(GW.dfTheme(design).bg); ctx.fillRect(0, 0, r[2], r[3]);
+        els.forEach(function (el) {
+          var t = GW.types[el.type]; if (!t) return;
+          ctx.save();
+          try { t.draw(ctx, el, env); } catch (e) { if (window.console) console.error('draw failed', el.type, e); }
+          ctx.restore();
+        });
+        ctx.restore();
+      });
+      ctx.strokeStyle = '#999999'; ctx.lineWidth = 1;
+      L.slots.forEach(function (r) { ctx.strokeRect(r[0] + 0.5, r[1] + 0.5, r[2] - 1, r[3] - 1); });
+      ctx.restore();
+      return;
+    }
     var slot = design.kind === 'datafield' ? GW.dfSlot(design) : null, inSlot = slot && !slot.full;
     if (inSlot) {   // a field that does not fill the screen: show the other slots of the layout dimly, and draw inside its own slot
       ctx.fillStyle = '#d8d8d8'; ctx.fillRect(0, 0, S, S);

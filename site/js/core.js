@@ -20,7 +20,7 @@ window.GW = window.GW || {};
     return r;
   };
 
-  // ---------- 64-colour palette (fenix 6 MIP: 2 bits per channel) ----------
+  // ---------- 64-color palette (fenix 6 MIP: 2 bits per channel) ----------
   var LV = [0x00, 0x55, 0xAA, 0xFF];
   GW.LEVELS = LV;
   function hex2(n) { return (n < 16 ? '0' : '') + n.toString(16); }
@@ -35,7 +35,7 @@ window.GW = window.GW || {};
     GW.PALETTE.push('#' + hex2(LV[r]) + hex2(LV[g]) + hex2(LV[b]));
   // Monkey C hex literal
   GW.mcColor = function (hex) { return '0x' + GW.q(hex).slice(1).toUpperCase(); };
-  // dim version of a colour (for gauge tracks) kept on the 64-colour grid
+  // dim version of a color (for gauge tracks) kept on the 64-color grid
   GW.dim = function (hex, k) {
     k = k == null ? 0.25 : k;
     var q = GW.q(hex);
@@ -81,7 +81,12 @@ window.GW = window.GW || {};
     return null;
   };
   GW.selected = function () { return GW.selId ? GW.findEl(GW.selId) : null; };
-  GW.select = function (id) { GW.selId = id; GW.emit('select', id); };
+  GW.select = function (id) {
+    GW.selId = id;
+    var el = id && GW.findEl(id);
+    if (el && GW.design.kind === 'datafield' && el.slot != null) GW.design.dfSlot = el.slot;   // working on a field's content makes its slot the current one
+    GW.emit('select', id);
+  };
 
   // ---------- history (undo / redo) ----------
   var stack = [], idx = -1, LIMIT = 80;
@@ -139,6 +144,7 @@ window.GW = window.GW || {};
     GW.assets = {};
     function fin() {
       GW.design = Object.assign(GW.blankDesign(), d);
+      if (GW.design.kind === 'datafield') GW.design.elements.forEach(function (e) { if (e.slot == null) e.slot = GW.design.dfSlot || 0; });
       GW.design.elements = (GW.design.elements || []).filter(function (e) { return GW.types[e.type]; }); // drop element types that no longer exist
       GW.design.fonts = GW.design.fonts || [];
       GW.selId = null;

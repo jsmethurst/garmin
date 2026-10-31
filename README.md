@@ -1,6 +1,6 @@
 # Garmin Studio
 
-A browser tool to **design, preview and export custom watch faces and data fields** for the Garmin fēnix 6X Pro (280×280, 64-colour MIP). It has two sections, **Watch faces** and **Data fields**. Pick a preset or build from scratch, then export a complete **Connect IQ project** that you build once and copy to your watch.
+A browser tool to **design, preview and export custom watch faces and data fields** for the Garmin fēnix 6X Pro (280×280, 64-color MIP). It has two sections, **Watch faces** and **Data fields**. Pick a preset or build from scratch, then export a complete **Connect IQ project** that you build once and copy to your watch.
 
 No server, no build step, no tracking: it is a static site in [`site/`](site).
 
@@ -30,9 +30,9 @@ The **Big Data** preset uses a serif time with sans-serif readouts (all bitmap f
 
 ### Data fields
 
-The **Data fields** section builds Connect IQ data fields (the screens you flip through during an activity). A field is made of **data cells**; each cell shows one value in a standard Garmin system font (`FONT_XTINY` to `FONT_NUMBER_THAI_HOT`) and has a label, alignment, colours, optional heart-rate-zone fill and divider lines. Values: timer, elapsed time, time of day, distance, lap distance, pace, average / lap / last-lap pace, speed, lap number, heart rate (with zone), average and max heart rate, cadence, power, altitude, ascent, calories and battery. Pick one of the 12 SDK activity-screen layouts and which slot the field fills; the editor then shows that exact rectangle. Whole-field settings: light / dark / match-watch screen colours, and units (laps come from the watch: the Lap button and the activity's own Auto Lap). Layouts: the Run screen and a blank field.
+The **Data fields** section builds Connect IQ data fields (the screens you flip through during an activity). A field is made of **data cells**; each cell shows one value in a standard Garmin system font (`FONT_XTINY` to `FONT_NUMBER_THAI_HOT`) and has a label, alignment, colors, optional heart-rate-zone fill and divider lines. Values: timer, elapsed time, time of day, distance, lap distance, pace, average / lap / last-lap pace, speed, lap number, heart rate (with zone), average and max heart rate, cadence, power, altitude, ascent, calories and battery. Pick one of the 12 SDK activity-screen layouts and which slot the field fills; the editor then shows that exact rectangle. Whole-field settings: light / dark / match-watch screen colors, and units (laps come from the watch: the Lap button and the activity's own Auto Lap). Layouts: the Run screen and a blank field.
 
-Colours are limited to the **64 colours the fēnix 6X display can actually show**; the preview snaps to them so what you see is what you get.
+Colors are limited to the **64 colors the fēnix 6X display can actually show**; the preview snaps to them so what you see is what you get.
 
 ### Presets (none of them are Garmin’s own)
 
@@ -70,7 +70,7 @@ The site still works as plain static hosting; without the backend the build butt
 ```
 site/
   index.html, css/app.css
-  js/core.js       state, undo/redo, 64-colour palette, persistence
+  js/core.js       state, undo/redo, 64-color palette, persistence
   js/sources.js    data sources: preview value + the Monkey C that reads it on the watch
   js/elements.js   element types: defaults, inspector fields, preview drawing, Monkey C generation
   js/fonts.js      system-font approximation + bitmap-font metrics/rasteriser (shared by preview & export)

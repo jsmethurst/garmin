@@ -19,8 +19,7 @@
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
     ctx.scale(k, k);
     GW.renderDesign(ctx, GW.design, env);
-    var so = slotOffset();
-    ctx.save(); ctx.translate(so.x, so.y); overlay(env, k); ctx.restore();
+    overlay(env, k);
   }
   function overlay(env, k) {
     ctx.save();
@@ -32,16 +31,21 @@
       }
     }
     if (guides.xs.length || guides.ys.length) {
+      var go = guides.off || { x: 0, y: 0, w: GW.SIZE, h: GW.SIZE };
+      ctx.save(); ctx.translate(go.x, go.y);
       ctx.strokeStyle = 'rgba(232,89,12,.9)'; ctx.lineWidth = 1 / k; ctx.setLineDash([4 / k, 3 / k]);
       ctx.beginPath();
-      guides.xs.forEach(function (x) { ctx.moveTo(x, 0); ctx.lineTo(x, GW.SIZE); });
-      guides.ys.forEach(function (y) { ctx.moveTo(0, y); ctx.lineTo(GW.SIZE, y); });
-      ctx.stroke();
+      guides.xs.forEach(function (x) { ctx.moveTo(x, 0); ctx.lineTo(x, go.h); });
+      guides.ys.forEach(function (y) { ctx.moveTo(0, y); ctx.lineTo(go.w, y); });
+      ctx.stroke(); ctx.restore();
     }
     function outline(el, col, w, dash) {
       var b = safeBox(el); if (!b) return;
+      var o = offsetOf(el);
+      ctx.save(); ctx.translate(o.x, o.y);
       ctx.strokeStyle = col; ctx.lineWidth = w / k; ctx.setLineDash(dash ? [4 / k, 3 / k] : []);
       ctx.strokeRect(b.x - 1 / k, b.y - 1 / k, b.w + 2 / k, b.h + 2 / k);
+      ctx.restore();
     }
     var hov = hoverId && hoverId !== GW.selId ? GW.findEl(hoverId) : null;
     if (hov && !hov.hidden) outline(hov, 'rgba(232,89,12,.55)', 1, false);
@@ -50,9 +54,11 @@
       outline(sel, '#e8590c', 1.5, true);
       var p = GW.posPairs(sel)[0];
       if (p) {
-        var x = sel[p[0]], y = sel[p[1]], s = 4 / k;
+        var x = sel[p[0]], y = sel[p[1]], s = 4 / k, so2 = offsetOf(sel);
+        ctx.save(); ctx.translate(so2.x, so2.y);
         ctx.setLineDash([]); ctx.strokeStyle = '#e8590c'; ctx.lineWidth = 1.5 / k;
         ctx.beginPath(); ctx.moveTo(x - s, y); ctx.lineTo(x + s, y); ctx.moveTo(x, y - s); ctx.lineTo(x, y + s); ctx.stroke();
+        ctx.restore();
       }
     }
     ctx.restore();
@@ -60,29 +66,29 @@
   function safeBox(el) { try { return GW.elBox(el, ctx); } catch (e) { return null; } }
 
   // ---------- picking / dragging ----------
-  // a data field that does not fill the screen is edited in its own slot: its coordinates start at the slot's top left
-  function slotOffset() {
+  // In a data-field screen layout every element belongs to a slot and its coordinates start at that slot's top left.
+  function offsetOf(el) {
     if (GW.design.kind !== 'datafield') return { x: 0, y: 0, w: GW.SIZE, h: GW.SIZE };
-    var s = GW.dfSlot(GW.design); return { x: s.x, y: s.y, w: s.w, h: s.h };
+    return GW.slotRect(GW.design, GW.elSlot(el, GW.design));
   }
-  function toDesign(e) {
+  function toDesign(e) {   // screen coordinates, 0..280
     var r = cv.getBoundingClientRect();
-    var so = slotOffset();
-    return { x: (e.clientX - r.left) / r.width * GW.SIZE - so.x, y: (e.clientY - r.top) / r.height * GW.SIZE - so.y };
+    return { x: (e.clientX - r.left) / r.width * GW.SIZE, y: (e.clientY - r.top) / r.height * GW.SIZE };
   }
   function pick(x, y) {
     var els = GW.design.elements;
     for (var i = els.length - 1; i >= 0; i--) {
       var el = els[i]; if (el.hidden || el.locked) continue;
-      try { if (GW.hitEl(el, x, y, ctx)) return el; } catch (e) { }
+      var o = offsetOf(el);
+      try { if (GW.hitEl(el, x - o.x, y - o.y, ctx)) return el; } catch (e) { }
     }
     return null;
   }
   // Snap the moving element's edges and centre to the screen centre and to the edges / centres of the other elements.
   function snapMove(el, b, dx, dy) {
-    var so = slotOffset(), T = 4, tx = [so.w / 2, 0, so.w], ty = [so.h / 2, 0, so.h];
+    var so = offsetOf(el), T = 4, tx = [so.w / 2, 0, so.w], ty = [so.h / 2, 0, so.h];
     GW.design.elements.forEach(function (o) {
-      if (o === el || o.hidden) return;
+      if (o === el || o.hidden || offsetOf(o).x !== so.x || offsetOf(o).y !== so.y) return;
       var ob = safeBox(o); if (!ob || (ob.w >= 270 && ob.h >= 270)) return;   // skip full-screen elements (rings, hands)
       tx.push(ob.x, ob.x + ob.w / 2, ob.x + ob.w); ty.push(ob.y, ob.y + ob.h / 2, ob.y + ob.h);
     });
@@ -98,7 +104,20 @@
   cv.addEventListener('pointerdown', function (e) {
     var p = toDesign(e), el = pick(p.x, p.y);
     GW.closeColor();
-    if (!el) { GW.select(null); return; }
+    if (!el) {
+      // clicking an empty slot of a screen layout makes it the current slot (new cells go there)
+      if (GW.design.kind === 'datafield') {
+        var L = GW.DF_LAYOUTS[GW.design.dfLayout] || GW.DF_LAYOUTS[0];
+        for (var si = 0; si < L.slots.length; si++) {
+          var r = L.slots[si];
+          if (p.x >= r[0] && p.x < r[0] + r[2] && p.y >= r[1] && p.y < r[1] + r[3] && Math.hypot(p.x - 140, p.y - 140) <= 140) {
+            if (si !== (GW.design.dfSlot || 0)) { GW.design.dfSlot = si; GW.select(null); GW.commit(true); return; }
+            break;
+          }
+        }
+      }
+      GW.select(null); return;
+    }
     if (GW.selId !== el.id) GW.select(el.id);
     var pairs = GW.posPairs(el);
     if (!pairs.length) return; // whole-face elements are selected but not dragged
@@ -107,7 +126,8 @@
   });
   cv.addEventListener('pointermove', function (e) {
     var p = toDesign(e);
-    $('coords').textContent = 'x ' + Math.round(p.x) + ' · y ' + Math.round(p.y);
+    var co = GW.design.kind === 'datafield' ? GW.slotRect(GW.design, GW.design.dfSlot || 0) : { x: 0, y: 0 };
+    $('coords').textContent = 'x ' + Math.round(p.x - co.x) + ' · y ' + Math.round(p.y - co.y);
     if (drag) {
       var el = GW.findEl(drag.id); if (!el) return;
       var dx = p.x - drag.sx, dy = p.y - drag.sy;
@@ -115,7 +135,7 @@
       drag.moved = true;
       guides.xs = []; guides.ys = [];
       if (opts.snap && !e.shiftKey && drag.box) {
-        var sn = snapMove(el, drag.box, dx, dy); dx = sn.dx; dy = sn.dy; guides.xs = sn.xs; guides.ys = sn.ys;
+        var sn = snapMove(el, drag.box, dx, dy); dx = sn.dx; dy = sn.dy; guides.xs = sn.xs; guides.ys = sn.ys; guides.off = offsetOf(el);
       }
       drag.orig.forEach(function (o) { el[o[0]] = Math.round(o[2] + dx); el[o[1]] = Math.round(o[3] + dy); });
       GW.emit('drag');
@@ -208,6 +228,7 @@
     $('designName').value = GW.design.name;
   });
   GW.on('select', function (id) {
+    GW.renderSlotCard();
     GW.renderLayers();
     if (id && document.querySelector('#tabs button.on').dataset.tab !== 'inspect') GW.setTab('inspect'); else GW.renderPanel();
     schedule();

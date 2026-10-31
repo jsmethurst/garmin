@@ -166,18 +166,44 @@
   };
   // Resolves to an array of project results: upright, rotated 30 degrees to the right, or both.
   GW.buildVariants = function (design) {
-    var ch = GW.rotChoice(design), list = ch === 'r30' ? [30] : (ch === 'both' ? [0, 30] : [0]);
     design.appIds = design.appIds || {};
+    var jobs = [];   // {key, label, slot, tilt}
+    if (design.kind === 'datafield') {
+      var L = GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0], used = {};
+      design.elements.forEach(function (e) { if (e.type === 'dfcell') used[GW.elSlot(e, design)] = 1; });
+      var slots = Object.keys(used).map(Number).filter(function (i) { return L.slots[i]; }).sort();
+      if (!slots.length) slots = [design.dfSlot || 0];
+      var multi = L.slots.length > 1;
+      slots.forEach(function (i) {
+        var d0 = GW.clone(design); d0.dfSlot = i;
+        var full = GW.dfSlot(d0).full, ch = full ? GW.rotChoice(d0) : 'none';
+        (ch === 'r30' ? [30] : (ch === 'both' ? [0, 30] : [0])).forEach(function (a) {
+          jobs.push({ slot: i, tilt: a, multi: multi, key: (multi ? 's' + i : '') + (a ? 'r' + a : '') || 'main',
+            label: (multi ? 'field ' + (i + 1) : 'upright') + (a ? (multi ? ' ' : '') + a + '\u00b0' : '') });
+        });
+      });
+    } else {
+      var ch0 = GW.rotChoice(design);
+      (ch0 === 'r30' ? [30] : (ch0 === 'both' ? [0, 30] : [0])).forEach(function (a) { jobs.push({ slot: null, tilt: a, key: a ? 'r' + a : 'main', label: a ? a + '\u00b0' : 'upright' }); });
+    }
     var out = [];
-    return list.reduce(function (p, a) {
+    return jobs.reduce(function (p, j) {
       return p.then(function () {
         var d = GW.clone(design);
-        if (a) { GW.rotateDesign(d, a); d.name = design.name + ' ' + a + '\u00b0'; }
-        var id = a ? design.appIds[a] : design.appId;
+        if (j.slot != null) {
+          d.dfSlot = j.slot;
+          d.elements = d.elements.filter(function (e) { return e.type !== 'dfcell' || GW.elSlot(e, design) === j.slot; });
+          if (j.multi) d.name = design.name + ' field ' + (j.slot + 1);
+        }
+        if (j.tilt) { GW.rotateDesign(d, j.tilt); d.name = d.name + ' ' + j.tilt + '\u00b0'; }
+        var id = j.key === 'main' ? design.appId : design.appIds[j.key];
         if (!/^[0-9a-f]{32}$/.test(id || '')) id = uuid32();
-        if (a) design.appIds[a] = id; else design.appId = id;
+        if (j.key === 'main') design.appId = id; else design.appIds[j.key] = id;
         d.appId = id;
-        return GW.buildProject(d).then(function (r) { r.tilt = a; out.push(r); });
+        return GW.buildProject(d).then(function (r) {
+          r.tilt = j.tilt; r.label = j.label; r.setId = function (v) { if (j.key === 'main') design.appId = v; else design.appIds[j.key] = v; };
+          out.push(r);
+        });
       });
     }, Promise.resolve()).then(function () { return out; });
   };
