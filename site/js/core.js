@@ -59,7 +59,7 @@ window.GW = window.GW || {};
     live: true, minutes: 10 * 60 + 9, seconds: 36,
     steps: 7340, stepGoal: 10000, calories: 1180, calGoal: 2200, floors: 7, floorGoal: 10,
     battery: 78, batteryDays: 6.4, hr: 64, bodyBat: 71, stress: 28, spo2: 97, resp: 14,
-    intMins: 95, intGoal: 150, distance: 6.2, notif: 3, temp: 17, wx: 1, lat: 41.01, lon: 28.98, lastKm: 8.4, paceSec: 342,
+    intMins: 95, intGoal: 150, distance: 6.2, notif: 3, temp: 17, wx: 1, lat: 41.01, lon: 28.98,
     runHr: 162, runKm: 7.37, runAvg: 318, runPlanKm: 10, lapNo: 8, lapKm: 0.41, lapPace: 305, lastLap: 312,
     runPace: 308, runCad: 172, runPow: 248, runAvgHr: 158, runMaxHr: 176, runAscent: 84, runCal: 512,
     altitude: 312, moveBar: 2, sunrise: 6 * 60 + 52, sunset: 18 * 60 + 14,
@@ -147,6 +147,9 @@ window.GW = window.GW || {};
       GW.design = Object.assign(GW.blankDesign(), d);
       if (GW.design.kind === 'datafield') GW.design.elements.forEach(function (e) { if (e.slot == null) e.slot = GW.design.dfSlot || 0; });
       if (GW.design.kind === 'datafield' && !GW.design.dfEdgesApplied) { GW.applyEdges(GW.design); GW.design.dfEdgesApplied = true; }   // older designs: put the layout's dividing lines on the cells once
+      (GW.design.elements || []).forEach(function (e) {   // the "last activity" data points are gone: keep the element as plain text
+        if (e.type === 'text' && (e.source === 'lastKm' || e.source === 'lastPace')) { e.source = 'custom'; e.text = '--'; }
+      });
       GW.design.elements = (GW.design.elements || []).filter(function (e) { return GW.types[e.type]; }); // drop element types that no longer exist
       GW.design.fonts = GW.design.fonts || [];
       GW.selId = null;

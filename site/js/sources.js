@@ -264,18 +264,6 @@
     mcStr: function (el, cg) { cg.need('wx'); cg.helper('sunStr'); return 'sunStr(0)'; }
   });
 
-  // --- Last activity (from the watch's activity history) ---
-  def('lastKm', {
-    label: 'Last activity distance (km)', group: 'Activity', kind: 'str', opts: [], perms: ['UserProfile'], imports: ['Toybox.UserProfile', 'Toybox.Time'],
-    str: function (el, env) { return env.sim.lastKm.toFixed(1); },
-    mcStr: function (el, cg) { cg.minApi('3.4.0'); cg.helper('lastAct'); return 'lastKmStr()'; }
-  });
-  def('lastPace', {
-    label: 'Last activity pace (min/km)', group: 'Activity', kind: 'str', opts: [], perms: ['UserProfile'], imports: ['Toybox.UserProfile', 'Toybox.Time'],
-    str: function (el, env) { var p = Math.round(env.sim.paceSec); return Math.floor(p / 60) + ':' + pad2(p % 60); },
-    mcStr: function (el, cg) { cg.minApi('3.4.0'); cg.helper('lastAct'); return 'lastPaceStr()'; }
-  });
-
   // --- New York time (follows daylight saving, so it reads EDT or EST) ---
   function nyParts(now) {
     var f = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZoneName: 'short' });

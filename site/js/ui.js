@@ -615,7 +615,7 @@
     ['intMins', 'Intensity min (week)', 0, 400, 5], ['distance', 'Distance (km)', 0, 40, 0.1], ['hr', 'Heart rate', 35, 200, 1], ['bodyBat', 'Body Battery', 0, 100, 1],
     ['stress', 'Stress', 0, 100, 1], ['spo2', 'SpO2 %', 80, 100, 1], ['resp', 'Respiration', 4, 40, 1], ['battery', 'Battery %', 0, 100, 1], ['batteryDays', 'Battery days', 0, 14, 0.1],
     ['notif', 'Notifications', 0, 20, 1], ['temp', 'Temperature °C', -20, 45, 1], ['altitude', 'Altitude m', -50, 4000, 10], ['moveBar', 'Move bar', 0, 5, 1],
-    ['lastKm', 'Last activity km', 0, 50, 0.1], ['paceSec', 'Pace (sec per km)', 180, 600, 5],
+    
     ['runHr', 'RUN: heart rate', 60, 200, 1], ['runKm', 'RUN: distance (km)', 0, 42, 0.01], ['runAvg', 'RUN: average pace (s/km)', 180, 600, 1],
     ['runPace', 'RUN: current pace (s/km)', 180, 600, 1], ['runAvgHr', 'RUN: average heart rate', 60, 200, 1], ['runMaxHr', 'RUN: max heart rate', 60, 220, 1],
     ['runCad', 'RUN: cadence', 100, 220, 1], ['runPow', 'RUN: power (W)', 0, 600, 5], ['runAscent', 'RUN: total ascent (m)', 0, 2000, 5], ['runCal', 'RUN: calories', 0, 3000, 10],

@@ -118,14 +118,6 @@
       imports: ['Toybox.Time'],
       code: 'function moonPhase() {\n        var days = (Time.now().value() - 947182440).toFloat() / 86400.0;\n        var p = days / 29.530588853;\n        return p - p.toNumber().toFloat();\n    }'
     },
-    lastAct: {
-      imports: ['Toybox.UserProfile', 'Toybox.Time'],
-      members: ['    var _laT = 0;', '    var _laKm = "--";', '    var _laPace = "--";'],
-      code: 'function lastRefresh() {\n        var now = Time.now().value();\n        if (_laT != 0 && now - _laT < 60) { return; }\n        _laT = now;\n        _laKm = "--";\n        _laPace = "--";\n' +
-        '        try {\n            if (!(UserProfile has :getUserActivityHistory)) { return; }\n            var it = UserProfile.getUserActivityHistory();\n            if (it == null) { return; }\n' +
-        '            // the history starts with the most recent activity: take the first one that has a distance\n            var n = 0;\n            var a = it.next();\n            while (a != null && n < 20) {\n                if (a.distance != null && a.distance > 0) {\n                    _laKm = (a.distance / 1000.0).format("%.1f");\n                    if (a.duration != null && a.distance >= 100) {\n                        var s = (a.duration.value() / (a.distance / 1000.0)).toNumber();\n                        _laPace = (s / 60).format("%d") + ":" + (s % 60).format("%02d");\n                    }\n                    return;\n                }\n                a = it.next();\n                n += 1;\n            }\n        } catch (ex) {\n            // no access to the history: keep showing "--"\n        }\n    }\n\n' +
-        '    function lastKmStr() {\n        lastRefresh();\n        return _laKm;\n    }\n\n    function lastPaceStr() {\n        lastRefresh();\n        return _laPace;\n    }'
-    },
     nyStr: {
       imports: ['Toybox.Time', 'Toybox.Time.Gregorian'],
       code: 'function nyStr(mode) {\n        var now = Time.now();\n        var year = Gregorian.utcInfo(now, Time.FORMAT_SHORT).year;\n' +
