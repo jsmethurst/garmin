@@ -696,7 +696,7 @@
       var key = p.name.toLowerCase(), saved = GW.layouts.find(p.name, kind);
       if (saved) shown[key] = 1;
       if (!saved && hidden.indexOf(key) >= 0) return;
-      var thumb = p.id === 'blank' || p.id === 'blankfield' ? blankThumb(p.id === 'blank' ? '#000' : '#fff') : GW.thumb(saved ? saved.data.design : p.build(), 140);
+      var thumb = p.id === 'blank' || p.id === 'blankfield' ? blankThumb(p.id === 'blank' ? '#000' : '#fff') : GW.thumb(saved ? saved.data.design : Object.assign(p.build(), { size: 280 }), 140);
       grid.appendChild(card(thumb, p.name, !!saved, function (done) { GW.applyPreset(p.id, done); }, function () {
         if (saved) GW.layouts.remove(p.name, kind); else GW.layouts.hide(p.name, kind);
         if (saved) GW.layouts.hide(p.name, kind);

@@ -160,10 +160,11 @@
     { id: 'blank', name: 'Blank', blurb: 'Start from nothing.', build: function () { return D('My Watchface', '#000000', [], []); } }
   ];
 
+  // The presets are drawn on the 280 px screen; opening one on another watch converts it (see GW.convertSize).
   GW.applyPreset = function (id, done) {
     var p = GW.PRESETS.filter(function (x) { return x.id === id; })[0]; if (!p) return;
     var saved = GW.layouts && GW.layouts.find(p.name, p.kind === 'datafield' ? 'field' : 'watch');   // a saved layout with this name replaces the built-in
-    GW.loadFrom(saved ? GW.clone(saved.data) : { design: p.build(), assets: p.assets ? p.assets() : {} }, done);
+    GW.loadFrom(saved ? GW.clone(saved.data) : { design: Object.assign(p.build(), { size: 280 }), assets: p.assets ? p.assets() : {} }, done);
   };
 
 })(window.GW);
