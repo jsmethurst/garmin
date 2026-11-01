@@ -676,6 +676,17 @@
   }
   GW.closeModal = closeModal;
 
+  // what a compiled .prg could and could not be turned into
+  function importReport(name, r) {
+    var li = [];
+    li.push(h('li', { text: r.texts + ' text elements, ' + r.arcs + ' arcs' + (GW.design.bgImage ? ', and the background picture' : '') + ' were recreated.' }));
+    li.push(h('li', { text: 'The typefaces are the closest bundled ones: the file\'s own bitmap fonts cannot be copied, so sizes and look will differ a little.' }));
+    r.notes.forEach(function (n) { li.push(h('li', { text: n })); });
+    r.skipped.forEach(function (s) { li.push(h('li', { class: 'muted', text: 'Not imported: ' + s })); });
+    modal('Opened ' + name, h('div', {}, [
+      h('p', { text: 'This file was not made here, so it holds only the compiled drawing program. I read that program and rebuilt what I could from it. Treat it as a starting point and compare it with the real face.' }),
+      h('ul', { style: 'line-height:1.5' }, li)]));
+  }
   GW.openPresets = function () {
     var grid = h('div', { class: 'presets' });
     var kind = GW.modeOf(), fld = kind === 'field', hidden = GW.layouts.hidden(kind);
@@ -715,7 +726,10 @@
       var f = pick.files[0]; if (!f) return; pick.value = '';
       GW.toast('Opening ' + f.name + '…');
       GW.importBuild(f).then(function (obj) {
-        GW.loadFrom(obj, function () { GW.fontsReady().then(function () { GW.touch(true); closeModal(); GW.history.commit(); GW.toast('Opened ' + f.name); }); });
+        GW.loadFrom(obj, function () { GW.fontsReady().then(function () {
+          GW.touch(true); closeModal(); GW.history.commit(); GW.toast('Opened ' + f.name);
+          if (obj.report) importReport(f.name, obj.report);
+        }); });
       }).catch(function (e) { GW.toast(e.message); });
     });
     kids.push(h('div', { style: 'margin-top:16px;padding-top:12px;border-top:1px solid var(--line2)' }, [

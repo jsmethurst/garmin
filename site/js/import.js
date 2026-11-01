@@ -29,10 +29,26 @@
     });
     return out;
   }
+  function isPrg(u8) { return u8.length > 16 && u8[0] === 0xD0 && u8[1] === 0x00 && u8[2] === 0xD0 && (u8[3] === 0x00 || u8[3] === 0x0D); }
+  // a compiled app from somewhere else: read its drawing code (see prgimport.js)
+  function fromCompiled(u8, name) {
+    var res = GW.prgImport.importPrg(u8, { name: name }), assets = {};
+    Object.keys(res.assets).forEach(function (id) {
+      var a = res.assets[id], c = document.createElement('canvas'); c.width = a.w; c.height = a.h;
+      c.getContext('2d').putImageData(new ImageData(a.rgba, a.w, a.h), 0, 0); assets[id] = c.toDataURL('image/png');
+    });
+    var d = res.design;
+    d.elements = d.elements.map(function (e) {
+      var t = GW.types[e.type]; return Object.assign({ id: GW.uid('e'), hidden: false, locked: false }, t.defaults(), e);
+    });
+    return { v: 1, design: d, assets: assets, report: res.report, fromCompiled: true };
+  }
   GW.importBuild = function (file) {
+    var base = String(file.name || 'Imported face').replace(/\.[^.]+$/, '');
     return file.arrayBuffer().then(function (buf) {
       var u8 = new Uint8Array(buf), hit = find(u8);
       if (hit != null) return unpack(hit);
+      if (isPrg(u8)) return fromCompiled(u8, base);
       return loadSevenZip().catch(function (e) {
         console.error('7-Zip reader failed to load', e);
         var err = new Error('The reader for .iq / .zip files could not load (' + (e && e.message || e) + '). Reload the page (Cmd/Ctrl+Shift+R) and try again.'); err.final = true; throw err;
@@ -41,12 +57,16 @@
         z.FS.writeFile(name, u8);
         try { z.callMain(['x', name, '-o' + dir, '-y']); } catch (e) { /* an unreadable archive leaves nothing in the folder */ }
         var files = []; try { walk(z, '/' + dir, files); } catch (e) { }
-        for (var i = 0; i < files.length; i++) { var f = find(z.FS.readFile(files[i])); if (f != null) return unpack(f); }
+        var datas = files.map(function (f) { return { f: f, d: z.FS.readFile(f) }; }), i;
+        for (i = 0; i < datas.length; i++) { var h = find(datas[i].d); if (h != null) return unpack(h); }
+        for (i = 0; i < datas.length; i++) if (/\.prg$/i.test(datas[i].f) && isPrg(datas[i].d)) return fromCompiled(datas[i].d, base);
         throw new Error('nothing to open');
       });
     }).catch(function (e) {
       if (e.final || /no editable design/.test(e.message)) throw e;
-      throw new Error('There is no editable design inside this file. Only .prg / .iq files built by Garmin Studio after this feature was added can be opened (rebuild the face once and keep that file). If you did just rebuild it, reload the page first: your browser may still be running the old export code.');
+      if (/nothing to open/.test(e.message)) throw new Error('This file is not a Garmin app Garmin Studio can read.');
+      console.error('import failed', e);
+      throw new Error('Could not turn this file into a design: ' + e.message);
     });
   };
 })(window.GW);
