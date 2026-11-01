@@ -2,7 +2,7 @@
    Preview and export share the exact same glyph metrics, so what you see is what the .fnt contains. */
 (function (GW) {
   'use strict';
-  var K = GW.SIZE / 260; // system-font boxes were measured on a 260px fenix 6; scale to 280px
+  var K = GW.SIZE / 260; // system-font boxes were measured on a 260px fenix 6; scaled to the screen of the selected watch
 
   // [constant, box height @260, kind]   kind: 't' text face, 'n' number face
   GW.SYS_FONTS = [
@@ -10,9 +10,13 @@
     ['FONT_NUMBER_MILD', 30, 'n'], ['FONT_NUMBER_MEDIUM', 36, 'n'], ['FONT_NUMBER_HOT', 49, 'n'], ['FONT_NUMBER_THAI_HOT', 57, 'n']
   ];
   var SYS = {};
-  GW.SYS_FONTS.forEach(function (f) {
-    SYS[f[0]] = { box: f[1] * K, px: Math.round(f[1] * K * (f[2] === 'n' ? 1.47 : 1.25)), weight: f[2] === 'n' ? 700 : 500, family: 'Rajdhani' };
-  });
+  GW.rebuildSysFonts = function () {
+    K = GW.SIZE / 260;
+    GW.SYS_FONTS.forEach(function (f) {
+      SYS[f[0]] = { box: f[1] * K, px: Math.round(f[1] * K * (f[2] === 'n' ? 1.47 : 1.25)), weight: f[2] === 'n' ? 700 : 500, family: 'Rajdhani' };
+    });
+  };
+  GW.rebuildSysFonts();
   GW.sysFont = function (id) { return SYS[id]; };
   GW.isSysFont = function (id) { return !!SYS[id]; };
 

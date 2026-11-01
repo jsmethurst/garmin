@@ -481,13 +481,13 @@
       });
       var gf = $('addGrid'); gf.innerHTML = '';
       ['dfcell', 'shape'].forEach(function (k) {
-        gf.appendChild(h('button', { class: 'addbtn', onclick: function () { GW.addElement(k, k === 'shape' ? { name: 'Divider', kind: 'line', x: 20, y: 140, x2: 260, y2: 140, color: '#aaaaaa', pen: 1 } : (function () { var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h); return { name: 'Data cell', src: 'timer', vfont: ft.v, lfont: ft.l, dx: ft.dx, dy: ft.dy, bT: ft.e.bT, bB: ft.e.bB, bL: ft.e.bL, bR: ft.e.bR, x: 0, y: 0, w: sl.w, h: sl.h }; })()); } }, [h('i', { text: T[k].icon }), k === 'shape' ? 'Line / box' : 'Data cell']));
+        gf.appendChild(h('button', { class: 'addbtn', onclick: function () { GW.addElement(k, k === 'shape' ? { name: 'Divider', kind: 'line', x: Math.round(GW.SIZE * 20 / 280), y: GW.SIZE / 2, x2: Math.round(GW.SIZE * 260 / 280), y2: GW.SIZE / 2, color: '#aaaaaa', pen: 1 } : (function () { var sl = GW.dfSlot(GW.design), ft = fitFonts(sl.w, sl.h); return { name: 'Data cell', src: 'timer', vfont: ft.v, lfont: ft.l, dx: ft.dx, dy: ft.dy, bT: ft.e.bT, bB: ft.e.bB, bL: ft.e.bL, bR: ft.e.bR, x: 0, y: 0, w: sl.w, h: sl.h }; })()); } }, [h('i', { text: T[k].icon }), k === 'shape' ? 'Line / box' : 'Data cell']));
       });
       return;
     }
     QUICK.forEach(function (q) {
       chips.appendChild(h('button', { class: 'chip', text: q.l, onclick: function () {
-        var o = { name: q.l, source: q.s, font: q.f, y: q.y, color: q.c || '#ffffff', upper: !!q.up, suffix: q.suffix || '' };
+        var o = { name: q.l, source: q.s, font: q.f, y: Math.round(q.y * GW.SIZE / 280), color: q.c || '#ffffff', upper: !!q.up, suffix: q.suffix || '' };
         if (q.s === 'custom') o.text = 'Hello';
         GW.addElement('text', o);
       } }));
@@ -519,9 +519,9 @@
     sel.value = li;
     sel.addEventListener('change', function () { d.dfLayout = parseInt(sel.value, 10); d.dfSlot = 0; GW.applyEdges(d); GW.commit(true); });
     var used = {}; d.elements.forEach(function (e) { if (e.type === 'dfcell') used[GW.elSlot(e, d)] = 1; });
-    var svg = '<svg viewBox="0 0 280 280" width="150" height="150" style="display:block;margin:6px 0 0"><defs><clipPath id="sc"><circle cx="140" cy="140" r="139"/></clipPath></defs><g clip-path="url(#sc)">' +
+    var svg = '<svg viewBox="0 0 ' + GW.SIZE + ' ' + GW.SIZE + '" width="150" height="150" style="display:block;margin:6px 0 0"><defs><clipPath id="sc"><circle cx="' + GW.SIZE / 2 + '" cy="' + GW.SIZE / 2 + '" r="' + (GW.SIZE / 2 - 1) + '"/></clipPath></defs><g clip-path="url(#sc)">' +
       L.slots.map(function (r, i) { return '<rect data-i="' + i + '" x="' + r[0] + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '" fill="' + (i === si ? '#c2410c' : (used[i] ? '#e7c9b0' : '#f7f6f2')) + '" stroke="#6b6860" stroke-width="2" style="cursor:pointer"/>'; }).join('') +
-      '</g><circle cx="140" cy="140" r="139" fill="none" stroke="#1d1d1b" stroke-width="3"/></svg>';
+      '</g><circle cx="' + GW.SIZE / 2 + '" cy="' + GW.SIZE / 2 + '" r="' + (GW.SIZE / 2 - 1) + '" fill="none" stroke="#1d1d1b" stroke-width="3"/></svg>';
     var box = h('div', { html: svg });
     Array.prototype.forEach.call(box.querySelectorAll('rect'), function (r) { r.addEventListener('click', function () { d.dfSlot = parseInt(r.getAttribute('data-i'), 10); GW.commit(true); }); });
     var sl = L.slots[si];
@@ -557,15 +557,15 @@
   function fitFonts(w, h) {
     var ft = fitFonts0(w, h), sl = GW.dfSlot(GW.design);
     // 8 fields: the side-by-side cells sit against the curve of the bezel, so nudge their text inwards
-    if (sl.layout.id === '8fields' && sl.w < 280) { ft = Object.assign({}, ft, { dx: sl.x === 0 ? 7 : -7, dy: 2 }); }
+    if (sl.layout.id === '8fields' && sl.w < GW.SIZE) { ft = Object.assign({}, ft, { dx: sl.x === 0 ? 7 : -7, dy: 2 }); }
     return Object.assign({}, ft, { e: GW.dfEdges(GW.design, GW.design.dfSlot || 0) });   // the layout's dividing lines for this field
   }
   function fitFonts0(w, h) {
-    var sl = GW.dfSlot(GW.design), R = 126, nums = GW.SYS_FONTS.filter(function (f) { return f[2] === 'n'; }).map(function (f) { return f[0]; });
+    var sl = GW.dfSlot(GW.design), R = GW.SIZE * 0.45, nums = GW.SYS_FONTS.filter(function (f) { return f[2] === 'n'; }).map(function (f) { return f[0]; });
     var labs = h >= 100 ? ['FONT_TINY', 'FONT_XTINY'] : ['FONT_XTINY'];
     function visible(y) {   // visible x-range of the slot on row y (design coordinates are slot-relative)
-      var dy = sl.y + y - 140, half = Math.sqrt(Math.max(0, R * R - dy * dy));
-      return [Math.max(sl.x, 140 - half) - sl.x, Math.min(sl.x + w, 140 + half) - sl.x];
+      var dy = sl.y + y - GW.SIZE / 2, half = Math.sqrt(Math.max(0, R * R - dy * dy));
+      return [Math.max(sl.x, GW.SIZE / 2 - half) - sl.x, Math.min(sl.x + w, GW.SIZE / 2 + half) - sl.x];
     }
     var best = null, smallest = null;
     labs.forEach(function (lab) {
@@ -597,7 +597,7 @@
       loadImageFile(file.files[0], function (id) { d.bgImage = id; GW.commit(true); });
     });
     p.appendChild(h('div', { class: 'f' }, [h('label', { text: 'Background image (optional)' }),
-      h('div', { class: 'dropzone', onclick: function () { file.click(); }, text: d.bgImage ? 'Replace image…' : 'Choose a 280×280 image…' }), file,
+      h('div', { class: 'dropzone', onclick: function () { file.click(); }, text: d.bgImage ? 'Replace image…' : 'Choose a ' + GW.SIZE + '×' + GW.SIZE + ' image…' }), file,
       d.bgImage ? h('button', { class: 'btn sm', text: 'Remove background image', onclick: function () { d.bgImage = null; GW.commit(true); } }) : null]));
     p.appendChild(h('h4', { text: 'Start over' }));
     p.appendChild(h('div', { class: 'row' }, [
@@ -710,7 +710,7 @@
     var kids = [grid];
     if (hidden.length) kids.push(h('p', {}, [h('button', { class: 'btn sm', text: 'Restore the layouts I deleted', onclick: function () { GW.layouts.restoreHidden(kind); GW.openPresets(); } })]));
     // open a .prg / .iq that Garmin Studio built (the editable design is stored inside it)
-    var pick = h('input', { type: 'file', accept: '.prg,.iq', hidden: true });
+    var pick = h('input', { type: 'file', accept: '.prg,.iq,.zip', hidden: true });
     pick.addEventListener('change', function () {
       var f = pick.files[0]; if (!f) return; pick.value = '';
       GW.toast('Opening ' + f.name + '…');
@@ -719,7 +719,7 @@
       }).catch(function (e) { GW.toast(e.message); });
     });
     kids.push(h('div', { style: 'margin-top:16px;padding-top:12px;border-top:1px solid var(--line2)' }, [
-      h('button', { class: 'btn', text: '⬆ Open a .prg or .iq…', onclick: function () { pick.click(); } }), pick,
+      h('button', { class: 'btn', text: '⬆ Open a .prg, .iq or project .zip…', onclick: function () { pick.click(); } }), pick,
       h('p', { class: 'muted small', text: 'Works with watch faces and data fields built here, so you can edit them again. Files from other people, or built before this feature, have no design inside.' })]));
     modal('Layouts', h('div', {}, kids));
   };

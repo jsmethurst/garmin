@@ -11,7 +11,7 @@
     var sel = $('deviceSel'); if (!sel) return;
     GW.DEVICES.forEach(function (d) { var o = document.createElement('option'); o.value = d.id; o.textContent = d.name + ' · ' + d.size + '×' + d.size; sel.appendChild(o); });
     sel.value = GW.DEVICE.id;
-    sel.addEventListener('change', function () { GW.setDevice(sel.value); });
+    sel.addEventListener('change', function () { GW.setDevice(sel.value); GW.touch(true); schedule(); GW.toast('Now designing for the ' + GW.DEVICE.name + ' (' + GW.SIZE + '×' + GW.SIZE + ')'); });
   })();
 
   // ---------- drawing ----------
@@ -34,8 +34,8 @@
     ctx.save();
     if (opts.grid) {
       ctx.lineWidth = 1 / k;
-      for (var i = 0; i <= GW.SIZE; i += 20) {
-        ctx.strokeStyle = i === 140 ? 'rgba(232,89,12,.6)' : 'rgba(128,128,128,.3)';
+      for (var i = 0; i <= GW.SIZE; i += 20) {   // grid every 20 px
+        ctx.strokeStyle = i === GW.SIZE / 2 ? 'rgba(232,89,12,.6)' : 'rgba(128,128,128,.3)';
         ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, GW.SIZE); ctx.moveTo(0, i); ctx.lineTo(GW.SIZE, i); ctx.stroke();
       }
     }
@@ -144,7 +144,7 @@
         var L = GW.DF_LAYOUTS[GW.design.dfLayout] || GW.DF_LAYOUTS[0];
         for (var si = 0; si < L.slots.length; si++) {
           var r = L.slots[si];
-          if (p.x >= r[0] && p.x < r[0] + r[2] && p.y >= r[1] && p.y < r[1] + r[3] && Math.hypot(p.x - 140, p.y - 140) <= 140) {
+          if (p.x >= r[0] && p.x < r[0] + r[2] && p.y >= r[1] && p.y < r[1] + r[3] && Math.hypot(p.x - GW.SIZE / 2, p.y - GW.SIZE / 2) <= GW.SIZE / 2) {
             if (si !== (GW.design.dfSlot || 0)) { GW.design.dfSlot = si; GW.select(null); GW.commit(true); return; }
             break;
           }

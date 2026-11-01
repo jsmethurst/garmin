@@ -104,9 +104,9 @@
 
   // Resolves to { name, files:[{path,data,exec?}], warnings, src }
   GW.buildProject = function (design) {
-    var orig = design, f = GW.DEVICE.size / GW.SIZE, src;
-    if (design.kind !== 'datafield' && f !== 1) {   // a smaller screen: everything shrinks to fit (the font list lives on GW.design, so swap it while generating)
-      design = GW.scaleDesign(GW.clone(design), f);
+    var orig = design, src;
+    if ((design.size || 280) !== GW.DEVICE.size) {   // normally the design is already on this watch's screen; if not, scale it (the font list lives on GW.design, so swap it while generating)
+      design = GW.convertSize(GW.clone(design), GW.DEVICE.size);
       var live = GW.design; GW.design = design;
       try { src = GW.generateSource(design); } finally { GW.design = live; }
     } else src = GW.generateSource(design);
@@ -138,7 +138,7 @@
     // launcher icon = the face itself
     var icon = document.createElement('canvas'); icon.width = icon.height = 40;
     var ix = icon.getContext('2d'); ix.scale(40 / GW.SIZE, 40 / GW.SIZE);
-    ix.beginPath(); ix.arc(140, 140, 140, 0, Math.PI * 2); ix.clip();
+    ix.beginPath(); ix.arc(GW.SIZE / 2, GW.SIZE / 2, GW.SIZE / 2, 0, Math.PI * 2); ix.clip();
     GW.renderDesign(ix, orig, GW.fixedEnv());
     jobs.push(canvasBytes(icon).then(function (b) { text('resources/drawables/launcher_icon.png', b); }));
 
@@ -173,28 +173,11 @@
     });
   };
 
-  // Scales a watch face designed in 280 x 280 space to a smaller screen (everything is rounded to whole pixels).
-  GW.scaleDesign = function (d, f) {
-    var KEYS = {
-      text: ['x', 'y', 'fontSize'], arc: ['cx', 'cy', 'r', 'pen'], ticks: ['cx', 'cy', 'r', 'len', 'majorLen', 'width', 'majorWidth'],
-      hands: ['cx', 'cy', 'hLen', 'hW', 'mLen', 'mW', 'sLen', 'sW', 'sTail', 'hub'], shape: ['x', 'y', 'x2', 'y2', 'w', 'h', 'r', 'pen', 'rad'],
-      image: ['x', 'y', 'w', 'h'], barchart: ['x', 'y', 'w', 'h', 'gap'], movebar: ['x', 'y', 'w', 'h', 'gap'], moon: ['x', 'y', 'r'], binary: ['x', 'y', 'r', 'gap'],
-      wxicon: ['x', 'y', 'size'], worldmap: ['x', 'y', 'w', 'h', 'msize'], sunicon: ['x', 'y', 'r']
-    }, THIN = { pen: 1, width: 1, majorWidth: 1, hW: 1, mW: 1, sW: 1, w: 1, h: 1, r: 1, msize: 1, gap: 0 };
-    d.elements.forEach(function (el) {
-      (KEYS[el.type] || []).forEach(function (k) {
-        if (typeof el[k] !== 'number' || !el[k]) return;
-        var v = Math.round(el[k] * f); el[k] = (k in THIN && el[k] > 0) ? Math.max(THIN[k], v) : v;
-      });
-    });
-    (d.fonts || []).forEach(function (fo) { if (fo.px) fo.px = Math.max(6, Math.round(fo.px * f)); if (fo.spacing) fo.spacing = Math.round(fo.spacing * f); });
-    return d;
-  };
-
   // ---- rotated version: every element is turned about the centre of the screen ----
   GW.rotateDesign = function (d, deg) {
     var a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
-    function rp(x, y) { var dx = x - 140, dy = y - 140; return [140 + dx * c - dy * s, 140 + dx * s + dy * c]; }
+    var C0 = GW.SIZE / 2;
+    function rp(x, y) { var dx = x - C0, dy = y - C0; return [C0 + dx * c - dy * s, C0 + dx * s + dy * c]; }
     d.elements.forEach(function (e) {
       var p;
       if (e.type === 'text' || e.type === 'sunicon' || e.type === 'dfcell' || (e.type === 'shape' && e.kind !== 'line')) {

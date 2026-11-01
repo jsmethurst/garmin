@@ -926,7 +926,9 @@
     return x >= b.x - m && x <= b.x + b.w + m && y >= b.y - m && y <= b.y + b.h + m;
   };
   GW.newElement = function (type, over) {
-    var el = Object.assign({ id: GW.uid('e'), hidden: false, locked: false }, T[type].defaults(), over || {});
+    var def = T[type].defaults();
+    if (GW.SIZE !== 280) GW.scaleElement(def, GW.SIZE / 280);   // the defaults are written for 280 px; fit them to the selected screen
+    var el = Object.assign({ id: GW.uid('e'), hidden: false, locked: false }, def, over || {});
     return el;
   };
 })(window.GW);

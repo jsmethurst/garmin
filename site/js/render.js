@@ -50,6 +50,7 @@
   // Round thumbnail on a fresh canvas. `env` defaults to a calm fixed 10:09:36 so presets look their best.
   GW.thumb = function (design, px, env) {
     var c = document.createElement('canvas'), d = window.devicePixelRatio || 1;
+    if ((design.size || 280) !== GW.SIZE) design = GW.convertSize(GW.clone(design), GW.SIZE);   // layouts made on another watch
     c.width = c.height = Math.round(px * d);
     var ctx = c.getContext('2d');
     ctx.scale(c.width / GW.SIZE, c.width / GW.SIZE);

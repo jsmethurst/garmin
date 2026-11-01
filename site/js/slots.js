@@ -2,7 +2,7 @@
    Each entry lists the rectangles [x, y, width, height] a data field is given on the 280 x 280 round screen. */
 (function (GW) {
   'use strict';
-  GW.DF_LAYOUTS = [
+  var BASE = [
     { id: '1field', name: '1 field', slots: [[0, 0, 280, 280]] },
     { id: '2fields', name: '2 fields', slots: [[0, 0, 280, 139], [0, 141, 280, 139]] },
     { id: '3fieldsa', name: '3 fields A', slots: [[0, 0, 280, 89], [0, 91, 280, 98], [0, 191, 280, 89]] },
@@ -16,10 +16,23 @@
     { id: '7fields', name: '7 fields', slots: [[0, 0, 280, 49], [0, 50, 139, 59], [141, 50, 139, 59], [0, 110, 280, 59], [0, 171, 139, 59], [141, 171, 139, 59], [0, 231, 280, 49]] },
     { id: '8fields', name: '8 fields', edges: { 0: 'B', 1: 'R', 3: 'R', 5: 'R', 7: 'T' }, slots: [[0, 0, 280, 49], [0, 51, 139, 59], [141, 51, 139, 59], [0, 112, 139, 59], [141, 112, 139, 59], [0, 173, 139, 59], [141, 173, 139, 59], [0, 234, 280, 49]] }
   ];
+  // the layouts above are the SDK's own for the 280 px screen; for a smaller screen the edges are scaled (and rounded) to fit
+  GW.rebuildLayouts = function () {
+    var f = GW.SIZE / 280;
+    GW.DF_LAYOUTS = BASE.map(function (L) {
+      var o = Object.assign({}, L);
+      o.slots = L.slots.map(function (r) {
+        var x0 = Math.round(r[0] * f), y0 = Math.round(r[1] * f), x1 = Math.round((r[0] + r[2]) * f), y1 = Math.round((r[1] + r[3]) * f);
+        return [x0, y0, x1 - x0, y1 - y0];
+      });
+      return o;
+    });
+  };
+  GW.rebuildLayouts();
   // the rectangle a data-field design lives in: {x, y, w, h, full}
   GW.dfSlot = function (design) {
     var L = GW.DF_LAYOUTS[design.dfLayout] || GW.DF_LAYOUTS[0], r = L.slots[design.dfSlot] || L.slots[0];
-    return { x: r[0], y: r[1], w: r[2], h: r[3], full: r[2] === 280 && r[3] === 280, layout: L };
+    return { x: r[0], y: r[1], w: r[2], h: r[3], full: r[2] >= GW.SIZE && r[3] >= GW.SIZE, layout: L };
   };
   // which slot an element of a data-field design belongs to (older designs without one follow the slot that was current)
   GW.elSlot = function (el, design) { return el.slot == null ? (design.dfSlot || 0) : el.slot; };

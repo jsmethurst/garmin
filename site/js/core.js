@@ -3,17 +3,52 @@ window.GW = window.GW || {};
 (function (GW) {
   'use strict';
 
-  GW.SIZE = 280; // fenix 6X Pro: 280x280 round MIP display
-  // Designs are always drawn in a 280 x 280 space; for a watch with a smaller screen the export scales everything down to fit.
+  // The design canvas is the real screen of the selected watch (280 x 280 on the fēnix 6X Pro, 260 x 260 on the fēnix 6): what you see,
+  // the coordinates you read and the pixels that are built are the same. Every design remembers the size it was drawn at (design.size,
+  // 280 when missing) and is converted when it is opened on another watch.
   GW.DEVICES = [
     { id: 'fenix6xpro', products: ['fenix6xpro'], name: 'fēnix 6X Pro', size: 280 },
     { id: 'fenix6', products: ['fenix6', 'fenix6pro'], name: 'fēnix 6 / 6 Pro', size: 260 }
   ];
   GW.DEVICE = GW.DEVICES[0];
   try { var sd = localStorage.getItem('gw.device'); GW.DEVICES.forEach(function (x) { if (x.id === sd) GW.DEVICE = x; }); } catch (e) { }
+  GW.SIZE = GW.DEVICE.size;
+
+  // Scales every size and position of a design by f (rounded to whole pixels); used when a design moves between screens.
+  var SCALE_KEYS = {
+    text: ['x', 'y', 'fontSize'], arc: ['cx', 'cy', 'r', 'pen'], ticks: ['cx', 'cy', 'r', 'len', 'majorLen', 'width', 'majorWidth'],
+    hands: ['cx', 'cy', 'hLen', 'hW', 'mLen', 'mW', 'sLen', 'sW', 'sTail', 'hub'], shape: ['x', 'y', 'x2', 'y2', 'w', 'h', 'r', 'pen', 'rad'],
+    image: ['x', 'y', 'w', 'h'], barchart: ['x', 'y', 'w', 'h', 'gap'], movebar: ['x', 'y', 'w', 'h', 'gap'], moon: ['x', 'y', 'r'], binary: ['x', 'y', 'r', 'gap'],
+    wxicon: ['x', 'y', 'size'], worldmap: ['x', 'y', 'w', 'h', 'msize'], sunicon: ['x', 'y', 'r'], dfcell: ['x', 'y', 'w', 'h', 'dx', 'dy']
+  };
+  var THIN = { pen: 1, width: 1, majorWidth: 1, hW: 1, mW: 1, sW: 1, w: 1, h: 1, r: 1, msize: 1 };
+  GW.scaleElement = function (el, f) {
+    (SCALE_KEYS[el.type] || []).forEach(function (k) {
+      if (typeof el[k] !== 'number' || !el[k]) return;
+      var v = Math.round(el[k] * f); el[k] = (k in THIN && el[k] > 0) ? Math.max(THIN[k], v) : v;
+    });
+    return el;
+  };
+  GW.scaleDesign = function (d, f) {
+    d.elements.forEach(function (el) { GW.scaleElement(el, f); });
+    (d.fonts || []).forEach(function (fo) { if (fo.px) fo.px = Math.max(6, Math.round(fo.px * f)); if (fo.spacing) fo.spacing = Math.round(fo.spacing * f); });
+    return d;
+  };
+  GW.convertSize = function (d, to) {
+    var from = d.size || 280;
+    if (from !== to) GW.scaleDesign(d, to / from);
+    d.size = to; return d;
+  };
+  function applyScreen() { GW.SIZE = GW.DEVICE.size; GW.rebuildSysFonts && GW.rebuildSysFonts(); GW.rebuildLayouts && GW.rebuildLayouts(); }
   GW.setDevice = function (id) {
+    var old = GW.SIZE;
     GW.DEVICES.forEach(function (x) { if (x.id === id) GW.DEVICE = x; });
     try { localStorage.setItem('gw.device', GW.DEVICE.id); } catch (e) { }
+    if (GW.DEVICE.size === old) return false;
+    applyScreen();
+    GW.convertSize(GW.design, GW.SIZE);
+    GW.emit('structure'); GW.history.commit();
+    return true;
   };
 
   // ---------- helpers ----------
@@ -60,7 +95,7 @@ window.GW = window.GW || {};
 
   // ---------- state ----------
   GW.blankDesign = function () {
-    return { name: 'My Watchface', bg: '#000000', bgImage: null, fonts: [], elements: [] };
+    return { name: 'My Watchface', bg: '#000000', bgImage: null, fonts: [], elements: [], size: GW.SIZE };
   };
   GW.design = GW.blankDesign();
   GW.assets = {};        // assetId -> { dataUrl, img (HTMLImageElement) }
@@ -154,7 +189,8 @@ window.GW = window.GW || {};
     (d.fonts || []).forEach(function (f) { if (f.asset) fontOf[f.asset] = f; });
     GW.assets = {};
     function fin() {
-      GW.design = Object.assign(GW.blankDesign(), d);
+      var drawnAt = d.size || 280;   // the screen size this design was made for
+      GW.design = Object.assign(GW.blankDesign(), d, { size: drawnAt });
       if (GW.design.kind === 'datafield') GW.design.elements.forEach(function (e) { if (e.slot == null) e.slot = GW.design.dfSlot || 0; });
       if (GW.design.kind === 'datafield' && !GW.design.dfEdgesApplied) { GW.applyEdges(GW.design); GW.design.dfEdgesApplied = true; }   // older designs: put the layout's dividing lines on the cells once
       (GW.design.elements || []).forEach(function (e) {   // the "last activity" data points are gone: keep the element as plain text
@@ -162,6 +198,7 @@ window.GW = window.GW || {};
       });
       GW.design.elements = (GW.design.elements || []).filter(function (e) { return GW.types[e.type]; }); // drop element types that no longer exist
       GW.design.fonts = GW.design.fonts || [];
+      GW.convertSize(GW.design, GW.SIZE);   // opened on another watch: scale it to this screen
       GW.selId = null;
       GW.history.reset();
       GW.emit('structure'); GW.emit('select', null);
