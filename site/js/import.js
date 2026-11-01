@@ -30,7 +30,10 @@
     return file.arrayBuffer().then(function (buf) {
       var u8 = new Uint8Array(buf), hit = find(u8);
       if (hit != null) return unpack(hit);
-      return loadSevenZip().then(function (z) {
+      return loadSevenZip().catch(function (e) {
+        console.error('7-Zip reader failed to load', e);
+        var err = new Error('The reader for .iq / .zip files could not load (' + (e && e.message || e) + '). Reload the page (Cmd/Ctrl+Shift+R) and try again.'); err.final = true; throw err;
+      }).then(function (z) {
         var id = ++runs, name = 'in' + id + '.bin', dir = 'out' + id;   // a fresh folder per file: the 7-Zip copy keeps its files between runs
         z.FS.writeFile(name, u8);
         try { z.callMain(['x', name, '-o' + dir, '-y']); } catch (e) { /* an unreadable archive leaves nothing in the folder */ }
@@ -39,7 +42,8 @@
         throw new Error('nothing to open');
       });
     }).catch(function (e) {
-      throw new Error(/no editable design/.test(e.message) ? e.message : 'There is no editable design inside this file. Only .prg / .iq files built by Garmin Studio can be opened (older builds did not keep one).');
+      if (e.final || /no editable design/.test(e.message)) throw e;
+      throw new Error('There is no editable design inside this file. Only .prg / .iq files built by Garmin Studio after this feature was added can be opened (rebuild the face once and keep that file). If you did just rebuild it, reload the page first: your browser may still be running the old export code.');
     });
   };
 })(window.GW);
