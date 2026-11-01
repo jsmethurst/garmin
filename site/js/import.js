@@ -16,7 +16,10 @@
   function unpack(b64) {
     if (!b64) return Promise.reject(new Error('This build has no editable design in it (it was too big to include).'));
     var bin = atob(b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
-    return new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text().then(function (t) { return JSON.parse(t); });
+    return new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text().then(function (t) { return JSON.parse(t); }).catch(function (e) {
+      console.error('could not read the design inside the file', e);
+      var err = new Error('The design inside this file could not be read (' + (e && e.message || e) + ').'); err.final = true; throw err;
+    });
   }
   function walk(z, dir, out) {
     z.FS.readdir(dir).forEach(function (n) {

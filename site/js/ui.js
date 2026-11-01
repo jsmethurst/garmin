@@ -750,14 +750,14 @@
         name: res.name, format: format, device: GW.DEVICE.id, files: res.files.map(function (f) { return { path: f.path, data: b64(f.data) }; }) }) }).then(function (r) { return r.json || {}; });
     }
     function run(format) {
-      btn.disabled = true; iqBtn.disabled = true; var done = [], log = '', what = format === 'iq' ? '.iq' : '.prg';
+      btn.disabled = true; iqBtn.disabled = true; var noDesign = false, done = [], log = '', what = format === 'iq' ? '.iq' : '.prg';
       (function next(i) {
         function finish() { btn.disabled = false; iqBtn.disabled = false; }
         if (i >= results.length) {
           finish();
           say(format === 'iq'
             ? 'Built ' + done.join(', ') + '. Upload ' + (done.length > 1 ? 'each one' : 'it') + ' at apps.garmin.com/developer → Upload an App.'
-            : 'Built ' + done.join(', ') + '. Copy ' + (done.length > 1 ? 'them' : 'it') + ' into GARMIN/APPS on the watch.', log.replace(/exit=0/g, '').trim());
+            : 'Built ' + done.join(', ') + '. Copy ' + (done.length > 1 ? 'them' : 'it') + ' into GARMIN/APPS on the watch.' + (noDesign ? ' Note: this file does not contain the editable design, so Garmin Studio cannot open it again. Reload the page (Cmd/Ctrl+Shift+R) and build again.' : ''), log.replace(/exit=0/g, '').trim());
           return;
         }
         say('Compiling ' + (i + 1) + ' of ' + results.length + ' (' + what + ') with Garmin’s compiler…', '');
@@ -767,6 +767,7 @@
           var dlName = fileBase(many ? results[i] : null) + (/\.[a-z0-9]+$/i.exec(j.name) || ['.prg'])[0];
           GW.download(new Blob([u], { type: 'application/octet-stream' }), dlName); j.name = dlName;
           done.push(j.name + ' (' + Math.round(u.length / 1024) + ' KB)'); log += (j.log || '') + '\n';
+          if (j.hasDesign === false) noDesign = true;
           setTimeout(function () { next(i + 1); }, 400); // let the browser start each download
         }).catch(function (e) { finish(); say('Build failed: ' + e.message); });
       })(0);

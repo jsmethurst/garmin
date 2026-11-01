@@ -32,12 +32,14 @@ export default async function handler(req, res) {
     await box.writeFiles(out);
     const flags = iq ? '-e -r' : `-d ${device}`;
     const r = await sh(box, `cd ${job} && mkdir -p bin && ${ROOT}/sdk/bin/monkeyc ${flags} -f monkey.jungle -o bin/${name}.${ext} -y ${ROOT}/key.der -w 2>&1; echo "exit=$?"; ` +
-      `if [ -f bin/${name}.${ext} ]; then echo ---PRG---; base64 -w0 bin/${name}.${ext}; fi; cd ${ROOT} && rm -rf ${job}`);
+      `if [ -f bin/${name}.${ext} ]; then echo ---PRG---; base64 -w0 bin/${name}.${ext}; fi; ` +
+      `if [ -f bin/${name}.prg ] && grep -aq 'GWD1_' bin/${name}.prg; then echo ---DESIGN-YES---; fi; cd ${ROOT} && rm -rf ${job}`);
     const text = r.out;
     const idx = text.indexOf('---PRG---');
+    const hasDesign = text.includes('---DESIGN-YES---');   // the editable design is inside the .prg (so Garmin Studio can open it again)
     const log = (idx >= 0 ? text.slice(0, idx) : text).trim();
     if (idx < 0 || !/exit=0/.test(log)) return json(res, 422, { ok: false, message: 'The Garmin compiler reported errors.', log });
-    json(res, 200, { ok: true, name: `${name}.${ext}`, prg: text.slice(idx + 9).trim(), log });
+    json(res, 200, { ok: true, name: `${name}.${ext}`, prg: text.slice(idx + 9).replace(/---DESIGN-YES---/, '').trim(), hasDesign: iq ? null : hasDesign, log });
   } catch (e) {
     json(res, 500, { ok: false, message: 'Build error: ' + e.message });
   }
