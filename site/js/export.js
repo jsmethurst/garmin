@@ -26,7 +26,7 @@
   function manifest(src, appId, device) {
     return '<?xml version="1.0"?>\n<iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">\n' +
       '    <iq:application entry="' + src.name + 'App" id="' + appId + '" launcherIcon="@Drawables.LauncherIcon" name="@Strings.AppName" type="' + (src.type || 'watchface') + '" minApiLevel="' + (src.minApi || '3.2.0') + '">\n' +
-      '        <iq:products>\n            <iq:product id="' + device + '"/>\n        </iq:products>\n' +
+      '        <iq:products>\n' + GW.DEVICE.products.map(function (p) { return '            <iq:product id="' + p + '"/>\n'; }).join('') + '        </iq:products>\n' +
       '        <iq:permissions>\n' + src.perms.map(function (p) { return '            <iq:uses-permission id="' + p + '"/>\n'; }).join('') + '        </iq:permissions>\n' +
       '        <iq:languages>\n            <iq:language>eng</iq:language>\n        </iq:languages>\n        <iq:barrels/>\n    </iq:application>\n</iq:manifest>\n';
   }
@@ -56,7 +56,7 @@
         : '5. On the watch: **long-press UP → Watch Face → ' + design.name + '**.\n\n' +
           'Sideloaded faces do not show in the Connect IQ phone app; that is normal. Rebuild and copy again whenever you change the design.\n\n') +
       '## Troubleshooting\n\n' +
-      '* **"Device not found" / `' + device + '` missing**: open the SDK Manager and download the device files for the ƒēnix 6X Pro / 6X Solar / Sapphire.\n' +
+      '* **"Device not found" / `' + device + '` missing**: open the SDK Manager and download the device files for the ' + GW.DEVICE.name + '.\n' +
       '* **API level errors**: in `manifest.xml` change `minApiLevel="' + (src.minApi || '3.2.0') + '"` to the level the SDK Manager shows for the device.\n' +
       '* **Watchface shows "IQ!" or crashes**: out of memory. Remove the largest images / bitmap fonts in the designer and export again.\n' +
       '* Data fields showing `--`: the watch has no value yet (weather needs a phone sync; Body Battery / stress need the sensor history).\n\n' +
@@ -84,9 +84,33 @@
       'echo.\r\necho Built bin\\' + n + '.prg  -^> copy it to GARMIN\\APPS on the watch.\r\n';
   }
 
+  // The design as one text token: GWD1_<base64 of deflated JSON>_GWD1 (base64 never contains an underscore, so the ends are unambiguous).
+  GW.packDesign = function (saved, appId) {
+    function pack(obj) {
+      var bytes = new TextEncoder().encode(JSON.stringify(obj));
+      var cs = new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw')));
+      return cs.arrayBuffer().then(function (buf) {
+        var u = new Uint8Array(buf), s = '', CH = 0x8000;
+        for (var i = 0; i < u.length; i += CH) s += String.fromCharCode.apply(null, u.subarray(i, i + CH));
+        return 'GWD1_' + btoa(s) + '_GWD1';
+      });
+    }
+    var d = GW.clone(saved.design); d.appId = appId;
+    return pack({ v: 1, design: d, assets: saved.assets }).then(function (t) {
+      if (t.length < 60000) return t;
+      return pack({ v: 1, design: d, assets: {} }).then(function (t2) { return t2.length < 60000 ? t2 : 'GWD1__GWD1'; });   // images and uploaded fonts are left out when they would not fit
+    });
+  };
+
   // Resolves to { name, files:[{path,data,exec?}], warnings, src }
   GW.buildProject = function (design) {
-    var src = GW.generateSource(design), n = src.name, device = GW.DEVICE.id, files = [], jobs = [];
+    var orig = design, f = GW.DEVICE.size / GW.SIZE, src;
+    if (design.kind !== 'datafield' && f !== 1) {   // a smaller screen: everything shrinks to fit (the font list lives on GW.design, so swap it while generating)
+      design = GW.scaleDesign(GW.clone(design), f);
+      var live = GW.design; GW.design = design;
+      try { src = GW.generateSource(design); } finally { GW.design = live; }
+    } else src = GW.generateSource(design);
+    var n = src.name, device = GW.DEVICE.id, files = [], jobs = [];
     var appId = (design.appId && /^[0-9a-f]{32}$/.test(design.appId)) ? design.appId : uuid32();
     function text(path, data, exec) { files.push({ path: path, data: data, exec: exec }); }
 
@@ -95,7 +119,10 @@
     text('source/' + n + 'App.mc', src.app);
     text('source/' + n + 'View.mc', src.view);
     Object.keys(src.files || {}).forEach(function (p) { text(p, src.files[p]); });
-    text('resources/strings/strings.xml', '<strings>\n    <string id="AppName">' + xmlEsc(design.name) + '</string>\n</strings>\n');
+    // the editable design rides inside the app as a text resource, so a built .prg / .iq can be opened in Garmin Studio again
+    jobs.push(GW.packDesign(GW.serialize(), appId).then(function (packed) {
+      text('resources/strings/strings.xml', '<strings>\n    <string id="AppName">' + xmlEsc(design.name) + '</string>\n    <string id="GwDesign">' + packed + '</string>\n</strings>\n');
+    }));
 
     var drawables = ['    <bitmap id="LauncherIcon" filename="launcher_icon.png"/>'];
     src.images.forEach(function (m) {
@@ -104,7 +131,7 @@
     });
     if (src.bg) {
       drawables.push('    <bitmap id="bgImage" filename="images/bgImage.png"/>');
-      jobs.push(canvasBytes(scaledImage(GW.assets[src.bg.asset], GW.SIZE, GW.SIZE)).then(function (b) { text('resources/drawables/images/bgImage.png', b); }));
+      jobs.push(canvasBytes(scaledImage(GW.assets[src.bg.asset], GW.DEVICE.size, GW.DEVICE.size)).then(function (b) { text('resources/drawables/images/bgImage.png', b); }));
     }
     text('resources/drawables/drawables.xml', '<drawables>\n' + drawables.join('\n') + '\n</drawables>\n');
 
@@ -112,7 +139,7 @@
     var icon = document.createElement('canvas'); icon.width = icon.height = 40;
     var ix = icon.getContext('2d'); ix.scale(40 / GW.SIZE, 40 / GW.SIZE);
     ix.beginPath(); ix.arc(140, 140, 140, 0, Math.PI * 2); ix.clip();
-    GW.renderDesign(ix, design, GW.fixedEnv());
+    GW.renderDesign(ix, orig, GW.fixedEnv());
     jobs.push(canvasBytes(icon).then(function (b) { text('resources/drawables/launcher_icon.png', b); }));
 
     if (src.fonts.length) {
@@ -144,6 +171,24 @@
       });
       return { name: n, files: files, warnings: src.warnings, src: src, appId: appId };
     });
+  };
+
+  // Scales a watch face designed in 280 x 280 space to a smaller screen (everything is rounded to whole pixels).
+  GW.scaleDesign = function (d, f) {
+    var KEYS = {
+      text: ['x', 'y', 'fontSize'], arc: ['cx', 'cy', 'r', 'pen'], ticks: ['cx', 'cy', 'r', 'len', 'majorLen', 'width', 'majorWidth'],
+      hands: ['cx', 'cy', 'hLen', 'hW', 'mLen', 'mW', 'sLen', 'sW', 'sTail', 'hub'], shape: ['x', 'y', 'x2', 'y2', 'w', 'h', 'r', 'pen', 'rad'],
+      image: ['x', 'y', 'w', 'h'], barchart: ['x', 'y', 'w', 'h', 'gap'], movebar: ['x', 'y', 'w', 'h', 'gap'], moon: ['x', 'y', 'r'], binary: ['x', 'y', 'r', 'gap'],
+      wxicon: ['x', 'y', 'size'], worldmap: ['x', 'y', 'w', 'h', 'msize'], sunicon: ['x', 'y', 'r']
+    }, THIN = { pen: 1, width: 1, majorWidth: 1, hW: 1, mW: 1, sW: 1, w: 1, h: 1, r: 1, msize: 1, gap: 0 };
+    d.elements.forEach(function (el) {
+      (KEYS[el.type] || []).forEach(function (k) {
+        if (typeof el[k] !== 'number' || !el[k]) return;
+        var v = Math.round(el[k] * f); el[k] = (k in THIN && el[k] > 0) ? Math.max(THIN[k], v) : v;
+      });
+    });
+    (d.fonts || []).forEach(function (fo) { if (fo.px) fo.px = Math.max(6, Math.round(fo.px * f)); if (fo.spacing) fo.spacing = Math.round(fo.spacing * f); });
+    return d;
   };
 
   // ---- rotated version: every element is turned about the centre of the screen ----

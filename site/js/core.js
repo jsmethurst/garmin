@@ -4,7 +4,17 @@ window.GW = window.GW || {};
   'use strict';
 
   GW.SIZE = 280; // fenix 6X Pro: 280x280 round MIP display
-  GW.DEVICE = { id: 'fenix6xpro', name: 'fēnix 6X Pro', size: 280 };
+  // Designs are always drawn in a 280 x 280 space; for a watch with a smaller screen the export scales everything down to fit.
+  GW.DEVICES = [
+    { id: 'fenix6xpro', products: ['fenix6xpro'], name: 'fēnix 6X Pro', size: 280 },
+    { id: 'fenix6', products: ['fenix6', 'fenix6pro'], name: 'fēnix 6 / 6 Pro', size: 260 }
+  ];
+  GW.DEVICE = GW.DEVICES[0];
+  try { var sd = localStorage.getItem('gw.device'); GW.DEVICES.forEach(function (x) { if (x.id === sd) GW.DEVICE = x; }); } catch (e) { }
+  GW.setDevice = function (id) {
+    GW.DEVICES.forEach(function (x) { if (x.id === id) GW.DEVICE = x; });
+    try { localStorage.setItem('gw.device', GW.DEVICE.id); } catch (e) { }
+  };
 
   // ---------- helpers ----------
   GW.clamp = function (v, a, b) { return Math.max(a, Math.min(b, v)); };

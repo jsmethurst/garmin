@@ -1,4 +1,4 @@
-import { getBox, sh, json, readBody, CHECK, ROOT, DEVICE } from './_builder.js';
+import { getBox, sh, json, readBody, checkFor, deviceOf, ROOT } from './_builder.js';
 
 const MAX_FILES = 200, MAX_BYTES = 3 * 1024 * 1024;
 const SAFE = /^[A-Za-z0-9_\-./]+$/;
@@ -11,6 +11,7 @@ export default async function handler(req, res) {
     const body = await readBody(req);
     const files = Array.isArray(body.files) ? body.files : [];
     const name = String(body.name || 'watchface').replace(/[^A-Za-z0-9_-]/g, '') || 'watchface';
+    const device = deviceOf(body.device);
     const iq = body.format === 'iq', ext = iq ? 'iq' : 'prg';
     let total = 0;
     if (!files.length || files.length > MAX_FILES) return json(res, 400, { ok: false, message: 'Bad file list.' });
@@ -26,10 +27,10 @@ export default async function handler(req, res) {
       out.push({ path: `${job}/${p}`, content: buf });
     }
     const box = await getBox();
-    const ok = await sh(box, CHECK);
-    if (ok.code !== 0) return json(res, 503, { ok: false, message: 'The builder is not set up yet.' });
+    const ok = await sh(box, checkFor(device));
+    if (ok.code !== 0) return json(res, 503, { ok: false, message: 'The builder is not set up for this watch yet.' });
     await box.writeFiles(out);
-    const flags = iq ? '-e -r' : `-d ${DEVICE}`;
+    const flags = iq ? '-e -r' : `-d ${device}`;
     const r = await sh(box, `cd ${job} && mkdir -p bin && ${ROOT}/sdk/bin/monkeyc ${flags} -f monkey.jungle -o bin/${name}.${ext} -y ${ROOT}/key.der -w 2>&1; echo "exit=$?"; ` +
       `if [ -f bin/${name}.${ext} ]; then echo ---PRG---; base64 -w0 bin/${name}.${ext}; fi; cd ${ROOT} && rm -rf ${job}`);
     const text = r.out;

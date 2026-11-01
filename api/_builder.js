@@ -4,6 +4,10 @@ import { Sandbox } from '@vercel/sandbox';
 
 export const NAME = 'ciq-builder';
 export const DEVICE = 'fenix6xpro';
+// the watches the site can build for: the id it sends -> the device files that build needs
+export const DEVICE_FILES = { fenix6xpro: ['fenix6xpro'], fenix6: ['fenix6', 'fenix6pro'] };
+export const ALL_DEVICES = [...new Set(Object.values(DEVICE_FILES).flat())];
+export const deviceOf = (d) => (DEVICE_FILES[d] ? d : DEVICE);
 export const ROOT = '/vercel/sandbox/ciq'; // default working directory of SDK-created sandboxes (writable)
 
 export async function getBox({ create = false } = {}) {
@@ -36,8 +40,11 @@ export async function readBody(req, limit = 4 * 1024 * 1024) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
 }
 
-// Is the toolchain in the sandbox complete?
-export const CHECK = `test -x ${ROOT}/sdk/bin/monkeyc && test -f ${ROOT}/key.der && ls $HOME/.Garmin/ConnectIQ/Devices/${DEVICE}/compiler.json >/dev/null 2>&1 && command -v java >/dev/null`;
+// Is the toolchain in the sandbox complete (for this watch)?
+export const checkFor = (device) => `test -x ${ROOT}/sdk/bin/monkeyc && test -f ${ROOT}/key.der && command -v java >/dev/null && ` +
+  DEVICE_FILES[deviceOf(device)].map((d) => `test -f $HOME/.Garmin/ConnectIQ/Devices/${d}/compiler.json`).join(' && ');
+export const CHECK = checkFor(DEVICE);
+export const CHECK_ALL = ALL_DEVICES.map((d) => `test -f $HOME/.Garmin/ConnectIQ/Devices/${d}/compiler.json`).join(' && ') + ` && ${checkFor(DEVICE)}`;
 
 // One-time (idempotent) setup, in two steps: system packages (root), then the Garmin toolchain (user).
 export const SETUP_ROOT = `
@@ -66,7 +73,7 @@ fi
 export PATH=${ROOT}/sm:$PATH
 if [ "$GARMIN_SDK_AGREEMENT" = "accept" ]; then connect-iq-sdk-manager agreement accept; fi
 connect-iq-sdk-manager login
-connect-iq-sdk-manager device download -d ${DEVICE}
+for D in ${ALL_DEVICES.join(' ')}; do connect-iq-sdk-manager device download -d $D; done
 if [ ! -f key.der ]; then
   openssl genrsa -out key.pem 4096 2>/dev/null
   openssl pkcs8 -topk8 -inform PEM -outform DER -in key.pem -out key.der -nocrypt

@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Garmin Studio</title>
-<meta name="description" content="Garmin Studio: design watch faces and data fields for the Garmin fēnix 6X Pro and build them with the Connect IQ compiler.">
+<meta name="description" content="Garmin Studio: design watch faces and data fields for the Garmin fēnix 6 and 6X Pro and build them with the Connect IQ compiler.">
 <meta name="theme-color" content="#f3f1ec">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23222' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23222'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
 <header class="topbar">
-  <div class="brand"><div class="brand-main"><span class="word">Garmin Studio</span><small>fēnix 6X Pro · 280×280</small></div><small class="stamp" id="stamp"></small></div>
+  <div class="brand"><div class="brand-main"><span class="word">Garmin Studio</span><select id="deviceSel" class="devsel" aria-label="Watch model"></select></div><small class="stamp" id="stamp"></small></div>
   <nav class="modes" id="modes" aria-label="Section"><button type="button" data-mode="watch" class="on">Watch faces</button><button type="button" data-mode="field">Data fields</button></nav>
   <input id="designName" class="name" type="text" maxlength="40" spellcheck="false" aria-label="Watchface name" placeholder="Name your watchface">
   <div class="spacer"></div>
@@ -103,6 +103,7 @@
 <script src="js/codegen.js"></script>
 <script src="js/zip.js"></script>
 <script src="js/export.js"></script>
+<script src="js/import.js"></script>
 <script src="js/presets.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>

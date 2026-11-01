@@ -91,3 +91,8 @@ Each element is drawn by its own generated method (`drawEl0`, `drawEl1`, …) an
 * **Memory.** Watchfaces have a small memory budget. Large images and many big bitmap fonts can make a face fail to load; the export warns about the obvious cases.
 * Seconds (text or hand) only update while the wrist is raised; in low-power mode the watch redraws once a minute.
 * Only the fēnix 6X Pro / 6X Solar / Sapphire (`fenix6xpro`) is targeted.
+
+## Watch model and re-opening builds
+
+- The drop-down at the top left picks the watch: fēnix 6X Pro (280×280) or fēnix 6 / 6 Pro (260×260). Designs are always drawn on the 280×280 canvas; for the fēnix 6 the export scales a watch face to 260×260 (data fields scale themselves on the watch). The cloud builder needs the fēnix 6 / 6 Pro device files, which the builder setup now downloads together with the 6X Pro ones (press the setup button once more).
+- Every `.prg` / `.iq` built here carries its editable design inside (a text resource, `GWD1_…_GWD1`). **Layouts → Open a .prg or .iq** reads it back. `.iq` files are 7-Zip archives, opened with a bundled WebAssembly copy of 7-Zip (`site/vendor/7z`). Builds made before this feature, and files from other developers, have no design inside.

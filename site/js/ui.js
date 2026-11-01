@@ -709,6 +709,18 @@
     });
     var kids = [grid];
     if (hidden.length) kids.push(h('p', {}, [h('button', { class: 'btn sm', text: 'Restore the layouts I deleted', onclick: function () { GW.layouts.restoreHidden(kind); GW.openPresets(); } })]));
+    // open a .prg / .iq that Garmin Studio built (the editable design is stored inside it)
+    var pick = h('input', { type: 'file', accept: '.prg,.iq', hidden: true });
+    pick.addEventListener('change', function () {
+      var f = pick.files[0]; if (!f) return; pick.value = '';
+      GW.toast('Opening ' + f.name + '…');
+      GW.importBuild(f).then(function (obj) {
+        GW.loadFrom(obj, function () { GW.fontsReady().then(function () { GW.touch(true); closeModal(); GW.history.commit(); GW.toast('Opened ' + f.name); }); });
+      }).catch(function (e) { GW.toast(e.message); });
+    });
+    kids.push(h('div', { style: 'margin-top:16px;padding-top:12px;border-top:1px solid var(--line2)' }, [
+      h('button', { class: 'btn', text: '⬆ Open a .prg or .iq…', onclick: function () { pick.click(); } }), pick,
+      h('p', { class: 'muted small', text: 'Works with watch faces and data fields built here, so you can edit them again. Files from other people, or built before this feature, have no design inside.' })]));
     modal('Layouts', h('div', {}, kids));
   };
 
@@ -735,7 +747,7 @@
     function say(t, log) { msg.textContent = t; if (log != null) { logBox.style.display = log ? '' : 'none'; logBox.textContent = log; } }
     function buildOne(res, format) {
       return api('/api/build', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-        name: res.name, format: format, files: res.files.map(function (f) { return { path: f.path, data: b64(f.data) }; }) }) }).then(function (r) { return r.json || {}; });
+        name: res.name, format: format, device: GW.DEVICE.id, files: res.files.map(function (f) { return { path: f.path, data: b64(f.data) }; }) }) }).then(function (r) { return r.json || {}; });
     }
     function run(format) {
       btn.disabled = true; iqBtn.disabled = true; var done = [], log = '', what = format === 'iq' ? '.iq' : '.prg';
@@ -771,7 +783,7 @@
     });
     box.appendChild(h('div', { style: 'display:flex;align-items:center;flex-wrap:wrap;gap:8px' }, [btn, iqBtn, setup]));
     box.appendChild(msg); box.appendChild(logBox);
-    api('/api/status').then(function (r) {
+    api('/api/status?device=' + encodeURIComponent(GW.DEVICE.id)).then(function (r) {
       if (!r.json) { box.style.display = 'none'; return; } // static hosting: no backend
       if (r.json.ready) { btn.disabled = false; iqBtn.disabled = false; say('Cloud builder ready: one click gives you the finished .prg for your watch, or an .iq for the Connect IQ developer portal.'); }
       else { setup.style.display = ''; say(r.json.message); }

@@ -6,6 +6,14 @@
   var opts = { snap: true, grid: false };
   var hoverId = null, drag = null, guides = { xs: [], ys: [] };
 
+  // ---------- watch model ----------
+  (function () {
+    var sel = $('deviceSel'); if (!sel) return;
+    GW.DEVICES.forEach(function (d) { var o = document.createElement('option'); o.value = d.id; o.textContent = d.name + ' · ' + d.size + '×' + d.size; sel.appendChild(o); });
+    sel.value = GW.DEVICE.id;
+    sel.addEventListener('change', function () { GW.setDevice(sel.value); });
+  })();
+
   // ---------- drawing ----------
   var drawQ = false;
   function schedule() { if (drawQ) return; drawQ = true; requestAnimationFrame(draw); }
