@@ -110,6 +110,11 @@
       var live = GW.design; GW.design = design;
       try { src = GW.generateSource(design); } finally { GW.design = live; }
     } else src = GW.generateSource(design);
+    if (GW.DEVICE.id === 'fenix6') {   // the fēnix 6 has less app memory than the 6X Pro (Garmin device files: watch face 112 KB vs 128 KB, data field 32 KB on the plain 6)
+      src.warnings.push(src.type === 'datafield'
+        ? 'The plain fēnix 6 gives a data field only 32 KB of memory (fēnix 6 Pro and 6X Pro: 128 KB). A busy data field can run out and show the "IQ!" screen on that watch.'
+        : 'Watch faces get 112 KB of memory on the fēnix 6 / 6 Pro (128 KB on the 6X Pro). Many or large fonts and images can run out and show the "IQ!" screen.');
+    }
     var n = src.name, device = GW.DEVICE.id, files = [], jobs = [];
     var appId = (design.appId && /^[0-9a-f]{32}$/.test(design.appId)) ? design.appId : uuid32();
     function text(path, data, exec) { files.push({ path: path, data: data, exec: exec }); }
