@@ -144,16 +144,12 @@
     histVals: {
       needs: ['act'], imports: ['Toybox.ActivityMonitor'],
       code: 'function histVals(kind) {\n        var vals = new [8];\n        for (var i = 0; i < 8; i++) { vals[i] = 0; }\n' +
-        '        if (kind == 0) { vals[7] = (_act.steps != null) ? _act.steps : 0; }\n' +
-        '        else if (kind == 1) { vals[7] = (_act.calories != null) ? _act.calories : 0; }\n' +
-        '        else if (kind == 2) { vals[7] = (_act.activeMinutesDay != null) ? _act.activeMinutesDay.total : 0; }\n' +
-        '        else { vals[7] = ((_act has :floorsClimbed) && _act.floorsClimbed != null) ? _act.floorsClimbed : 0; }\n' +
-        '        var h = ActivityMonitor.getHistory();\n        if (h != null) {\n            for (var d = 0; d < 7 && d < h.size(); d++) {\n                var e = h[d];\n                var v = 0;\n' +
-        '                if (kind == 0) { if (e.steps != null) { v = e.steps; } }\n' +
-        '                else if (kind == 1) { if (e.calories != null) { v = e.calories; } }\n' +
-        '                else if (kind == 2) { if (e.activeMinutes != null && e.activeMinutes.total != null) { v = e.activeMinutes.total; } }\n' +
-        '                else { if (e.floorsClimbed != null) { v = e.floorsClimbed; } }\n' +
-        '                vals[6 - d] = v;\n            }\n        }\n        return vals;\n    }'
+        '        vals[7] = histToday(kind);\n' +
+        '        var h = null;\n        try {\n            h = ActivityMonitor.getHistory();\n        } catch (ex) {\n            h = null;\n        }\n' +
+        '        if (h != null) {\n            for (var d = 0; d < 7 && d < h.size(); d++) {\n                vals[6 - d] = histDay(h[d], kind);\n            }\n        }\n        return vals;\n    }\n\n' +
+        '    // the watch throws "symbol not found" (instead of returning null) for a reading it does not have, so each one is read on its own\n' +
+        '    function histToday(kind) {\n        var v = 0;\n        try {\n            if (kind == 0) { v = _act.steps; }\n            else if (kind == 1) { v = _act.calories; }\n            else if (kind == 2) { v = _act.activeMinutesDay.total; }\n            else { v = _act.floorsClimbed; }\n        } catch (ex) {\n            v = 0;\n        }\n        return (v == null) ? 0 : v;\n    }\n\n' +
+        '    function histDay(e, kind) {\n        var v = 0;\n        try {\n            if (kind == 0) { v = e.steps; }\n            else if (kind == 1) { v = e.calories; }\n            else if (kind == 2) { v = e.activeMinutes.total; }\n            else { v = e.floorsClimbed; }\n        } catch (ex) {\n            v = 0;\n        }\n        return (v == null) ? 0 : v;\n    }'
     }
   };
   // Battery: slow-changing values are worked out once, not on every redraw. The sun times and the New York time are recalculated
