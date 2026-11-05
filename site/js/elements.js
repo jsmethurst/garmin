@@ -347,7 +347,7 @@
       L.push('dc.setColor(' + GW.mcColor(el.mColor) + ', Graphics.COLOR_TRANSPARENT);');
       L.push('drawHand(dc, ' + cx + ', ' + cy + ', mA, ' + ptsToMc(handPoly(el.style, el.mW, el.mLen, el.mLen * 0.1)) + ');');
       if (el.sShow) {
-        L.push('if (!_sleep) {');
+        L.push('if (!_isSleeping) {');
         L.push('    var sA = _clk.sec * Math.PI / 30.0;');
         L.push('    dc.setColor(' + GW.mcColor(el.sColor) + ', Graphics.COLOR_TRANSPARENT);');
         L.push('    dc.setPenWidth(' + N(el.sW) + ');');
@@ -470,7 +470,7 @@
     gen: function (el, cg) {
       if (!el.asset) return [];
       var v = cg.image(el.asset, N(el.w), N(el.h));
-      return ['dc.drawBitmap(' + N(el.x - el.w / 2) + ', ' + N(el.y - el.h / 2) + ', ' + v + ');'];
+      return ['if (' + v + ' != null) {', '    dc.drawBitmap(' + N(el.x - el.w / 2) + ', ' + N(el.y - el.h / 2) + ', ' + v + ');', '}'];
     }
   };
 
@@ -683,7 +683,7 @@
       var dots = binaryDots(el), L = [];
       var mode = { h24: 1, h12: 2 }[el.hmode] || 0;
       L.push('var _h = hourNum(' + mode + ');');
-      var d = '[_h / 10, _h % 10, _clk.min / 10, _clk.min % 10' + (el.secs ? ', (_sleep ? 0 : _clk.sec / 10), (_sleep ? 0 : _clk.sec % 10)' : '') + ']';
+      var d = '[_h / 10, _h % 10, _clk.min / 10, _clk.min % 10' + (el.secs ? ', (_isSleeping ? 0 : _clk.sec / 10), (_isSleeping ? 0 : _clk.sec % 10)' : '') + ']';
       L.push('var d = ' + d + ';');
       L.push('var dots = [' + dots.map(function (p) { return '[' + p.x + ', ' + p.y + ', ' + p.col + ', ' + p.bit + ']'; }).join(', ') + '];');
       L.push('for (var i = 0; i < dots.size(); i++) {');
@@ -844,7 +844,8 @@
         id = 'worldmap_' + [w, h, ml[0], ml[1], el.land || '', el.crisp ? 'c' : ''].join('_').replace(/[^0-9a-z_]/gi, '');
         if (!GW.assets[id]) GW.assets[id] = { img: GW.worldMapCanvas(w, h, ml[0], ml[1], el.land || '#3a3a3a', !el.crisp), w: w, h: h, synthetic: true };
       }
-      L.push('dc.drawBitmap(' + x0 + ', ' + y0 + ', ' + cg.image(id, w, h) + ');');
+      var bmv = cg.image(id, w, h);
+      L.push('if (' + bmv + ' != null) {', '    dc.drawBitmap(' + x0 + ', ' + y0 + ', ' + bmv + ');', '}');
       L.push('var loc = locNow();');
       L.push('if (loc != null) {');
       L.push('    var mx = ' + x0 + ' + ((loc[1] + 180.0) / 360.0 * ' + w + '.0).toNumber();');

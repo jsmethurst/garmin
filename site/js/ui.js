@@ -591,6 +591,19 @@
     bg.addEventListener('click', function () { GW.pickColor(bg, d.bg, function (c) { d.bg = c; GW.commit(true); }); });
     p.appendChild(field('Background color', bg));
     p.appendChild(rotationField(d));
+    // where sunrise / sunset and the world map put you until the watch has a position of its own
+    p.appendChild(h('h4', { text: 'Default location' }));
+    var dl = h('input', { type: 'checkbox' }); dl.checked = d.defLocOn !== false;
+    dl.addEventListener('change', function () { d.defLocOn = dl.checked; GW.commit(true); });
+    p.appendChild(h('div', { class: 'f' }, [h('label', { class: 'chk' }, [dl, 'Use a default location until the watch has one']),
+      h('p', { class: 'muted small', text: 'Sunrise, sunset and the world map use the phone\'s weather location or a GPS fix when there is one.' })]));
+    if (d.defLocOn !== false) {
+      var la = h('input', { type: 'number', step: '0.01', min: -90, max: 90, value: typeof d.defLat === 'number' ? d.defLat : 41.01 });
+      var lo = h('input', { type: 'number', step: '0.01', min: -180, max: 180, value: typeof d.defLon === 'number' ? d.defLon : 28.98 });
+      la.addEventListener('change', function () { d.defLat = parseFloat(la.value); GW.commit(false); });
+      lo.addEventListener('change', function () { d.defLon = parseFloat(lo.value); GW.commit(false); });
+      p.appendChild(h('div', { class: 'row' }, [field('Latitude', la), field('Longitude', lo)]));
+    }
     var file = h('input', { type: 'file', accept: 'image/*', hidden: true });
     file.addEventListener('change', function () {
       if (!file.files[0]) return;

@@ -45,8 +45,8 @@
     batteryDaysNow: { needs: ['sys'], code: 'function batteryDaysNow() {\n        return (_sys has :batteryInDays) ? _sys.batteryInDays : 0.0;\n    }' },
     notifNow: { code: 'function notifNow() {\n        var n = System.getDeviceSettings().notificationCount;\n        return (n != null) ? n : 0;\n    }' },
     hrNow: {
-      imports: ['Toybox.Activity', 'Toybox.SensorHistory'],
-      code: 'function hrNow() {\n        var ai = Activity.getActivityInfo();\n        if (ai != null && ai.currentHeartRate != null) { return ai.currentHeartRate; }\n' +
+      imports: ['Toybox.SensorHistory'],
+      code: 'function hrNow() {\n' +
         '        if ((Toybox has :SensorHistory) && (SensorHistory has :getHeartRateHistory)) {\n' +
         '            var it = SensorHistory.getHeartRateHistory({:period => 1, :order => SensorHistory.ORDER_NEWEST_FIRST});\n' +
         '            if (it != null) {\n                var s = it.next();\n                if (s != null && s.data != null) { return s.data.toNumber(); }\n            }\n        }\n        return null;\n    }'
@@ -83,30 +83,42 @@
     },
     wxName: {
       deps: ['wxGroup'],
-      code: 'function wxName() {\n        var names = ["Clear", "Part cloudy", "Cloudy", "Rain", "Snow", "Storm", "Fog", "Sleet", "--"];\n        return names[wxGroup()];\n    }'
+      members: ['    const WX_NAMES = ["Clear", "Part cloudy", "Cloudy", "Rain", "Snow", "Storm", "Fog", "Sleet", "--"];'],
+      code: 'function wxName() {\n        return WX_NAMES[wxGroup()];\n    }'
+    },
+    // The watch's position, in this order: the activity fix (0,0 means "no fix"), the weather location from the phone, then the last
+    // position seen. The Position.Location is handed on as it is (never rebuilt from degrees). Position.getInfo() is never called: it
+    // interrupts sleep tracking. Until the watch has any position the face's default location is used, if one is set.
+    locObj: {
+      needs: ['wx'], imports: ['Toybox.Activity', 'Toybox.Position'], perms: ['Positioning'],
+      members: ['    var _cachedLoc = null;', '    var _defLoc = null;'],
+      code: 'function locObj() {\n        var loc = null;\n        var ai = Activity.getActivityInfo();\n' +
+        '        if (ai != null && ai.currentLocation != null) {\n            var dg = ai.currentLocation.toDegrees();\n            if (dg[0] != 0.0 || dg[1] != 0.0) { loc = ai.currentLocation; }\n        }\n' +
+        '        if (loc == null && _wx != null && _wx.observationLocationPosition != null) { loc = _wx.observationLocationPosition; }\n' +
+        '        if (loc != null) { _cachedLoc = loc; }\n' +
+        '        if (_cachedLoc != null) { return _cachedLoc; }\n' +
+        '        if (DEF_LOC_ON) {\n            if (_defLoc == null) { _defLoc = new Position.Location({ :latitude => DEF_LAT, :longitude => DEF_LON, :format => :degrees }); }\n            return _defLoc;\n        }\n        return null;\n    }'
     },
     locNow: {
-      needs: ['wx'], imports: ['Toybox.Activity'],
-      members: ['    var _lat;', '    var _lon;'],
-      code: 'function locNow() {\n        var loc = null;\n        var ai = Activity.getActivityInfo();\n        if (ai != null && ai.currentLocation != null) { loc = ai.currentLocation.toDegrees(); }\n' +
-        '        if ((loc == null || (loc[0].toFloat() == 0.0 && loc[1].toFloat() == 0.0)) && _wx != null && _wx.observationLocationPosition != null) {\n            loc = _wx.observationLocationPosition.toDegrees();\n        }\n' +
-        '        if (loc != null && (loc[0].toFloat() != 0.0 || loc[1].toFloat() != 0.0)) {\n            _lat = loc[0].toFloat();\n            _lon = loc[1].toFloat();\n        }\n' +
-        '        // until the watch has a location (phone weather or GPS) the dot sits on Istanbul\n        return (_lat != null) ? [_lat, _lon] : [41.01, 28.98];\n    }'
+      deps: ['locObj'],
+      code: 'function locNow() {\n        var l = locObj();\n        return (l == null) ? null : l.toDegrees();\n    }'
     },
     sunStr: {
-      needs: ['wx'], imports: ['Toybox.Position'],
-      code: 'function sunStr(mode) {\n        // the weather location when the watch has one, otherwise Istanbul\n        var loc = (_wx != null && _wx.observationLocationPosition != null) ? _wx.observationLocationPosition : new Position.Location({ :latitude => 41.01, :longitude => 28.98, :format => :degrees });\n        var now = Time.now();\n        var m = null;\n' +
+      deps: ['locObj'], needs: ['wx'],
+      code: 'function sunStr(mode) {\n        var loc = locObj();\n        if (loc == null) { return "--:--"; }\n        var now = Time.now();\n        var m = null;\n' +
         '        if (mode == 1) {\n            m = Weather.getSunrise(loc, now);\n        } else if (mode == 2) {\n            m = Weather.getSunset(loc, now);\n        } else {\n' +
         '            var rise = Weather.getSunrise(loc, now);\n            var sset = Weather.getSunset(loc, now);\n' +
         '            if (rise != null && now.lessThan(rise)) {\n                m = rise;\n            } else if (sset != null && now.lessThan(sset)) {\n                m = sset;\n            } else {\n' +
         '                m = Weather.getSunrise(loc, now.add(new Time.Duration(86400)));\n            }\n        }\n' +
         '        if (m == null) { return "--:--"; }\n        var t = Gregorian.info(m, Time.FORMAT_SHORT);\n        var h = t.hour;\n' +
-        '        if (!System.getDeviceSettings().is24Hour) {\n            h = h % 12;\n            if (h == 0) { h = 12; }\n        }\n        return h.format("%02d") + ":" + t.min.format("%02d");\n    }'
+        '        if (!System.getDeviceSettings().is24Hour) {\n            h = h % 12;\n            if (h == 0) { h = 12; }\n        }\n        return h.format("%02d") + ":" + t.min.format("%02d");\n    }',
+      imports: ['Toybox.Weather', 'Toybox.Time', 'Toybox.Time.Gregorian']
     },
     dayPct: { needs: ['clk'], code: 'function dayPct() {\n        return (_clk.hour * 3600 + _clk.min * 60 + _clk.sec) / 864.0;\n    }' },
     dayOfYearNow: {
       imports: ['Toybox.Time', 'Toybox.Time.Gregorian'],
-      code: 'function dayOfYearNow() {\n        var i = Gregorian.info(Time.now(), Time.FORMAT_SHORT);\n        var cum = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];\n        var d = cum[i.month - 1] + i.day;\n' +
+      members: ['    const DOY_CUM = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];'],
+      code: 'function dayOfYearNow() {\n        var i = Gregorian.info(Time.now(), Time.FORMAT_SHORT);\n        var d = DOY_CUM[i.month - 1] + i.day;\n' +
         '        if (i.month > 2 && ((i.year % 4 == 0 && i.year % 100 != 0) || i.year % 400 == 0)) { d += 1; }\n        return d;\n    }'
     },
     yearPct: {
@@ -142,14 +154,23 @@
         '        if (p < 0.53) { return "Full moon"; }\n        if (p < 0.72) { return "Waning gibbous"; }\n        if (p < 0.78) { return "Last quarter"; }\n        return "Waning crescent";\n    }'
     },
     histVals: {
-      needs: ['act'], imports: ['Toybox.ActivityMonitor'],
+      needs: ['act'], imports: ['Toybox.ActivityMonitor', 'Toybox.Time'],
+      members: ['    var _histCache = null;', '    var _histDay = -1;'],
+      hide: ['_histCache = null;', '_histDay = -1;'],
       code: 'function histVals(kind) {\n        var vals = new [8];\n        for (var i = 0; i < 8; i++) { vals[i] = 0; }\n' +
         '        vals[7] = histToday(kind);\n' +
-        '        var h = null;\n        try {\n            h = ActivityMonitor.getHistory();\n        } catch (ex) {\n            h = null;\n        }\n' +
-        '        if (h != null) {\n            for (var d = 0; d < 7 && d < h.size(); d++) {\n                vals[6 - d] = histDay(h[d], kind);\n            }\n        }\n        return vals;\n    }\n\n' +
+        '        var c = System.getClockTime();\n        var t0 = Time.now().value() - (c.hour * 3600 + c.min * 60 + c.sec);\n' +
+        '        // the stored days are fetched once per calendar day, and never while the watch sleeps\n' +
+        '        if (!_isSleeping && (_histCache == null || _histDay != t0)) {\n            try {\n                _histCache = ActivityMonitor.getHistory();\n                _histDay = t0;\n            } catch (ex) {\n                _histCache = null;\n            }\n        }\n' +
+        '        if (_histCache != null) {\n            var h = _histCache as Array;\n            for (var d = 0; d < h.size(); d++) {\n                var s = null;\n                try {\n                    s = h[d].startOfDay;\n                } catch (ex) {\n                    s = null;\n                }\n' +
+        '                // each entry goes to its own calendar day (1 = yesterday ... 7), so today being included or a day missing cannot shift the bars\n' +
+        '                var back = (s != null) ? ((t0 - s.value() + 43200) / 86400) : (d + 1);\n' +
+        '                if (back >= 1 && back <= 7) { vals[7 - back] = histDay(h[d], kind); }\n            }\n        }\n' +
+        '        DBG: System.println("hist kind=" + kind + " values=" + vals + " entries=" + ((_histCache != null) ? (_histCache as Array).size() : -1));\n' +
+        '        return vals;\n    }\n\n' +
         '    // the watch throws "symbol not found" (instead of returning null) for a reading it does not have, so each one is read on its own\n' +
-        '    function histToday(kind) {\n        var v = 0;\n        try {\n            if (kind == 0) { v = _act.steps; }\n            else if (kind == 1) { v = _act.calories; }\n            else if (kind == 2) { v = _act.activeMinutesDay.total; }\n            else { v = _act.floorsClimbed; }\n        } catch (ex) {\n            v = 0;\n        }\n        return (v == null) ? 0 : v;\n    }\n\n' +
-        '    function histDay(e, kind) {\n        var v = 0;\n        try {\n            if (kind == 0) { v = e.steps; }\n            else if (kind == 1) { v = e.calories; }\n            else if (kind == 2) { v = e.activeMinutes.total; }\n            else { v = e.floorsClimbed; }\n        } catch (ex) {\n            v = 0;\n        }\n        return (v == null) ? 0 : v;\n    }'
+        '    function histToday(kind) {\n        var v = 0;\n        try {\n            if (kind == 0) { v = _act.steps; }\n            else if (kind == 1) { v = _act.calories; }\n            else if (kind == 2) { v = _act.activeMinutesDay.total; }\n            else { v = _act.floorsClimbed; }\n        } catch (ex) {\n            DBG: System.println("hist today kind=" + kind + " failed: " + ex.getErrorMessage());\n            v = 0;\n        }\n        return (v == null) ? 0 : v;\n    }\n\n' +
+        '    function histDay(e, kind) {\n        var v = 0;\n        try {\n            if (kind == 0) { v = e.steps; }\n            else if (kind == 1) { v = e.calories; }\n            else if (kind == 2) { v = e.activeMinutes.total; }\n            else { v = e.floorsClimbed; }\n        } catch (ex) {\n            DBG: System.println("hist day kind=" + kind + " failed: " + ex.getErrorMessage());\n            v = 0;\n        }\n        return (v == null) ? 0 : v;\n    }'
     }
   };
   // Battery: slow-changing values are worked out once, not on every redraw. The sun times and the New York time are recalculated
@@ -171,7 +192,8 @@
     clk: '_clk = System.getClockTime();',
     act: '_act = ActivityMonitor.getInfo();',
     sys: '_sys = System.getSystemStats();',
-    wx: '_wx = (Toybox has :Weather) ? Weather.getCurrentConditions() : null;',
+    // the phone's weather is read at most every 5 minutes and never while the watch sleeps (it cost memory and crashed the face overnight)
+    wx: ['if (!_isSleeping && (Toybox has :Weather) && (_wxT == 0 || Time.now().value() - _wxT >= 300)) {', '    _wxT = Time.now().value();', '    _wx = Weather.getCurrentConditions();', '}'],
     ds: '_ds = Gregorian.info(_now, Time.FORMAT_SHORT);',
     dm: '_dm = Gregorian.info(_now, Time.FORMAT_MEDIUM);',
     dl: '_dl = Gregorian.info(_now, Time.FORMAT_LONG);'
@@ -201,6 +223,7 @@
         var h = H[n]; if (!h) throw new Error('Unknown helper ' + n);
         st.hseen[n] = 1;
         (h.deps || []).forEach(cg.helper); (h.needs || []).forEach(cg.need); (h.imports || []).forEach(cg.imp);
+        (h.perms || []).forEach(cg.perm);
         st.helpers.push(n);
       },
       font: function (id) {
@@ -243,6 +266,7 @@
       // one element failing (a missing reading, an API the watch lacks) must not take the whole face down with the "IQ!" screen
       calls.push('        try {\n            ' + n + '(dc);\n        } catch (ex) {\n        }');
     });
+    if (st.needs.wx) cg.imp('Toybox.Time');
     var bg = null;
     if (design.bgImage && GW.assets[design.bgImage]) bg = { id: 'bgImage', asset: design.bgImage, w: GW.DEVICE.size, h: GW.DEVICE.size, full: true };
 
@@ -254,29 +278,35 @@
     if (isField) imports.push('Toybox.Activity');
     Object.keys(st.imports).sort().forEach(function (i) { if (imports.indexOf(i) < 0) imports.push(i); });
 
+    // lines starting with "DBG: " in a helper are only emitted in a debug export (design.debug)
+    function helperCode(n) {
+      return H[n].code.split('\n').filter(function (l) { return design.debug || !/^\s*DBG: /.test(l); }).map(function (l) { return l.replace(/^(\s*)DBG: /, '$1'); }).join('\n');
+    }
     var needFlags = NEED_ORDER.filter(function (f) { return st.needs[f]; });
     var members = [];
     if (st.needs.clk) members.push('    var _clk;');
     if (st.needs.act) members.push('    var _act;');
     if (st.needs.sys) members.push('    var _sys;');
-    if (st.needs.wx) members.push('    var _wx;');
+    if (st.needs.wx) { members.push('    var _wx;'); members.push('    var _wxT = 0;'); }
     ['ds', 'dm', 'dl'].forEach(function (f) { if (st.needs[f]) members.push('    var _' + f + ';'); });
-    members.push('    var _sleep = false;');
+    members.push('    var _isSleeping = false;');
     st.extraMembers.forEach(function (m) { members.push(m); });
     st.helpers.forEach(function (n) { (H[n].members || []).forEach(function (m) { members.push(m); }); });
+    if (st.hseen.locObj) members.push('    const DEF_LOC_ON = ' + (design.defLocOn === false ? 'false' : 'true') + ';', '    const DEF_LAT = ' + (typeof design.defLat === 'number' ? design.defLat : 41.01) + ';', '    const DEF_LON = ' + (typeof design.defLon === 'number' ? design.defLon : 28.98) + ';');
     st.fonts.forEach(function (f) { members.push('    var _' + f.id + ';'); });
     st.images.forEach(function (m) { members.push('    var _' + m.id + ';'); });
     if (bg) members.push('    var _bg;');
 
-    var layout = [];
-    st.fonts.forEach(function (f) { layout.push('        _' + f.id + ' = WatchUi.loadResource(Rez.Fonts.' + f.id + ');'); });
-    st.images.forEach(function (m) { layout.push('        _' + m.id + ' = WatchUi.loadResource(Rez.Drawables.' + m.id + ');'); });
-    if (bg) layout.push('        _bg = WatchUi.loadResource(Rez.Drawables.bgImage);');
+    var layout = [], release = [];
+    st.fonts.forEach(function (f) { layout.push('        _' + f.id + ' = WatchUi.loadResource(Rez.Fonts.' + f.id + ');'); release.push('        _' + f.id + ' = null;'); });
+    st.images.forEach(function (m) { layout.push('        _' + m.id + ' = WatchUi.loadResource(Rez.Drawables.' + m.id + ');'); release.push('        _' + m.id + ' = null;'); });
+    if (bg) { layout.push('        _bg = WatchUi.loadResource(Rez.Drawables.bgImage);'); release.push('        _bg = null;'); }
+    st.helpers.forEach(function (n) { (H[n].hide || []).forEach(function (l) { release.push('        ' + l); }); });
 
     var init = [];
     var dateNeeded = st.needs.ds || st.needs.dm || st.needs.dl;
     if (dateNeeded) init.push('        var _now = Time.now();');
-    needFlags.forEach(function (f) { init.push('        ' + NEED_INIT[f]); });
+    needFlags.forEach(function (f) { [].concat(NEED_INIT[f]).forEach(function (l) { init.push('        ' + l); }); });
     // A face that shows no seconds only needs fresh activity / weather / date values when the minute changes.
     var live = els.some(function (e) {
       return (e.type === 'hands' && e.sShow) || (e.type === 'arc' && e.source === 'second') ||
@@ -294,21 +324,26 @@
       'class ' + name + 'View extends WatchUi.' + (isField ? 'DataField' : 'WatchFace') + ' {\n\n' +
       members.join('\n') + '\n\n' +
       '    function initialize() {\n        ' + (isField ? 'DataField' : 'WatchFace') + '.initialize();\n' + st.hooks.init.map(function (l) { return '        ' + l + '\n'; }).join('') + '    }\n\n' +
-      '    function onLayout(dc as Dc) as Void {\n' + (layout.length ? layout.join('\n') + '\n' : '') + '    }\n\n' +
+      (isField
+        ? '    function onLayout(dc as Dc) as Void {\n' + (layout.length ? layout.join('\n') + '\n' : '') + '    }\n\n'
+        // a watch face loads its fonts and pictures when it is shown and lets them go when it is hidden, never inside onUpdate
+        : '    function onLayout(dc as Dc) as Void {\n    }\n\n' +
+          (layout.length ? '    function onShow() as Void {\n' + layout.join('\n') + '\n    }\n\n' : '') +
+          (release.length ? '    function onHide() as Void {\n' + release.join('\n') + '\n    }\n\n' : '')) +
       '    function onUpdate(dc as Dc) as Void {\n' +
       (st.hooks.begin.length ? st.hooks.begin.map(function (l) { return '        ' + l + '\n'; }).join('')
         : '        dc.setColor(Graphics.COLOR_WHITE, ' + GW.mcColor(design.bg) + ');\n        dc.clear();\n') +
-      (bg ? '        dc.drawBitmap(0, 0, _bg);\n' : '') +
+      (bg ? '        if (_bg != null) {\n            dc.drawBitmap(0, 0, _bg);\n        }\n' : '') +
       (init.length ? init.join('\n') + '\n' : '') +
       calls.join('\n') + '\n    }\n\n' +
       (isField
         ? '    // called every second with the activity data\n    function compute(info as Activity.Info) as Void {\n' + st.hooks.compute.map(function (l) { return '        ' + l + '\n'; }).join('') + '    }\n\n' +
           '    function onTimerLap() as Void {\n' + st.hooks.lap.map(function (l) { return '        ' + l + '\n'; }).join('') + '    }\n\n' +
           '    function onTimerReset() as Void {\n' + st.hooks.reset.map(function (l) { return '        ' + l + '\n'; }).join('') + '    }\n'
-        : '    function onEnterSleep() as Void {\n        _sleep = true;\n        WatchUi.requestUpdate();\n    }\n\n' +
-          '    function onExitSleep() as Void {\n        _sleep = false;\n        WatchUi.requestUpdate();\n    }\n') +
+        : '    function onEnterSleep() as Void {\n        _isSleeping = true;\n        WatchUi.requestUpdate();\n    }\n\n' +
+          '    function onExitSleep() as Void {\n        _isSleeping = false;\n        WatchUi.requestUpdate();\n    }\n') +
       (methods.length ? '\n    // ---- elements ----\n\n' + methods.join('\n\n') + '\n' : '') +
-      (st.helpers.length ? '\n    // ---- data helpers ----\n\n' + st.helpers.map(function (n) { return '    ' + H[n].code; }).join('\n\n') + '\n' : '') +
+      (st.helpers.length ? '\n    // ---- data helpers ----\n\n' + st.helpers.map(function (n) { return '    ' + helperCode(n); }).join('\n\n') + '\n' : '') +
       '}\n';
 
     var app =
