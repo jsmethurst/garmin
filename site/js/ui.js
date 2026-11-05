@@ -604,6 +604,11 @@
       lo.addEventListener('change', function () { d.defLon = parseFloat(lo.value); GW.commit(false); });
       p.appendChild(h('div', { class: 'row' }, [field('Latitude', la), field('Longitude', lo)]));
     }
+    var dbg = h('input', { type: 'checkbox' }); dbg.checked = !!d.debug;
+    dbg.addEventListener('change', function () { d.debug = dbg.checked; GW.commit(false); });
+    p.appendChild(h('h4', { text: 'Debug' }));
+    p.appendChild(h('div', { class: 'f' }, [h('label', { class: 'chk' }, [dbg, 'Debug export: print the bar-chart values to the simulator console']),
+      h('p', { class: 'muted small', text: 'Adds System.println lines (the eight values, and any reading that failed). Leave it off for the version you install.' })]));
     var file = h('input', { type: 'file', accept: 'image/*', hidden: true });
     file.addEventListener('change', function () {
       if (!file.files[0]) return;
