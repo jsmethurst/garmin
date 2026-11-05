@@ -191,6 +191,15 @@
     mcNum: function (el, cg) { cg.need('act'); cg.helper('distNow'); return 'distNow(' + ({ km: 1, mi: 2 }[el.unit] || 0) + ')'; },
     mcStr: function (el, cg) { cg.need('act'); cg.helper('distNow'); return 'distNow(' + ({ km: 1, mi: 2 }[el.unit] || 0) + ').format("%.1f")'; }
   });
+  // elapsedDistance only has a value during a recorded activity, so this reads "--" the rest of the time (unlike "Distance today")
+  def('workoutDist', {
+    label: 'Distance (current workout)', group: 'Activity', kind: 'str', opts: ['unit_dist'], imports: ['Toybox.Activity'],
+    str: function (el, env) {
+      var m = el.unit === 'mi' ? false : (el.unit === 'km' ? true : env.sim.metric);
+      return (m ? env.sim.runKm : env.sim.runKm * 0.621371).toFixed(2);
+    },
+    mcStr: function (el, cg) { cg.helper('workoutDist'); return 'workoutDist(' + ({ km: 1, mi: 2 }[el.unit] || 0) + ')'; }
+  });
   numeric('moveBar', 'Move bar level (0-5)', 'Activity', { fn: 'moveNow', needs: ['act'], range: [0, 5],
     num: function (e) { return e.sim.moveBar; } });
 

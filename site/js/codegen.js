@@ -41,6 +41,12 @@
       code: 'function distNow(mode) {\n        if (_act.distance == null) { return 0.0; }\n        var km = _act.distance.toFloat() / 100000.0;\n' +
         '        var mi = (mode == 2) || (mode == 0 && System.getDeviceSettings().distanceUnits == System.UNIT_STATUTE);\n        return mi ? km * 0.621371 : km;\n    }'
     },
+    workoutDist: {
+      imports: ['Toybox.Activity'],
+      code: 'function workoutDist(mode) {\n        var ai = Activity.getActivityInfo();\n        if (ai == null || ai.elapsedDistance == null) { return "--"; }\n' +
+        '        var km = ai.elapsedDistance.toFloat() / 1000.0;\n        var mi = (mode == 2) || (mode == 0 && System.getDeviceSettings().distanceUnits == System.UNIT_STATUTE);\n' +
+        '        if (mi) { km = km * 0.621371; }\n        return km.format("%.2f");\n    }'
+    },
     batteryNow: { needs: ['sys'], code: 'function batteryNow() {\n        return (_sys.battery + 0.5).toNumber();\n    }' },
     batteryDaysNow: { needs: ['sys'], code: 'function batteryDaysNow() {\n        return (_sys has :batteryInDays) ? _sys.batteryInDays : 0.0;\n    }' },
     notifNow: { code: 'function notifNow() {\n        var n = System.getDeviceSettings().notificationCount;\n        return (n != null) ? n : 0;\n    }' },
