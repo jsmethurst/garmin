@@ -489,7 +489,7 @@
   var BC_PREV = [0.62, 0.95, 0.41, 1.1, 0.78, 0.33, 0.88];
   function bcValues(el, env) {
     var b = BC[el.source] || BC.steps, v = BC_PREV.map(function (f) { return Math.round(f * b.scale(env)); });
-    v.push(b.today(env)); return v;
+    v.push(el.source === 'intMins' && el.todayWeek ? env.sim.intMins : b.today(env)); return v;
   }
   T.barchart = {
     label: 'Bar chart (8 days)', icon: '▥',
@@ -499,13 +499,13 @@
       var vals = bcValues(el, env), b = BC[el.source] || BC.steps;
       var goal = el.goal && el.source === 'steps' ? env.sim.stepGoal : 0, mx = Math.max(1, goal);
       vals.forEach(function (v) { mx = Math.max(mx, v); });
-      var bw = Math.max(1, Math.floor((el.w - 7 * el.gap) / 8)), left = el.x - el.w / 2, bottom = el.y + el.h / 2;
+      var bw = Math.max(1, Math.floor((el.w - 7 * el.gap) / 8)), totalW = 8 * bw + 7 * el.gap, left = Math.round(el.x - totalW / 2), bottom = el.y + el.h / 2;   // the bars are centred on X, as on the watch
       vals.forEach(function (v, i) {
         var bh = Math.floor(v / mx * el.h); if (bh < 1 && v > 0) bh = 1;
         ctx.fillStyle = q(i === 7 ? el.todayColor : el.color);
         ctx.fillRect(left + i * (bw + el.gap), bottom - bh, bw, bh);
       });
-      if (goal) { var gy = bottom - Math.floor(goal / mx * el.h); ctx.fillStyle = q(el.goalColor); ctx.fillRect(left, gy, el.w, 1); }
+      if (goal) { var gy = bottom - Math.floor(goal / mx * el.h); ctx.fillStyle = q(el.goalColor); ctx.fillRect(left, gy, totalW, 1); }
     },
     box: function (el) { return { x: el.x - el.w / 2, y: el.y - el.h / 2, w: el.w, h: el.h }; },
     fields: function (el) {
@@ -513,18 +513,21 @@
         { k: 'source', t: 'select', label: 'Chart of', opts: Object.keys(BC).map(function (k) { return [k, BC[k].label]; }) },
         { k: 'color', t: 'color', label: 'Bar color' },
         { k: 'todayColor', t: 'color', label: 'Today color' },
+        el.source === 'intMins' ? { k: 'todayWeek', t: 'check', label: 'Last bar = this week\'s total (otherwise today\'s minutes)' } : null,
         el.source === 'steps' ? { k: 'goal', t: 'check', label: 'Show step-goal line' } : null,
         el.goal && el.source === 'steps' ? { k: 'goalColor', t: 'color', label: 'Goal line color' } : null,
         { t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 16, max: 280 }, { k: 'h', t: 'num', label: 'Height', min: 6, max: 140 }, { k: 'gap', t: 'num', label: 'Gap', min: 0, max: 8 }] },
-        { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] }
+        { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] },
+        { t: 'note', text: 'Sample data: the preview shows made-up values for the seven earlier days (and today from the Test data tab). On the watch the bars are your real history.' }
       ].filter(Boolean);
     },
     gen: function (el, cg) {
       cg.need('act'); cg.helper('histVals');
       var b = BC[el.source] || BC.steps, gap = N(el.gap), bw = Math.max(1, Math.floor((el.w - 7 * gap) / 8));
-      var left = N(el.x - el.w / 2), bottom = N(el.y + el.h / 2), H = N(el.h);
+      var totalW = 8 * bw + 7 * gap, left = N(el.x - totalW / 2), bottom = N(el.y + el.h / 2), H = N(el.h);   // centred on X, same as the preview
       var goal = el.goal && el.source === 'steps';
-      var L = ['var v = histVals(' + b.kind + ');', 'var mx = 1;'];
+      var kind = (el.source === 'intMins' && el.todayWeek) ? 4 : b.kind;   // 4: the last bar shows this week's total instead of today's minutes
+      var L = ['var v = histVals(' + kind + ');', 'var mx = 1;'];
       if (goal) { cg.helper('stepGoalNow'); L.push('var g = stepGoalNow();', 'if (g > mx) { mx = g; }'); }
       L.push('for (var i = 0; i < 8; i++) { if (v[i] > mx) { mx = v[i]; } }');
       L.push('for (var i = 0; i < 8; i++) {');
@@ -535,7 +538,7 @@
       L.push('}');
       if (goal) {
         L.push('dc.setColor(' + GW.mcColor(el.goalColor) + ', Graphics.COLOR_TRANSPARENT);');
-        L.push('dc.fillRectangle(' + left + ', ' + bottom + ' - (g.toFloat() / mx.toFloat() * ' + H + '.0).toNumber(), ' + N(el.w) + ', 1);');
+        L.push('dc.fillRectangle(' + left + ', ' + bottom + ' - (g.toFloat() / mx.toFloat() * ' + H + '.0).toNumber(), ' + totalW + ', 1);');
       }
       return L;
     }
@@ -561,7 +564,8 @@
         !el.ramp ? { k: 'color', t: 'color', label: 'Lit color' } : null,
         { k: 'off', t: 'color', label: 'Unlit color' },
         { t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 20, max: 280 }, { k: 'h', t: 'num', label: 'Height', min: 2, max: 40 }, { k: 'gap', t: 'num', label: 'Gap', min: 0, max: 10 }] },
-        { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] }
+        { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] },
+        { t: 'note', text: 'Sample data: the preview shows made-up values for the seven earlier days (and today from the Test data tab). On the watch the bars are your real history.' }
       ].filter(Boolean);
     },
     gen: function (el, cg) {
