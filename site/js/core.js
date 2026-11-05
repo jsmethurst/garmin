@@ -207,7 +207,7 @@ window.GW = window.GW || {};
     if (!n) return fin();
     ids.forEach(function (id) {
       if (fontOf[id]) {
-        GW.registerUploadedFont(fontOf[id].family, assets[id]).then(function () { GW.assets[id] = { dataUrl: assets[id], font: true }; if (--n === 0) fin(); },
+        GW.registerUploadedFont(fontOf[id].family, assets[id], fontOf[id].weight).then(function () { GW.assets[id] = { dataUrl: assets[id], font: true }; if (--n === 0) fin(); },
           function () { if (--n === 0) fin(); });
         return;
       }

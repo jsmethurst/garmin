@@ -59,7 +59,12 @@
       f.push({ t: 'h', label: 'Style' });
       f.push({ k: 'font', t: 'font', label: 'Typeface' });
       var bf = GW.customFont(el.font);
-      if (bf) { f.push({ t: 'row', fields: [{ k: 'fontSize', t: 'numopt', label: 'Size (px)', ph: String(bf.px) }, { t: 'spacing' }, { t: 'thicken' }] }); f.push({ t: 'glyphs' }); f.push({ t: 'tabular' }); }
+      if (bf) {
+        f.push({ t: 'row', fields: [{ k: 'fontSize', t: 'numopt', label: 'Size (px)', ph: String(bf.px) }, { k: 'capH', t: 'numopt', label: 'or cap height (px)', ph: '' }, { t: 'spacing' }] });
+        f.push({ t: 'row', fields: [{ t: 'thicken' }, { t: 'aa' }] });
+        if (bf.upload) f.push({ t: 'weight' });
+        f.push({ t: 'glyphs' }); f.push({ t: 'tabular' }); f.push({ t: 'uniform' });
+      }
       f.push({ k: 'color', t: 'color', label: 'Color' });
       f.push({ k: 'justify', t: 'seg', label: 'Align on X', opts: [['L', 'Left'], ['C', 'Centre'], ['R', 'Right']] });
       f.push({ t: 'row', fields: [{ k: 'prefix', t: 'text', label: 'Before' }, { k: 'suffix', t: 'text', label: 'After' }] });

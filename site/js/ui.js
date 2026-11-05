@@ -126,7 +126,7 @@
     GW.FONT_FAMILIES.slice().sort(function (a, b) { return a.family < b.family ? -1 : 1; }).forEach(function (fam) {
       fam.weights.forEach(function (w) {
         var have = inDesign(fam.family, w);
-        g2.appendChild(h('option', { value: have ? have.id : '__fam|' + fam.family + '|' + w, text: fam.family + ' ' + w }));
+        g2.appendChild(h('option', { value: have ? have.id : '__fam|' + fam.family + '|' + w, text: fam.family + ' ' + w + (fam.note ? ' (' + fam.note + ')' : '') }));
       });
     });
     GW.design.fonts.filter(function (c) { return c.upload; }).forEach(function (c) { g2.appendChild(h('option', { value: c.id, text: c.label || c.family })); });
@@ -141,7 +141,7 @@
       var fr = new FileReader();
       fr.onload = function () {
         var id = GW.uid('u'), family = 'upl_' + id;
-        GW.registerUploadedFont(family, fr.result).then(function () {
+        GW.registerUploadedFont(family, fr.result, 400).then(function () {
           GW.assets[id] = { dataUrl: fr.result, font: true };
           var nf = { id: 'f_' + id, family: family, label: file.name.replace(/\.[^.]+$/, ''), weight: 400, px: el.fontSize || (cur && cur.px) || 22, glyphs: cur && cur.glyphs ? cur.glyphs : 'basic', spacing: 0, upload: true, asset: id };
           GW.design.fonts.push(nf); el[f.k] = nf.id; el.fontSize = null; fireChange(true); GW.toast('Font loaded: ' + nf.label);
@@ -185,6 +185,33 @@
     var c = h('input', { type: 'checkbox' }); c.checked = !!base.tabular;
     c.addEventListener('change', function () { base.tabular = c.checked; fireChange(true); });
     return h('label', { class: 'chk' }, [c, 'Even digit widths (the time never changes width)']);
+  }
+  function fUniform(el) {
+    var base = GW.customFont(el.font); if (!base) return null;
+    var c = h('input', { type: 'checkbox' }); c.checked = !!base.uniform;
+    c.addEventListener('change', function () { base.uniform = c.checked; fireChange(true); });
+    return h('label', { class: 'chk', title: 'Every glyph gets the same gap after it, so the spacing looks even (digits keep their own widths unless "even digit widths" is on)' }, [c, 'Uniform spacing between letters']);
+  }
+  // how the edges of the letters are blended: smooth, or snapped to the few steps the watch's 64-colour screen can show
+  function fAa(el) {
+    var base = GW.customFont(el.font); if (!base) return null;
+    var s = h('select', {}, [h('option', { value: '', text: 'Smooth' }), h('option', { value: 'mip', text: 'Device-style (4 steps)' })]);
+    s.value = base.aa || '';
+    s.addEventListener('change', function () { base.aa = s.value || null; fireChange(true); });
+    return field('Edges', s);
+  }
+  // the weight of an uploaded font FILE (a Light is 300): the browser then matches the face exactly instead of making one up
+  function fWeight(el) {
+    var base = GW.customFont(el.font); if (!base || !base.upload) return null;
+    var s = h('select', {}, [100, 200, 300, 400, 500, 600, 700, 800, 900].map(function (w) { return h('option', { value: w, text: w + (w === 400 ? ' (Regular)' : (w === 300 ? ' (Light)' : (w === 200 ? ' (ExtraLight)' : (w === 700 ? ' (Bold)' : '')))) }); }));
+    s.value = String(base.weight || 400);
+    s.addEventListener('change', function () {
+      base.weight = parseInt(s.value, 10);
+      var a = GW.assets[base.asset];
+      if (a && a.dataUrl) GW.registerUploadedFont(base.family, a.dataUrl, base.weight).then(function () { GW.touch(true); });
+      fireChange(true);
+    });
+    return field('Weight of the uploaded file', s);
   }
   function fSpacing(el) {
     var base = GW.customFont(el.font); if (!base) return null;
@@ -344,6 +371,9 @@
       case 'spacing': return fSpacing(el);
       case 'thicken': return fThicken(el);
       case 'tabular': return fTabular(el);
+      case 'uniform': return fUniform(el);
+      case 'aa': return fAa(el);
+      case 'weight': return fWeight(el);
       case 'color': return fColor(el, f);
       case 'optcolor': return fOptColor(el, f);
       case 'track': return fTrack(el, f);

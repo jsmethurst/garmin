@@ -15,3 +15,9 @@ Bundled typefaces (all licensed under the SIL Open Font License 1.1, https://ope
 Files are the Latin and Latin-ext subsets distributed by Fontsource (https://fontsource.org).
 Bitmap fonts that the tool generates from these faces for your watchface are derivative
 works that may be used and distributed freely under the same license.
+
+Added later (also SIL Open Font License 1.1, files from Fontsource):
+  Michroma          (c) 2011 The Michroma Project Authors
+  Aldrich           (c) 2011 The Aldrich Project Authors
+  Exo 2             (c) 2013 The Exo Project Authors
+  and more weights of Rajdhani, Orbitron, Oxanium, Chakra Petch and DM Sans.
