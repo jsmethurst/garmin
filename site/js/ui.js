@@ -636,7 +636,11 @@
     }
     var dbg = h('input', { type: 'checkbox' }); dbg.checked = !!d.debug;
     dbg.addEventListener('change', function () { d.debug = dbg.checked; GW.commit(false); });
+    var bt = h('input', { type: 'checkbox' }); bt.checked = !!d.buildTag;
+    bt.addEventListener('change', function () { d.buildTag = bt.checked; GW.commit(false); });
     p.appendChild(h('h4', { text: 'Debug' }));
+    p.appendChild(h('div', { class: 'f' }, [h('label', { class: 'chk' }, [bt, 'Show build code on the face (tiny grey number, bottom)']),
+      h('p', { class: 'muted small', text: 'Shows the build date (yymmddhhmm) on the watch so you can tell which version is installed.' })]));
     p.appendChild(h('div', { class: 'f' }, [h('label', { class: 'chk' }, [dbg, 'Debug export: print the bar-chart values to the simulator console']),
       h('p', { class: 'muted small', text: 'Adds System.println lines (the eight values, and any reading that failed). Leave it off for the version you install.' })]));
     var file = h('input', { type: 'file', accept: 'image/*', hidden: true });

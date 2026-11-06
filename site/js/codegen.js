@@ -341,7 +341,9 @@
         : '        dc.setColor(Graphics.COLOR_WHITE, ' + GW.mcColor(design.bg) + ');\n        dc.clear();\n') +
       (bg ? '        if (_bg != null) {\n            dc.drawBitmap(0, 0, _bg);\n        }\n' : '') +
       (init.length ? init.join('\n') + '\n' : '') +
-      calls.join('\n') + '\n    }\n\n' +
+      calls.join('\n') + '\n' +
+      (design.buildTag && !isField ? '        dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);\n        dc.drawText(' + Math.round(GW.SIZE / 2) + ', ' + (GW.SIZE - 22) + ', Graphics.FONT_XTINY, "' + (window.GW_BUILT || 'dev').replace(/[-:TZ]/g, '').slice(2, 12) + '", Graphics.TEXT_JUSTIFY_CENTER);\n' : '') +
+      '    }\n\n' +
       (isField
         ? '    // called every second with the activity data\n    function compute(info as Activity.Info) as Void {\n' + st.hooks.compute.map(function (l) { return '        ' + l + '\n'; }).join('') + '    }\n\n' +
           '    function onTimerLap() as Void {\n' + st.hooks.lap.map(function (l) { return '        ' + l + '\n'; }).join('') + '    }\n\n' +
