@@ -137,12 +137,11 @@
   GW.sim.btOn = true;
 })(window.GW);
 
-// ================= SEGMENT GAUGE: a hexagon of 6 triangles that light up with a value =================
+// ================= SEGMENT GAUGE: separate segments (bar, slanted bar or hexagon) that light up with a value =================
 (function (GW) {
   'use strict';
   var T = GW.types, q = GW.q, N = Math.round, clamp = GW.clamp;
-  // One geometry for preview and watch. Flat-top by default; triangle 0 is the top one, then clockwise. Whole pixels throughout.
-  function hexTris(el) {
+  function hexTris(el) {   // flat-top by default; triangle 0 is the top one, then clockwise
     var R = el.r, g = Math.max(0, el.gap || 0), rot = el.rot || 0, out = [], v = [];
     for (var k = 0; k < 6; k++) { var a = (-120 + 60 * k + rot) * Math.PI / 180; v.push([el.x + R * Math.cos(a), el.y + R * Math.sin(a)]); }
     var s = (g / 2) / Math.sin(Math.PI / 3);
@@ -158,7 +157,33 @@
     }
     return out;
   }
-  GW.hexTris = hexTris;
+  // Bar segments, in lighting order. Horizontal: segments side by side across w, each h tall, slant = how far the top edge is shifted right.
+  // Vertical: segments stacked across h, each w wide, slant = how far the right edge is shifted up. Edges are rounded as edges.
+  function barSegs(el) {
+    var n = clamp(N(el.n || 1), 1, 20), g = Math.max(0, el.gap || 0), sl = el.slant || 0, vert = el.orient === 'v', rev = el.dir === 'rtl';
+    var along = vert ? el.h : el.w, thick = vert ? el.w : el.h, sw = (along - g * (n - 1)) / n, out = [], ext = Math.abs(sl);
+    var x0 = vert ? el.x - thick / 2 : el.x - (along + sl) / 2;
+    var y0 = vert ? el.y - along / 2 - (Math.max(-sl, 0) - Math.max(sl, 0)) / 2 : el.y - thick / 2;
+    for (var i = 0; i < n; i++) {
+      var pos = vert ? (rev ? i : n - 1 - i) : (rev ? n - 1 - i : i), a0 = pos * (sw + g), a1 = a0 + sw, pts;
+      if (!vert) {
+        var xl = N(x0 + a0), xr = N(x0 + a1), yt = N(y0), yb = N(y0 + thick), s2 = N(sl);
+        pts = [[xl, yb], [xr, yb], [xr + s2, yt], [xl + s2, yt]];
+      } else {
+        var yt2 = N(y0 + a0), yb2 = N(y0 + a1), xl2 = N(x0), xr2 = N(x0 + thick), s3 = N(sl);
+        pts = [[xl2, yb2], [xl2, yt2], [xr2, yt2 - s3], [xr2, yb2 - s3]];
+      }
+      out.push(pts);
+    }
+    return out;
+  }
+  function segGeom(el) { return el.shape === 'hex' ? hexTris(el) : barSegs(el); }
+  GW.segGeom = segGeom;
+  function bounds(polys) {
+    var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    polys.forEach(function (pl) { pl.forEach(function (p) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }); });
+    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
   function progress(el, env) {
     var s = GW.sources[el.source]; if (!s || !s.num) return 0;
     var v = s.num(env); if (v == null) return 0;
@@ -166,37 +191,59 @@
     if (el.source === 'calories' && el.max == null) mx = env.sim.calGoal;   // the watch reads the calorie goal when it has one
     return mx > mn ? clamp((v - mn) / (mx - mn), 0, 1) : 0;
   }
-  T.hexgauge = {
-    label: 'Segment gauge', icon: '⬡',
-    defaults: function () { return { type: 'hexgauge', name: 'Segment gauge', x: 140, y: 140, r: 60, rot: 0, source: 'calories', min: null, max: null,
-      color: '#ff5500', unlit: '#333333', outline: '#000000', owidth: 0, gap: 2, partial: false, calFallback: 2200 }; },
+  function segN(el) { return el.shape === 'hex' ? 6 : clamp(N(el.n || 1), 1, 20); }
+  // N = 1 bar: filled in proportion to the value (the lit part is the same polygon, clipped)
+  function clipRect(el, bb, p) {
+    var vert = el.orient === 'v', rev = el.dir === 'rtl';
+    if (!vert) { var w = N(bb.w * p); return { x: rev ? bb.x + bb.w - w : bb.x, y: bb.y, w: w, h: bb.h }; }
+    var h = N(bb.h * p); return { x: bb.x, y: rev ? bb.y : bb.y + bb.h - h, w: bb.w, h: h };
+  }
+  function path(ctx, t) { ctx.beginPath(); t.forEach(function (p, j) { j ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); }
+  T.seggauge = {
+    label: 'Segment gauge', icon: '▰',
+    defaults: function () { return { type: 'seggauge', name: 'Segment gauge', shape: 'bar', x: 140, y: 140, source: 'steps', min: null, max: null,
+      color: '#00ffaa', unlit: '#333333', partial: false, calFallback: 2200,
+      n: 7, w: 120, h: 16, gap: 3, slant: 6, orient: 'h', dir: 'ltr', r: 60, rot: 0, outline: '#000000', owidth: 0 }; },
     pos: [['x', 'y']],
     draw: function (ctx, el, env) {
-      var n = progress(el, env) * 6, tris = hexTris(el);
-      tris.forEach(function (t, i) {
-        var lit = el.partial ? n > i : n >= i + 1;
-        ctx.fillStyle = q(lit ? el.color : el.unlit);
-        ctx.beginPath(); t.forEach(function (p, j) { j ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); ctx.fill();
-      });
-      if (el.owidth > 0) {
+      var p = progress(el, env), n = segN(el), polys = segGeom(el);
+      if (el.shape !== 'hex' && n === 1) {
+        path(ctx, polys[0]); ctx.fillStyle = q(el.unlit); ctx.fill();
+        var c = clipRect(el, bounds(polys), p);
+        if (c.w > 0 && c.h > 0) { ctx.save(); ctx.beginPath(); ctx.rect(c.x, c.y, c.w, c.h); ctx.clip(); path(ctx, polys[0]); ctx.fillStyle = q(el.color); ctx.fill(); ctx.restore(); }
+        return;
+      }
+      var v = p * n;
+      polys.forEach(function (t, i) { path(ctx, t); ctx.fillStyle = q((el.partial ? v > i : v >= i + 1) ? el.color : el.unlit); ctx.fill(); });
+      if (el.shape === 'hex' && el.owidth > 0) {
         ctx.strokeStyle = q(el.outline); ctx.lineWidth = el.owidth; ctx.lineCap = 'butt';
-        tris.forEach(function (t) { ctx.beginPath(); t.forEach(function (p, j) { j ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); ctx.stroke(); });
+        polys.forEach(function (t) { path(ctx, t); ctx.stroke(); });
       }
     },
-    box: function (el) { return { x: el.x - el.r, y: el.y - el.r, w: el.r * 2, h: el.r * 2 }; },
+    box: function (el) { if (el.shape === 'hex') return { x: el.x - el.r, y: el.y - el.r, w: el.r * 2, h: el.r * 2 }; return bounds(segGeom(el)); },
     fields: function (el) {
-      var s = GW.sources[el.source] || {};
+      var s = GW.sources[el.source] || {}, hex = el.shape === 'hex';
       var f = [
+        { k: 'shape', t: 'select', label: 'Shape', opts: [['bar', 'Bar / slanted bar'], ['hex', 'Hexagon']] },
         { k: 'source', t: 'source', label: 'Measures', kinds: ['num'] },
         { t: 'row', fields: [{ k: 'min', t: 'numopt', label: 'Empty at', ph: '0' }, { k: 'max', t: 'numopt', label: 'Full at', ph: el.source === 'calories' ? 'calorie goal' : (s.mcGoal ? 'daily goal' : String((s.range || [0, 100])[1])) }] }
       ];
       if (el.source === 'calories') f.push({ k: 'calFallback', t: 'num', label: 'Goal if the watch has none', min: 100, max: 10000 });
-      f.push({ k: 'partial', t: 'check', label: 'Light a triangle as soon as its share starts' });
       f.push({ t: 'h', label: 'Look' });
       f.push({ t: 'row', fields: [{ k: 'color', t: 'color', label: 'Lit' }, { k: 'unlit', t: 'color', label: 'Unlit' }] });
-      f.push({ t: 'row', fields: [{ k: 'outline', t: 'color', label: 'Outline' }, { k: 'owidth', t: 'num', label: 'Outline width (0 = none)', min: 0, max: 6 }] });
-      f.push({ t: 'row', fields: [{ k: 'r', t: 'num', label: 'Radius', min: 10, max: 200 }, { k: 'gap', t: 'num', label: 'Gap (px)', min: 0, max: 12 }] });
-      f.push({ k: 'rot', t: 'range', label: 'Rotation', min: 0, max: 59 });
+      if (hex) {
+        f.push({ k: 'partial', t: 'check', label: 'Light a triangle as soon as its share starts' });
+        f.push({ t: 'row', fields: [{ k: 'outline', t: 'color', label: 'Outline' }, { k: 'owidth', t: 'num', label: 'Outline width (0 = none)', min: 0, max: 6 }] });
+        f.push({ t: 'row', fields: [{ k: 'r', t: 'num', label: 'Radius', min: 10, max: 200 }, { k: 'gap', t: 'num', label: 'Gap (px)', min: 0, max: 12 }] });
+        f.push({ k: 'rot', t: 'range', label: 'Rotation', min: 0, max: 59 });
+      } else {
+        f.push({ k: 'n', t: 'range', label: 'Segments (1 = smooth bar)', min: 1, max: 20 });
+        if ((el.n || 1) > 1) f.push({ k: 'partial', t: 'check', label: 'Light a segment as soon as its share starts' });
+        f.push({ t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 4, max: 280 }, { k: 'h', t: 'num', label: 'Height', min: 2, max: 280 }] });
+        f.push({ t: 'row', fields: [{ k: 'gap', t: 'num', label: 'Gap (px)', min: 0, max: 20 }, { k: 'slant', t: 'num', label: 'Slant (px, − leans left)', min: -40, max: 40 }] });
+        f.push({ k: 'orient', t: 'seg', label: 'Orientation', opts: [['h', 'Horizontal'], ['v', 'Vertical']] });
+        f.push({ k: 'dir', t: 'seg', label: 'Fills', opts: el.orient === 'v' ? [['ltr', 'Bottom up'], ['rtl', 'Top down']] : [['ltr', 'Left to right'], ['rtl', 'Right to left']] });
+      }
       f.push({ t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] });
       return f;
     },
@@ -208,18 +255,33 @@
       if (el.max != null) mx = String(el.max);
       else if (el.source === 'calories') { cg.need('act'); mx = '((_act has :calorieGoal && _act.calorieGoal != null) ? _act.calorieGoal : ' + N(el.calFallback || 2200) + ')'; }
       else mx = s.mcGoal ? s.mcGoal(el, cg) : String(r[1]);
-      var id = String(el.id).replace(/[^A-Za-z0-9]/g, ''), tris = hexTris(el), L = [];
-      L.push('var n = prog(' + s.mcNum(el, cg) + ', ' + mn + ', ' + mx + ') * 6.0f;');
-      tris.forEach(function (t, i) {
-        // the point list is a class constant built once, so nothing is allocated while drawing
-        var nm = 'HG_' + id + '_' + i;
+      var id = String(el.id).replace(/[^A-Za-z0-9]/g, ''), polys = segGeom(el), n = segN(el), L = [];
+      var lit = GW.mcColor(el.color), unlit = GW.mcColor(el.unlit);
+      function pc(t, i) {   // the point list is a class constant built once, so nothing is allocated while drawing
+        var nm = 'SG_' + id + '_' + i;
         cg.member('    const ' + nm + ' = [' + t.map(function (p) { return '[' + p[0] + ', ' + p[1] + ']'; }).join(', ') + '];');
-        L.push('dc.setColor((n ' + (el.partial ? '> ' + i + '.0f' : '>= ' + (i + 1) + '.0f') + ') ? ' + GW.mcColor(el.color) + ' : ' + GW.mcColor(el.unlit) + ', Graphics.COLOR_TRANSPARENT);');
-        L.push('dc.fillPolygon(' + nm + ');');
+        return nm;
+      }
+      L.push('var p = prog(' + s.mcNum(el, cg) + ', ' + mn + ', ' + mx + ');');
+      if (el.shape !== 'hex' && n === 1) {
+        var nm0 = pc(polys[0], 0), bb = bounds(polys), vert = el.orient === 'v', rev = el.dir === 'rtl';
+        L.push('dc.setColor(' + unlit + ', Graphics.COLOR_TRANSPARENT);', 'dc.fillPolygon(' + nm0 + ');');
+        if (!vert) {
+          L.push('var w = (' + bb.w + '.0f * p).toNumber();', 'if (w > 0) {', '    dc.setClip(' + (rev ? (bb.x + bb.w) + ' - w' : bb.x) + ', ' + bb.y + ', w, ' + bb.h + ');');
+        } else {
+          L.push('var h = (' + bb.h + '.0f * p).toNumber();', 'if (h > 0) {', '    dc.setClip(' + bb.x + ', ' + (rev ? bb.y : (bb.y + bb.h) + ' - h') + ', ' + bb.w + ', h);');
+        }
+        L.push('    dc.setColor(' + lit + ', Graphics.COLOR_TRANSPARENT);', '    dc.fillPolygon(' + nm0 + ');', '    dc.setClip(0, 0, dc.getWidth(), dc.getHeight());', '}');
+        return L;
+      }
+      L.push('var n = p * ' + n + '.0f;');
+      polys.forEach(function (t, i) {
+        L.push('dc.setColor((n ' + (el.partial ? '> ' + i + '.0f' : '>= ' + (i + 1) + '.0f') + ') ? ' + lit + ' : ' + unlit + ', Graphics.COLOR_TRANSPARENT);');
+        L.push('dc.fillPolygon(' + pc(t, i) + ');');
       });
-      if (el.owidth > 0) {
+      if (el.shape === 'hex' && el.owidth > 0) {
         L.push('dc.setColor(' + GW.mcColor(el.outline) + ', Graphics.COLOR_TRANSPARENT);', 'dc.setPenWidth(' + N(el.owidth) + ');');
-        tris.forEach(function (t) { for (var k = 0; k < 3; k++) { var a = t[k], b = t[(k + 1) % 3]; L.push('dc.drawLine(' + a[0] + ', ' + a[1] + ', ' + b[0] + ', ' + b[1] + ');'); } });
+        polys.forEach(function (t) { for (var k = 0; k < 3; k++) { var a = t[k], b = t[(k + 1) % 3]; L.push('dc.drawLine(' + a[0] + ', ' + a[1] + ', ' + b[0] + ', ' + b[1] + ');'); } });
         L.push('dc.setPenWidth(1);');
       }
       return L;

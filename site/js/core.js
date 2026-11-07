@@ -19,7 +19,7 @@ window.GW = window.GW || {};
     text: ['x', 'y', 'fontSize'], arc: ['cx', 'cy', 'r', 'pen'], ticks: ['cx', 'cy', 'r', 'len', 'majorLen', 'width', 'majorWidth'],
     hands: ['cx', 'cy', 'hLen', 'hW', 'mLen', 'mW', 'sLen', 'sW', 'sTail', 'hub'], shape: ['x', 'y', 'x2', 'y2', 'w', 'h', 'r', 'pen', 'rad'],
     image: ['x', 'y', 'w', 'h'], barchart: ['x', 'y', 'w', 'h', 'gap'], movebar: ['x', 'y', 'w', 'h', 'gap'], moon: ['x', 'y', 'r'], binary: ['x', 'y', 'r', 'gap'],
-    wxicon: ['x', 'y', 'size'], worldmap: ['x', 'y', 'w', 'h', 'msize'], sunicon: ['x', 'y', 'r'], icon: ['x', 'y'], hexgauge: ['x', 'y', 'r', 'gap', 'owidth'], dfcell: ['x', 'y', 'w', 'h', 'dx', 'dy']
+    wxicon: ['x', 'y', 'size'], worldmap: ['x', 'y', 'w', 'h', 'msize'], sunicon: ['x', 'y', 'r'], icon: ['x', 'y'], seggauge: ['x', 'y', 'r', 'gap', 'owidth', 'w', 'h', 'slant'], dfcell: ['x', 'y', 'w', 'h', 'dx', 'dy']
   };
   var THIN = { pen: 1, width: 1, majorWidth: 1, hW: 1, mW: 1, sW: 1, w: 1, h: 1, r: 1, msize: 1 };
   GW.scaleElement = function (el, f) {
@@ -190,6 +190,7 @@ window.GW = window.GW || {};
     GW.assets = {};
     function fin() {
       var drawnAt = d.size || 280;   // the screen size this design was made for
+      (d.elements || []).forEach(function (e) { if (e.type === 'hexgauge') { e.type = 'seggauge'; e.shape = 'hex'; } });   // the hexagon gauge became a shape of the segment gauge
       GW.design = Object.assign(GW.blankDesign(), d, { size: drawnAt });
       if (GW.design.kind === 'datafield') GW.design.elements.forEach(function (e) { if (e.slot == null) e.slot = GW.design.dfSlot || 0; });
       if (GW.design.kind === 'datafield' && !GW.design.dfEdgesApplied) { GW.applyEdges(GW.design); GW.design.dfEdgesApplied = true; }   // older designs: put the layout's dividing lines on the cells once
