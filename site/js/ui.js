@@ -708,6 +708,9 @@
     var chgc = h('input', { type: 'checkbox' }); chgc.checked = !!s.charging;
     chgc.addEventListener('change', function () { s.charging = chgc.checked; GW.touch(false); });
     p.appendChild(h('label', { class: 'chk' }, [chgc, 'Charging (shows the charging bolt)']));
+    var btc = h('input', { type: 'checkbox' }); btc.checked = s.btOn !== false;
+    btc.addEventListener('change', function () { s.btOn = btc.checked; GW.touch(false); });
+    p.appendChild(h('label', { class: 'chk' }, [btc, 'Phone connected (Bluetooth icon)']));
     p.appendChild(field('Weather (for icon + text)', (function () {
       var sel = h('select', {}, GW.WX_NAMES.slice(0, 8).map(function (n, i) { return h('option', { value: i, text: n }); }));
       sel.value = s.wx; sel.addEventListener('change', function () { s.wx = parseInt(sel.value); GW.touch(false); }); return sel;
