@@ -24,6 +24,28 @@
   function ptsToMc(pts) { return '[' + pts.map(function (p) { return '[' + N(p[0]) + ', ' + N(p[1]) + ']'; }).join(', ') + ']'; }
 
   // ================= TEXT =================
+  // Every character a text element can show, or null when that is not known (then the whole set is exported).
+  GW.textChars = function (el) {
+    var s = GW.sources[el.source], D = '0123456789', c;
+    if (!s) return null;
+    switch (el.source) {
+      case 'custom': c = el.text == null ? '' : el.text; break;
+      case 'time': c = D + (el.sep || ''); break;
+      case 'hour': case 'minute': case 'second': c = D; break;
+      case 'ampm': c = 'AMP'; break;
+      case 'date': c = GW.dateChars(el.fmt || 'ddd DD MMM', el.tr); break;
+      case 'weatherDesc': c = GW.WX_NAMES.join(''); break;
+      case 'nyZone': c = 'EDTS'; break;
+      case 'sunrise': case 'sunset': case 'sunNext': case 'nyTime': c = D + ':-'; break;
+      case 'stepGoal': case 'workoutDist': c = D + '.-'; break;
+      case 'temp': c = D + '.-'; break;
+      default:
+        if (s.kind === 'num' && el.source !== 'moonIllum') c = D + '.-'; else return null;
+    }
+    c += (el.prefix || '') + (el.suffix || '') + ' ';
+    return el.upper ? c.toUpperCase() : c;
+  };
+
   T.text = {
     label: 'Text / data', icon: 'T',
     defaults: function () {
@@ -63,7 +85,7 @@
         f.push({ t: 'row', fields: [{ k: 'fontSize', t: 'numopt', label: 'Size (px)', ph: String(bf.px) }, { k: 'capH', t: 'numopt', label: 'or cap height (px)', ph: '' }, { t: 'spacing' }] });
         f.push({ t: 'row', fields: [{ t: 'thicken' }, { t: 'aa' }] });
         if (bf.upload) f.push({ t: 'weight' });
-        f.push({ t: 'glyphs' }); f.push({ t: 'tabular' }); f.push({ t: 'uniform' });
+        f.push({ t: 'glyphs' }); f.push({ t: 'tabular' }); f.push({ t: 'uniform' }); f.push({ t: 'fontsizes' });
       }
       f.push({ k: 'color', t: 'color', label: 'Color' });
       f.push({ k: 'justify', t: 'seg', label: 'Align on X', opts: [['L', 'Left'], ['C', 'Centre'], ['R', 'Right']] });
@@ -84,6 +106,8 @@
       if (el.upper) expr = '(' + expr + ').toUpper()';
       var j = { L: 'LEFT', C: 'CENTER', R: 'RIGHT' }[el.justify] || 'CENTER';
       var fid = GW.fontFor(el), cf = el.rot && GW.customFont(fid);
+      var tch = GW.textChars(el);
+      if (cf) cg.fontChars(fid + '_r' + (el.rot < 0 ? 'n' + Math.round(-el.rot) : Math.round(el.rot)), null); else cg.fontChars(fid, tch);   // a turned copy keeps the whole set
       if (cf) { // bitmap fonts cannot be rotated on the watch: use a copy whose glyph images are pre-rotated and place them one by one
         var met = GW.fontMetrics(cf), k = (met.asc - met.desc) / 2, th = rad(el.rot), rf = cg.rotFont(fid, el.rot);
         cg.helper('rotTxt');

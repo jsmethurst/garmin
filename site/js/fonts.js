@@ -38,6 +38,7 @@
     { family: 'DM Sans', weights: [300, 400, 500, 600, 700] }
   ];
   GW.GLYPH_SETS = {
+    auto: { label: 'Auto: only the characters the design shows (smallest)', chars: (function () { var s = ''; for (var i = 32; i < 127; i++) s += String.fromCharCode(i); return s + '°ÇĞİŞÖÜçğıöşü'; })() },
     nums: { label: 'Digits 0-9 only (smallest)', chars: '0123456789' },
     digits: { label: 'Digits + : . - + % ° /', chars: ' 0123456789:.-+%°/' },
     basic: { label: 'Digits + A-Z + Turkish capitals', chars: ' 0123456789:.-+%°/ABCDEFGHIJKLMNOPQRSTUVWXYZÇĞİŞÖÜ' },
@@ -68,10 +69,47 @@
     return GW.previewFonts[id] || null;
   };
   // A text element can keep its typeface but use its own size: this derives (and registers) that variant and returns its id.
+  // Sizes of one typeface that differ by a single pixel share one exported copy (every extra size costs watch memory).
+  var snapVer = 0, snapCache = null, snapFor = null;
+  GW.on('change', function () { snapVer++; }); GW.on('structure', function () { snapVer++; });
+  function rawPx(el, f) {
+    var px = Math.round(el.fontSize || 0), cap = Math.round(el.capH || 0);
+    if (cap > 0) px = GW.pxForCap(f.family, f.weight, cap);
+    return px || f.px;
+  }
+  function groupKey(f) { return f.family + '|' + f.weight + '|' + (f.bold || 0) + '|' + (f.spacing || 0) + '|' + f.glyphs + '|' + (f.tabular ? 1 : 0) + '|' + (f.uniform ? 1 : 0); }
+  function snapMap() {
+    if (snapCache && snapFor === GW.design && snapCache.ver === snapVer) return snapCache.map;
+    var groups = {};
+    GW.design.elements.forEach(function (el) {
+      if (el.type !== 'text' || el.hidden) return;
+      var f = GW.customFont(el.font); if (!f) return;
+      var base = GW.customFont(f.id.replace(/_s\d+$/, '')) || f, k = groupKey(base);
+      (groups[k] = groups[k] || {})[rawPx(el, base)] = 1;
+    });
+    var map = {};
+    Object.keys(groups).forEach(function (k) {
+      var sz = Object.keys(groups[k]).map(Number).sort(function (a, b) { return a - b; }), i = 0;
+      map[k] = {};
+      while (i < sz.length) { var j = i; while (j + 1 < sz.length && sz[j + 1] - sz[i] <= 1) j++; for (var m = i; m <= j; m++) map[k][sz[m]] = sz[j]; i = j + 1; }
+    });
+    snapCache = { ver: snapVer, map: map }; snapFor = GW.design;
+    return map;
+  }
+  function snapPx(f, px) { var m = snapMap()[groupKey(f)]; return (m && m[px]) || px; }
+  // how many different sizes of this typeface the design uses (after merging)
+  GW.fontSizesUsed = function (el) {
+    var f = GW.customFont(el.font); if (!f) return 0;
+    var base = GW.customFont(f.id.replace(/_s\d+$/, '')) || f, m = snapMap()[groupKey(base)] || {}, seen = {};
+    Object.keys(m).forEach(function (k) { seen[m[k]] = 1; });
+    return Object.keys(seen).length;
+  };
   GW.fontFor = function (el) {
-    var f = GW.customFont(el.font), px = Math.round(el.fontSize || 0), cap = Math.round(el.capH || 0);
-    if (f && cap > 0) px = GW.pxForCap(f.family, f.weight, cap);   // sized by cap height: the 'H' is exactly `cap` pixels tall
-    if (!f || !px || px === f.px) return el.font;
+    var f = GW.customFont(el.font), px = 0;
+    if (f) px = rawPx(el, GW.customFont(f.id.replace(/_s\d+$/, '')) || f);   // sized by cap height when asked: the 'H' is exactly `cap` pixels tall
+    if (!f) return el.font;
+    px = snapPx(f, px || f.px);
+    if (px === f.px) return el.font;
     var id = f.id.replace(/_s\d+$/, '') + '_s' + px;
     GW.previewFonts[id] = Object.assign({}, f, { id: id, px: px });
     return id;
@@ -232,24 +270,35 @@
   };
 
   // ---------- export: rasterise to BMFont (.fnt text + .png atlas) ----------
-  GW.rasterizeFont = function (f) {
-    var met = GW.fontMetrics(f), chars = met.chars, size = 128, placed, atlas, rot = f.rot ? GW.rotFontInfo(f, f.rot) : null;
+  // `only` (optional) is the list of characters the watch face can actually show; the rest of the font is left out of the file.
+  GW.rasterizeFont = function (f, only) {
+    var met = GW.fontMetrics(f), chars = met.chars, placed, atlas, W = 0, H = 0, rot = f.rot ? GW.rotFontInfo(f, f.rot) : null;
+    if (only != null) {
+      var seen = {}; chars = '';
+      only.split('').forEach(function (ch) { if (!seen[ch] && met.glyphs[ch]) { seen[ch] = 1; chars += ch; } });
+      if (!chars) chars = ' ';
+    }
     function box(ch) { var g = met.glyphs[ch]; return rot ? rot.glyphs[ch] : g; }
-    function pack(sz) {
+    function pack(w, h) {
       var out = [], px = 1, py = 1, rowH = 0;
       for (var i = 0; i < chars.length; i++) {
         var g = met.glyphs[chars[i]], bb = box(chars[i]);
         if (g.blank) { out.push({ g: g, ch: chars[i], x: 0, y: 0, bb: bb }); continue; }
-        if (px + bb.w + 1 > sz) { px = 1; py += rowH + 1; rowH = 0; }
-        if (py + bb.h + 1 > sz) return null;
+        if (px + bb.w + 1 > w) { px = 1; py += rowH + 1; rowH = 0; }
+        if (px + bb.w + 1 > w || py + bb.h + 1 > h) return null;
         out.push({ g: g, ch: chars[i], x: px, y: py, bb: bb });
         px += bb.w + 1; rowH = Math.max(rowH, bb.h);
       }
       return out;
     }
-    while (!(placed = pack(size)) && size < 4096) size *= 2;
+    // the smallest width x height (each a power of two, chosen independently) that holds every glyph
+    var sizes = [];
+    for (var a = 16; a <= 2048; a *= 2) for (var b = 16; b <= 2048; b *= 2) sizes.push([a, b]);
+    sizes.sort(function (p, q) { return (p[0] * p[1]) - (q[0] * q[1]) || Math.abs(p[0] - p[1]) - Math.abs(q[0] - q[1]); });
+    for (var si = 0; si < sizes.length && !placed; si++) { placed = pack(sizes[si][0], sizes[si][1]); if (placed) { W = sizes[si][0]; H = sizes[si][1]; } }
     if (!placed) throw new Error('font ' + f.family + ' ' + f.px + 'px is too large to export');
-    atlas = document.createElement('canvas'); atlas.width = atlas.height = size;
+    var size = W;
+    atlas = document.createElement('canvas'); atlas.width = W; atlas.height = H;
     var c = atlas.getContext('2d');
     placed.forEach(function (p) {
       if (p.g.blank) return;
@@ -259,7 +308,7 @@
     var name = f.id, base = rot ? rot.base : met.asc, lineH = rot ? rot.lineHeight : met.lineHeight;
     var lines = [];
     lines.push('info face="' + f.family + '" size=' + f.px + ' bold=0 italic=0 charset="" unicode=1 stretchH=100 smooth=1 aa=1 padding=0,0,0,0 spacing=1,1');
-    lines.push('common lineHeight=' + lineH + ' base=' + base + ' scaleW=' + size + ' scaleH=' + size + ' pages=1 packed=0');
+    lines.push('common lineHeight=' + lineH + ' base=' + base + ' scaleW=' + W + ' scaleH=' + H + ' pages=1 packed=0');
     lines.push('page id=0 file="' + name + '.png"');
     lines.push('chars count=' + placed.length);
     placed.forEach(function (p) {
@@ -268,6 +317,7 @@
       lines.push('char id=' + g.code + ' x=' + p.x + ' y=' + p.y + ' width=' + w + ' height=' + h +
         ' xoffset=' + xo + ' yoffset=' + yo + ' xadvance=' + (rot ? Math.max(g.adv, xo + w + 1) : g.adv) + ' page=0 chnl=15');   // a turned glyph is wider than its advance, and the watch cuts each glyph off at its advance
     });
-    return { name: name, fnt: lines.join('\n') + '\n', canvas: atlas, size: size };
+    return { name: name, fnt: lines.join('\n') + '\n', canvas: atlas, size: Math.max(W, H), w: W, h: H, chars: chars.length,
+      ink: placed.reduce(function (s, p) { return s + (p.g.blank ? 0 : (p.bb.w * p.bb.h)); }, 0), glyphs: placed.filter(function (p) { return !p.g.blank; }).length };
   };
 })(window.GW);

@@ -130,11 +130,14 @@
     }));
 
     var drawables = ['    <bitmap id="LauncherIcon" filename="launcher_icon.png"/>'];
+    var mem = { fonts: [], images: [] };
     src.images.forEach(function (m) {
+      mem.images.push({ id: m.id, w: m.w, h: m.h });
       drawables.push('    <bitmap id="' + m.id + '" filename="images/' + m.id + '.png"/>');
       jobs.push(canvasBytes(scaledImage(GW.assets[m.asset], m.w, m.h)).then(function (b) { text('resources/drawables/images/' + m.id + '.png', b); }));
     });
     if (src.bg) {
+      mem.images.push({ id: 'background', w: GW.DEVICE.size, h: GW.DEVICE.size });
       drawables.push('    <bitmap id="bgImage" filename="images/bgImage.png"/>');
       jobs.push(canvasBytes(scaledImage(GW.assets[src.bg.asset], GW.DEVICE.size, GW.DEVICE.size)).then(function (b) { text('resources/drawables/images/bgImage.png', b); }));
     }
@@ -150,8 +153,9 @@
     if (src.fonts.length) {
       var fx = ['<fonts>'];
       src.fonts.forEach(function (f) {
-        var r = GW.rasterizeFont(f);
+        var r = GW.rasterizeFont(f, f.glyphs === 'auto' && src.fontChars && src.fontChars[f.id] ? src.fontChars[f.id] : undefined);
         fx.push('    <font id="' + f.id + '" filename="' + f.id + '.fnt" antialias="true"/>'); // relative to this xml
+        mem.fonts.push({ id: f.id, family: f.family, px: f.px, w: r.w, h: r.h, chars: r.chars, glyphs: r.glyphs, ink: r.ink });
         text('resources/fonts/' + f.id + '.fnt', r.fnt);
         jobs.push(canvasBytes(r.canvas).then(function (b) { text('resources/fonts/' + f.id + '.png', b); }));
       });
@@ -174,7 +178,7 @@
         if (ia >= 0 || ib >= 0) return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
         return a.path < b.path ? -1 : 1;
       });
-      return { name: n, files: files, warnings: src.warnings, src: src, appId: appId };
+      return { name: n, files: files, warnings: src.warnings, src: src, appId: appId, mem: mem };
     });
   };
 

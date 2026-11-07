@@ -210,7 +210,7 @@
 
   // ---------- main generator ----------
   GW.generateSource = function (design) {
-    var st = { needs: {}, helpers: [], hseen: {}, imports: {}, perms: {}, fonts: [], fseen: {}, images: [], iseen: {}, files: {}, minApi: '3.2.0', hooks: { begin: [], init: [], compute: [], lap: [], reset: [] }, extraMembers: [] };
+    var st = { needs: {}, helpers: [], hseen: {}, imports: {}, perms: {}, fonts: [], fseen: {}, fchars: {}, images: [], iseen: {}, files: {}, minApi: '3.2.0', hooks: { begin: [], init: [], compute: [], lap: [], reset: [] }, extraMembers: [] };
     var warnings = [];
     var cg = {
       design: design,
@@ -231,6 +231,14 @@
         (h.deps || []).forEach(cg.helper); (h.needs || []).forEach(cg.need); (h.imports || []).forEach(cg.imp);
         (h.perms || []).forEach(cg.perm);
         st.helpers.push(n);
+      },
+      // the characters the elements using a bitmap font can show (null = unknown: export the whole set)
+      fontChars: function (id, chars) {
+        if (GW.isSysFont(id)) return;
+        var cur = st.fchars[id];
+        if (cur === null) return;
+        if (chars == null) { st.fchars[id] = null; return; }
+        st.fchars[id] = (cur || '') + chars;
       },
       font: function (id) {
         if (GW.isSysFont(id)) return 'Graphics.' + id;
@@ -373,6 +381,6 @@
     if (els.some(function (e) { return e.type === 'text' && ['weatherDesc', 'temp'].indexOf(e.source) >= 0; })) warnings.push('Weather text and temperature only show data once the watch has synced weather from your phone (they read "--" until then). Sunrise and sunset fall back to Istanbul.');
     if (!els.length) warnings.push('The design is empty.');
 
-    return { name: name, type: isField ? 'datafield' : 'watchface', app: app, view: view, perms: perms, fonts: st.fonts, images: st.images, bg: bg, warnings: warnings, files: st.files, minApi: st.minApi };
+    return { name: name, type: isField ? 'datafield' : 'watchface', app: app, view: view, perms: perms, fonts: st.fonts, images: st.images, bg: bg, warnings: warnings, files: st.files, minApi: st.minApi, fontChars: st.fchars };
   };
 })(window.GW);

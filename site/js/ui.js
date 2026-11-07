@@ -143,7 +143,7 @@
         var id = GW.uid('u'), family = 'upl_' + id;
         GW.registerUploadedFont(family, fr.result, 400).then(function () {
           GW.assets[id] = { dataUrl: fr.result, font: true };
-          var nf = { id: 'f_' + id, family: family, label: file.name.replace(/\.[^.]+$/, ''), weight: 400, px: el.fontSize || (cur && cur.px) || 22, glyphs: cur && cur.glyphs ? cur.glyphs : 'basic', spacing: 0, upload: true, asset: id };
+          var nf = { id: 'f_' + id, family: family, label: file.name.replace(/\.[^.]+$/, ''), weight: 400, px: el.fontSize || (cur && cur.px) || 22, glyphs: cur && cur.glyphs ? cur.glyphs : 'auto', spacing: 0, upload: true, asset: id };
           GW.design.fonts.push(nf); el[f.k] = nf.id; el.fontSize = null; fireChange(true); GW.toast('Font loaded: ' + nf.label);
         }).catch(function () { GW.toast('Could not read that font file.'); });
       };
@@ -152,8 +152,8 @@
     sel.addEventListener('change', function () {
       if (sel.value === '__up') { restore(); up.click(); return; }
       if (sel.value.indexOf('__fam|') === 0) {
-        var parts = sel.value.split('|'), base = cur || { px: 22, glyphs: 'basic' };
-        var nfont = { id: slugId(parts[1], parts[2]), family: parts[1], weight: Number(parts[2]), px: el.fontSize || base.px, glyphs: base.glyphs === 'nums' || base.glyphs === 'digits' ? base.glyphs : 'basic', spacing: 0 };
+        var parts = sel.value.split('|'), base = cur || { px: 22, glyphs: 'auto' };
+        var nfont = { id: slugId(parts[1], parts[2]), family: parts[1], weight: Number(parts[2]), px: el.fontSize || base.px, glyphs: base.glyphs === 'nums' || base.glyphs === 'digits' ? base.glyphs : 'auto', spacing: 0 };
         GW.design.fonts.push(nfont); el[f.k] = nfont.id; el.fontSize = null;
         fireChange(true); GW.touch(false); GW.fontsReady().then(function () { GW.touch(true); }); return;
       }
@@ -368,6 +368,10 @@
       case 'dfsrc': return fDfSrc(el, f);
       case 'sysfont': return fSysFont(el, f);
       case 'glyphs': return fGlyphs(el);
+      case 'fontsizes': {
+        var ns = GW.fontSizesUsed(el); if (!ns) return null;
+        return h('p', { class: 'muted small', text: ns + (ns === 1 ? ' size' : ' sizes') + ' of this typeface in the design. Every size is a separate font in watch memory; reuse sizes where you can (sizes 1 px apart are merged automatically).' });
+      }
       case 'spacing': return fSpacing(el);
       case 'thicken': return fThicken(el);
       case 'tabular': return fTabular(el);
@@ -882,6 +886,23 @@
     var b = String(GW.design.name || '').replace(/[\\\/:*?"<>|]+/g, '').trim() || 'Layout';
     return r && r.label ? b + ' - ' + r.label.replace(/\s*\(.*\)/, '').replace(/[^\w\u00b0 ]+/g, '') : b;
   }
+  // Rough watch-memory estimate for the fonts and pictures (what the exported files will occupy). It is an estimate, not a measurement.
+  function memBox(results) {
+    var field_ = results[0].src.type === 'datafield', lim = field_ ? (GW.DEVICE.id === 'fenix6' ? 32 : 128) : (GW.DEVICE.id === 'fenix6' ? 112 : 128);
+    var box = h('div', { class: 'f', style: 'margin:0 0 14px' }, [h('label', { text: 'Memory estimate' })]);
+    results.forEach(function (r) {
+      var rows = [], total = 0;
+      r.mem.fonts.forEach(function (f) { var b = 197 + f.glyphs * 58 + 0.084 * f.ink; total += b; rows.push(f.family + ' ' + f.px + ' px, ' + f.glyphs + ' glyphs (atlas ' + f.w + '×' + f.h + '): ≈ ' + (b / 1024).toFixed(1) + ' KB'); });
+      r.mem.images.forEach(function (m) { var b = m.w * m.h; total += b; rows.push('Picture ' + m.id + ' ' + m.w + '×' + m.h + ': ' + (b / 1024).toFixed(1) + ' KB'); });
+      var pct = total / 1024 / lim * 100;
+      if (results.length > 1) box.appendChild(h('div', { class: 'muted small', text: r.label }));
+      box.appendChild(h('div', { class: 'muted small', style: 'white-space:pre-line', text: (rows.length ? rows.join('\n') : 'No fonts or pictures.') }));
+      box.appendChild(h('div', { class: 'note' + (pct > 80 ? ' warn' : ''), text: (pct > 80 ? '⚠ ' : '') + 'Fonts + pictures ≈ ' + (total / 1024).toFixed(1) + ' KB of about ' + lim + ' KB available on ' + GW.DEVICE.name + ' (' + Math.round(pct) + '%).' + (pct > 80 ? ' Close to the limit: the watch may show the "IQ!" screen. Use fewer font sizes or characters.' : '') }));
+    });
+    box.appendChild(h('p', { class: 'muted small', text: 'This is an estimate, not a measurement: fonts are sized from the number of glyphs and their pixels (fitted to what the compiler produced for the fēnix 6; the atlas size itself does not change it), pictures at one byte per pixel. The program and live data are not counted.' }));
+    return box;
+  }
+
   GW.openExport = function () {
     var body = h('div', {}, [h('p', { class: 'muted', text: 'Building your project…' })]);
     modal('Get it on your watch', body);
@@ -932,6 +953,7 @@
           h('button', { class: 'btn primary', style: 'font-size:15px;padding:11px 20px', text: '⬇ Download ' + (many ? results.length + ' projects' : 'project') + ' (' + zipName + ')', onclick: function () { GW.download(blob, zipName); GW.toast('Downloaded ' + zipName); } }),
           h('span', { class: 'muted small', text: nFiles + ' files · ' + Math.round(blob.size / 1024) + ' KB · for ' + GW.DEVICE.name })
         ]));
+        body.appendChild(memBox(results));
         body.appendChild(h('div', { class: 'warns' }, Object.keys(warns).map(function (w) { return h('div', { class: 'note warn', text: '⚠ ' + w }); })));
         body.appendChild(builderBox(results));
         body.appendChild(h('h4', { style: 'margin:18px 0 8px', class: 'muted small', text: 'OR BUILD IT YOURSELF' }));

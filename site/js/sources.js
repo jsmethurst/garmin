@@ -63,6 +63,21 @@
   var TR_DAY = ['PAZAR', 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ'];
   var TR_M3 = ['OCA', 'ŞUB', 'MAR', 'NİS', 'MAY', 'HAZ', 'TEM', 'AĞU', 'EYL', 'EKİ', 'KAS', 'ARA'];
   var TR_MON = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN', 'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
+  // every character a date format can produce (so an exported font only needs those)
+  GW.dateChars = function (fmt, tr) {
+    var c = '';
+    GW.dateParts(fmt).forEach(function (p) {
+      if (p.lit != null) { c += p.lit; return; }
+      switch (p.tok) {
+        case 'DDDD': c += (tr ? TR_DAY : DOW).join(''); break;
+        case 'ddd': c += (tr ? TR_D3 : DOW.map(function (d) { return d.slice(0, 3); })).join(''); break;
+        case 'MMMM': c += (tr ? TR_MON : MON).join(''); break;
+        case 'MMM': c += (tr ? TR_M3 : MON.map(function (d) { return d.slice(0, 3); })).join(''); break;
+        default: c += '0123456789';
+      }
+    });
+    return c;
+  };
   function dateStr(env, fmt, tr) {
     return GW.dateParts(fmt).map(function (p) {
       if (p.lit != null) return p.lit;
