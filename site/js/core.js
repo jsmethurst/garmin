@@ -19,7 +19,7 @@ window.GW = window.GW || {};
     text: ['x', 'y', 'fontSize'], arc: ['cx', 'cy', 'r', 'pen'], ticks: ['cx', 'cy', 'r', 'len', 'majorLen', 'width', 'majorWidth'],
     hands: ['cx', 'cy', 'hLen', 'hW', 'mLen', 'mW', 'sLen', 'sW', 'sTail', 'hub'], shape: ['x', 'y', 'x2', 'y2', 'w', 'h', 'r', 'pen', 'rad'],
     image: ['x', 'y', 'w', 'h'], barchart: ['x', 'y', 'w', 'h', 'gap'], movebar: ['x', 'y', 'w', 'h', 'gap'], moon: ['x', 'y', 'r'], binary: ['x', 'y', 'r', 'gap'],
-    wxicon: ['x', 'y', 'size'], worldmap: ['x', 'y', 'w', 'h', 'msize'], sunicon: ['x', 'y', 'r'], icon: ['x', 'y'], dfcell: ['x', 'y', 'w', 'h', 'dx', 'dy']
+    wxicon: ['x', 'y', 'size'], worldmap: ['x', 'y', 'w', 'h', 'msize'], sunicon: ['x', 'y', 'r'], icon: ['x', 'y'], hexgauge: ['x', 'y', 'r', 'gap', 'owidth'], dfcell: ['x', 'y', 'w', 'h', 'dx', 'dy']
   };
   var THIN = { pen: 1, width: 1, majorWidth: 1, hW: 1, mW: 1, sW: 1, w: 1, h: 1, r: 1, msize: 1 };
   GW.scaleElement = function (el, f) {

@@ -136,3 +136,93 @@
   GW.sim.charging = false;
   GW.sim.btOn = true;
 })(window.GW);
+
+// ================= SEGMENT GAUGE: a hexagon of 6 triangles that light up with a value =================
+(function (GW) {
+  'use strict';
+  var T = GW.types, q = GW.q, N = Math.round, clamp = GW.clamp;
+  // One geometry for preview and watch. Flat-top by default; triangle 0 is the top one, then clockwise. Whole pixels throughout.
+  function hexTris(el) {
+    var R = el.r, g = Math.max(0, el.gap || 0), rot = el.rot || 0, out = [], v = [];
+    for (var k = 0; k < 6; k++) { var a = (-120 + 60 * k + rot) * Math.PI / 180; v.push([el.x + R * Math.cos(a), el.y + R * Math.sin(a)]); }
+    var s = (g / 2) / Math.sin(Math.PI / 3);
+    for (var i = 0; i < 6; i++) {
+      var B = v[i], C = v[(i + 1) % 6], A = [el.x, el.y];
+      if (g > 0) {
+        var m = [(B[0] + C[0]) / 2 - A[0], (B[1] + C[1]) / 2 - A[1]], ml = Math.sqrt(m[0] * m[0] + m[1] * m[1]);
+        var bc = [C[0] - B[0], C[1] - B[1]], bl = Math.sqrt(bc[0] * bc[0] + bc[1] * bc[1]);
+        A = [el.x + m[0] / ml * g, el.y + m[1] / ml * g];
+        var B2 = [B[0] + bc[0] / bl * s, B[1] + bc[1] / bl * s], C2 = [C[0] - bc[0] / bl * s, C[1] - bc[1] / bl * s]; B = B2; C = C2;
+      }
+      out.push([[N(A[0]), N(A[1])], [N(B[0]), N(B[1])], [N(C[0]), N(C[1])]]);
+    }
+    return out;
+  }
+  GW.hexTris = hexTris;
+  function progress(el, env) {
+    var s = GW.sources[el.source]; if (!s || !s.num) return 0;
+    var v = s.num(env); if (v == null) return 0;
+    var r = GW.srcRange(el.source, env), mn = el.min != null ? el.min : r[0], mx = el.max != null ? el.max : r[1];
+    if (el.source === 'calories' && el.max == null) mx = env.sim.calGoal;   // the watch reads the calorie goal when it has one
+    return mx > mn ? clamp((v - mn) / (mx - mn), 0, 1) : 0;
+  }
+  T.hexgauge = {
+    label: 'Segment gauge', icon: '⬡',
+    defaults: function () { return { type: 'hexgauge', name: 'Segment gauge', x: 140, y: 140, r: 60, rot: 0, source: 'calories', min: null, max: null,
+      color: '#ff5500', unlit: '#333333', outline: '#000000', owidth: 0, gap: 2, partial: false, calFallback: 2200 }; },
+    pos: [['x', 'y']],
+    draw: function (ctx, el, env) {
+      var n = progress(el, env) * 6, tris = hexTris(el);
+      tris.forEach(function (t, i) {
+        var lit = el.partial ? n > i : n >= i + 1;
+        ctx.fillStyle = q(lit ? el.color : el.unlit);
+        ctx.beginPath(); t.forEach(function (p, j) { j ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); ctx.fill();
+      });
+      if (el.owidth > 0) {
+        ctx.strokeStyle = q(el.outline); ctx.lineWidth = el.owidth; ctx.lineCap = 'butt';
+        tris.forEach(function (t) { ctx.beginPath(); t.forEach(function (p, j) { j ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); ctx.stroke(); });
+      }
+    },
+    box: function (el) { return { x: el.x - el.r, y: el.y - el.r, w: el.r * 2, h: el.r * 2 }; },
+    fields: function (el) {
+      var s = GW.sources[el.source] || {};
+      var f = [
+        { k: 'source', t: 'source', label: 'Measures', kinds: ['num'] },
+        { t: 'row', fields: [{ k: 'min', t: 'numopt', label: 'Empty at', ph: '0' }, { k: 'max', t: 'numopt', label: 'Full at', ph: el.source === 'calories' ? 'calorie goal' : (s.mcGoal ? 'daily goal' : String((s.range || [0, 100])[1])) }] }
+      ];
+      if (el.source === 'calories') f.push({ k: 'calFallback', t: 'num', label: 'Goal if the watch has none', min: 100, max: 10000 });
+      f.push({ k: 'partial', t: 'check', label: 'Light a triangle as soon as its share starts' });
+      f.push({ t: 'h', label: 'Look' });
+      f.push({ t: 'row', fields: [{ k: 'color', t: 'color', label: 'Lit' }, { k: 'unlit', t: 'color', label: 'Unlit' }] });
+      f.push({ t: 'row', fields: [{ k: 'outline', t: 'color', label: 'Outline' }, { k: 'owidth', t: 'num', label: 'Outline width (0 = none)', min: 0, max: 6 }] });
+      f.push({ t: 'row', fields: [{ k: 'r', t: 'num', label: 'Radius', min: 10, max: 200 }, { k: 'gap', t: 'num', label: 'Gap (px)', min: 0, max: 12 }] });
+      f.push({ k: 'rot', t: 'range', label: 'Rotation', min: 0, max: 59 });
+      f.push({ t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] });
+      return f;
+    },
+    gen: function (el, cg) {
+      var s = GW.sources[el.source]; if (!s || !s.mcNum) return [];
+      (s.imports || []).forEach(cg.imp); (s.perms || []).forEach(cg.perm);
+      cg.helper('prog');
+      var r = s.range || [0, 100], mn = el.min != null ? el.min : (s.mcGoal ? 0 : r[0]), mx;
+      if (el.max != null) mx = String(el.max);
+      else if (el.source === 'calories') { cg.need('act'); mx = '((_act has :calorieGoal && _act.calorieGoal != null) ? _act.calorieGoal : ' + N(el.calFallback || 2200) + ')'; }
+      else mx = s.mcGoal ? s.mcGoal(el, cg) : String(r[1]);
+      var id = String(el.id).replace(/[^A-Za-z0-9]/g, ''), tris = hexTris(el), L = [];
+      L.push('var n = prog(' + s.mcNum(el, cg) + ', ' + mn + ', ' + mx + ') * 6.0f;');
+      tris.forEach(function (t, i) {
+        // the point list is a class constant built once, so nothing is allocated while drawing
+        var nm = 'HG_' + id + '_' + i;
+        cg.member('    const ' + nm + ' = [' + t.map(function (p) { return '[' + p[0] + ', ' + p[1] + ']'; }).join(', ') + '];');
+        L.push('dc.setColor((n ' + (el.partial ? '> ' + i + '.0f' : '>= ' + (i + 1) + '.0f') + ') ? ' + GW.mcColor(el.color) + ' : ' + GW.mcColor(el.unlit) + ', Graphics.COLOR_TRANSPARENT);');
+        L.push('dc.fillPolygon(' + nm + ');');
+      });
+      if (el.owidth > 0) {
+        L.push('dc.setColor(' + GW.mcColor(el.outline) + ', Graphics.COLOR_TRANSPARENT);', 'dc.setPenWidth(' + N(el.owidth) + ');');
+        tris.forEach(function (t) { for (var k = 0; k < 3; k++) { var a = t[k], b = t[(k + 1) % 3]; L.push('dc.drawLine(' + a[0] + ', ' + a[1] + ', ' + b[0] + ', ' + b[1] + ');'); } });
+        L.push('dc.setPenWidth(1);');
+      }
+      return L;
+    }
+  };
+})(window.GW);

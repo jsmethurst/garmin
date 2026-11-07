@@ -186,7 +186,7 @@
     d.elements.forEach(function (e) {
       var p;
       if (e.type === 'icon') { p = rp(e.x, e.y); e.x = p[0]; e.y = p[1]; return; }
-      if (e.type === 'text' || e.type === 'sunicon' || e.type === 'dfcell' || (e.type === 'shape' && e.kind !== 'line')) {
+      if (e.type === 'text' || e.type === 'sunicon' || e.type === 'hexgauge' || e.type === 'dfcell' || (e.type === 'shape' && e.kind !== 'line')) {
         if (e.type === 'dfcell') { var ccx = e.x + e.w / 2, ccy = e.y + e.h / 2; p = rp(ccx, ccy); e.x = p[0] - e.w / 2; e.y = p[1] - e.h / 2; e.rot = (e.rot || 0) + deg; return; } p = rp(e.x, e.y); e.x = p[0]; e.y = p[1]; e.rot = (e.rot || 0) + deg; }
       else if (e.type === 'shape') { p = rp(e.x, e.y); e.x = p[0]; e.y = p[1]; p = rp(e.x2, e.y2); e.x2 = p[0]; e.y2 = p[1]; }
       else if (e.type === 'arc') { p = rp(e.cx, e.cy); e.cx = p[0]; e.cy = p[1]; e.start = (e.start + deg) % 360; }

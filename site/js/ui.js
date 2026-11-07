@@ -531,7 +531,7 @@
       } }));
     });
     var g = $('addGrid'); g.innerHTML = '';
-    ['text', 'arc', 'hands', 'ticks', 'shape', 'image', 'barchart', 'movebar', 'moon', 'binary', 'wxicon', 'worldmap', 'sunicon', 'icon'].forEach(function (k) {
+    ['text', 'arc', 'hands', 'ticks', 'shape', 'image', 'barchart', 'movebar', 'moon', 'binary', 'wxicon', 'worldmap', 'sunicon', 'icon', 'hexgauge'].forEach(function (k) {
       g.appendChild(h('button', { class: 'addbtn', onclick: function () { GW.addElement(k, { name: T[k].label }); } }, [h('i', { text: T[k].icon }), T[k].label]));
     });
   };
@@ -671,7 +671,7 @@
   // ---------------------------------------------------------------- fonts tab
   // ---------------------------------------------------------------- sim tab
   var SIMVARS = [
-    ['steps', 'Steps', 0, 30000, 50], ['stepGoal', 'Step goal', 2000, 30000, 500], ['calories', 'Calories', 0, 4000, 10], ['floors', 'Floors', 0, 40, 1],
+    ['steps', 'Steps', 0, 30000, 50], ['stepGoal', 'Step goal', 2000, 30000, 500], ['calories', 'Calories', 0, 4000, 10], ['calGoal', 'Calorie goal', 500, 5000, 50], ['floors', 'Floors', 0, 40, 1],
     ['intMins', 'Intensity min (week)', 0, 400, 5], ['distance', 'Distance (km)', 0, 40, 0.1], ['hr', 'Heart rate', 35, 200, 1], ['bodyBat', 'Body Battery', 0, 100, 1],
     ['stress', 'Stress', 0, 100, 1], ['spo2', 'SpO2 %', 80, 100, 1], ['resp', 'Respiration', 4, 40, 1], ['battery', 'Battery %', 0, 100, 1], ['batteryDays', 'Battery days', 0, 14, 0.1],
     ['notif', 'Notifications', 0, 20, 1], ['temp', 'Temperature °C', -20, 45, 1], ['altitude', 'Altitude m', -50, 4000, 10], ['moveBar', 'Move bar', 0, 5, 1],
