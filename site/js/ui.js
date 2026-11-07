@@ -413,6 +413,14 @@
       if (miss.length) p.appendChild(h('div', { class: 'note warn', text: 'Missing from this font’s character set: ' + miss.join(' ') + '. Pick a bigger set under Characters (“Full” or the Turkish one).' }));
     }
     t.fields(el).forEach(function (f) { var n = renderField(el, f); if (n) p.appendChild(n); });
+    if (el.type === 'text' && GW.ICON_FOR && GW.ICONS[GW.ICON_FOR[el.source]]) {
+      p.appendChild(h('button', { class: 'btn sm', text: 'Add matching icon', onclick: function () {
+        var b = GW.elBox(el), sz = 16;
+        GW.ICON_SIZES.forEach(function (v) { if (v <= b.h + 4) sz = v; });
+        var gap = 4, cy = Math.round(b.y + b.h / 2), cx = Math.round(b.x - gap - sz / 2);
+        GW.addElement('icon', { name: GW.ICONS[GW.ICON_FOR[el.source]].label + ' icon', kind: GW.ICON_FOR[el.source], size: sz, x: cx, y: cy, color: el.color });
+      } }));
+    }
     p.appendChild(h('div', { class: 'row' }, [
       h('button', { class: 'btn sm', text: '↑ Bring forward', onclick: function () { GW.moveLayer(el.id, 1); } }),
       h('button', { class: 'btn sm', text: '↓ Send back', onclick: function () { GW.moveLayer(el.id, -1); } })
@@ -523,7 +531,7 @@
       } }));
     });
     var g = $('addGrid'); g.innerHTML = '';
-    ['text', 'arc', 'hands', 'ticks', 'shape', 'image', 'barchart', 'movebar', 'moon', 'binary', 'wxicon', 'worldmap', 'sunicon'].forEach(function (k) {
+    ['text', 'arc', 'hands', 'ticks', 'shape', 'image', 'barchart', 'movebar', 'moon', 'binary', 'wxicon', 'worldmap', 'sunicon', 'icon'].forEach(function (k) {
       g.appendChild(h('button', { class: 'addbtn', onclick: function () { GW.addElement(k, { name: T[k].label }); } }, [h('i', { text: T[k].icon }), T[k].label]));
     });
   };
@@ -697,6 +705,9 @@
       field('Clock', segCtl([[1, '24h'], [0, '12h']], s.is24 ? 1 : 0, function (v) { s.is24 = !!Number(v); GW.touch(false); GW.renderPanel(); }))
     ]);
     p.appendChild(u);
+    var chgc = h('input', { type: 'checkbox' }); chgc.checked = !!s.charging;
+    chgc.addEventListener('change', function () { s.charging = chgc.checked; GW.touch(false); });
+    p.appendChild(h('label', { class: 'chk' }, [chgc, 'Charging (shows the charging bolt)']));
     p.appendChild(field('Weather (for icon + text)', (function () {
       var sel = h('select', {}, GW.WX_NAMES.slice(0, 8).map(function (n, i) { return h('option', { value: i, text: n }); }));
       sel.value = s.wx; sel.addEventListener('change', function () { s.wx = parseInt(sel.value); GW.touch(false); }); return sel;
