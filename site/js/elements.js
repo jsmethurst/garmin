@@ -770,7 +770,12 @@
           if (p.t === 'c') L.push('    dc.fillCircle(' + (cx + p.x) + ', ' + (cy + p.y) + ', ' + p.r + ');');
           else if (p.t === 'r') L.push('    dc.fillRectangle(' + (cx + p.x) + ', ' + (cy + p.y) + ', ' + p.w + ', ' + p.h + ');');
           else if (p.t === 'l') { L.push('    dc.setPenWidth(' + p.p + ');'); L.push('    dc.drawLine(' + (cx + p.x) + ', ' + (cy + p.y) + ', ' + (cx + p.x2) + ', ' + (cy + p.y2) + ');'); L.push('    dc.setPenWidth(1);'); }
-          else L.push('    dc.fillPolygon(' + ptsToMc(p.pts.map(function (q) { return [cx + q[0], cy + q[1]]; })) + ');');
+          else {
+            // a class constant, so nothing is allocated while drawing
+            var pn = ('WXP_' + g + '_' + cx + '_' + cy + '_' + el.size).replace(/-/g, 'n');
+            cg.member('    const ' + pn + ' = ' + ptsToMc(p.pts.map(function (q) { return [cx + q[0], cy + q[1]]; })) + ';');
+            L.push('    dc.fillPolygon(' + pn + ');');
+          }
         });
       }
       L.push('}');
