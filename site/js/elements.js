@@ -515,18 +515,24 @@
     var b = BC[el.source] || BC.steps, v = BC_PREV.map(function (f) { return Math.round(f * b.scale(env)); });
     v.push(el.source === 'intMins' && el.todayWeek ? env.sim.intMins : b.today(env)); return v;
   }
+  // which of the 8 history values a bar chart shows: 8 bars = the last 7 days + today; 7 bars = the previous 7 days, or today + the previous 6
+  function bcShape(el) {
+    if (el.bars === 7) return el.span === 'today' ? { n: 7, off: 1, today: 6 } : { n: 7, off: 0, today: -1 };
+    return { n: 8, off: 0, today: 7 };
+  }
   T.barchart = {
     label: 'Bar chart (8 days)', icon: '▥',
-    defaults: function () { return { type: 'barchart', name: 'Bar chart', x: 140, y: 200, w: 120, h: 34, source: 'steps', gap: 2, color: '#00aaff', todayColor: '#ffff00', goal: false, goalColor: '#ff5555' }; },
+    defaults: function () { return { type: 'barchart', name: 'Bar chart', x: 140, y: 200, w: 120, h: 34, source: 'steps', gap: 2, color: '#00aaff', todayColor: '#ffff00', unlit: null, bars: 8, span: 'prev', goal: false, goalColor: '#ff5555' }; },
     pos: [['x', 'y']],
     draw: function (ctx, el, env) {
-      var vals = bcValues(el, env), b = BC[el.source] || BC.steps;
+      var sh = bcShape(el), all = bcValues(el, env), vals = all.slice(sh.off, sh.off + sh.n), n = sh.n;
       var goal = el.goal && el.source === 'steps' ? env.sim.stepGoal : 0, mx = Math.max(1, goal);
       vals.forEach(function (v) { mx = Math.max(mx, v); });
-      var bw = Math.max(1, Math.floor((el.w - 7 * el.gap) / 8)), totalW = 8 * bw + 7 * el.gap, left = Math.round(el.x - totalW / 2), bottom = el.y + el.h / 2;   // the bars are centred on X, as on the watch
+      var bw = Math.max(1, Math.floor((el.w - (n - 1) * el.gap) / n)), totalW = n * bw + (n - 1) * el.gap, left = Math.round(el.x - totalW / 2), bottom = el.y + el.h / 2;   // the bars are centred on X (from the true total width), as on the watch
       vals.forEach(function (v, i) {
         var bh = Math.floor(v / mx * el.h); if (bh < 1 && v > 0) bh = 1;
-        ctx.fillStyle = q(i === 7 ? el.todayColor : el.color);
+        if (el.unlit) { ctx.fillStyle = q(el.unlit); ctx.fillRect(left + i * (bw + el.gap), bottom - el.h, bw, el.h); }   // full-height track behind the bar
+        ctx.fillStyle = q(i === sh.today ? el.todayColor : el.color);
         ctx.fillRect(left + i * (bw + el.gap), bottom - bh, bw, bh);
       });
       if (goal) { var gy = bottom - Math.floor(goal / mx * el.h); ctx.fillStyle = q(el.goalColor); ctx.fillRect(left, gy, totalW, 1); }
@@ -537,6 +543,9 @@
         { k: 'source', t: 'select', label: 'Chart of', opts: Object.keys(BC).map(function (k) { return [k, BC[k].label]; }) },
         { k: 'color', t: 'color', label: 'Bar color' },
         { k: 'todayColor', t: 'color', label: 'Today color' },
+        { k: 'unlit', t: 'optcolor', label: 'Unlit color (empty track behind each bar)' },
+        { k: 'bars', t: 'seg', label: 'Bars', opts: [[8, '8'], [7, '7']], num: true },
+        el.bars === 7 ? { k: 'span', t: 'seg', label: 'The 7 bars are', opts: [['prev', 'Previous 7 days'], ['today', 'Today + previous 6']] } : null,
         el.source === 'intMins' ? { k: 'todayWeek', t: 'check', label: 'Last bar = this week\'s total (otherwise today\'s minutes)' } : null,
         el.source === 'steps' ? { k: 'goal', t: 'check', label: 'Show step-goal line' } : null,
         el.goal && el.source === 'steps' ? { k: 'goalColor', t: 'color', label: 'Goal line color' } : null,
@@ -547,17 +556,22 @@
     },
     gen: function (el, cg) {
       cg.need('act'); cg.helper('histVals');
-      var b = BC[el.source] || BC.steps, gap = N(el.gap), bw = Math.max(1, Math.floor((el.w - 7 * gap) / 8));
-      var totalW = 8 * bw + 7 * gap, left = N(el.x - totalW / 2), bottom = N(el.y + el.h / 2), H = N(el.h);   // centred on X, same as the preview
+      var b = BC[el.source] || BC.steps, gap = N(el.gap), sh = bcShape(el), n = sh.n, bw = Math.max(1, Math.floor((el.w - (n - 1) * gap) / n));
+      var totalW = n * bw + (n - 1) * gap, left = N(el.x - totalW / 2), bottom = N(el.y + el.h / 2), H = N(el.h);   // centred on X from the true total width, same as the preview
       var goal = el.goal && el.source === 'steps';
       var kind = (el.source === 'intMins' && el.todayWeek) ? 4 : b.kind;   // 4: the last bar shows this week's total instead of today's minutes
+      var vi = sh.off ? 'v[i + ' + sh.off + ']' : 'v[i]';
       var L = ['var v = histVals(' + kind + ');', 'var mx = 1;'];
       if (goal) { cg.helper('stepGoalNow'); L.push('var g = stepGoalNow();', 'if (g > mx) { mx = g; }'); }
-      L.push('for (var i = 0; i < 8; i++) { if (v[i] > mx) { mx = v[i]; } }');
-      L.push('for (var i = 0; i < 8; i++) {');
-      L.push('    var bh = (v[i].toFloat() / mx.toFloat() * ' + H + '.0).toNumber();');
-      L.push('    if (bh < 1 && v[i] > 0) { bh = 1; }');
-      L.push('    dc.setColor((i == 7) ? ' + GW.mcColor(el.todayColor) + ' : ' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);');
+      L.push('for (var i = 0; i < ' + n + '; i++) { if (' + vi + ' > mx) { mx = ' + vi + '; } }');
+      L.push('for (var i = 0; i < ' + n + '; i++) {');
+      if (el.unlit) {
+        L.push('    dc.setColor(' + GW.mcColor(el.unlit) + ', Graphics.COLOR_TRANSPARENT);');
+        L.push('    dc.fillRectangle(' + left + ' + i * ' + (bw + gap) + ', ' + (bottom - H) + ', ' + bw + ', ' + H + ');');
+      }
+      L.push('    var bh = (' + vi + '.toFloat() / mx.toFloat() * ' + H + '.0).toNumber();');
+      L.push('    if (bh < 1 && ' + vi + ' > 0) { bh = 1; }');
+      L.push('    dc.setColor(' + (sh.today >= 0 ? '(i == ' + sh.today + ') ? ' + GW.mcColor(el.todayColor) + ' : ' + GW.mcColor(el.color) : GW.mcColor(el.color)) + ', Graphics.COLOR_TRANSPARENT);');
       L.push('    dc.fillRectangle(' + left + ' + i * ' + (bw + gap) + ', ' + bottom + ' - bh, ' + bw + ', bh);');
       L.push('}');
       if (goal) {
