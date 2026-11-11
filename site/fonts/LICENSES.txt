@@ -21,3 +21,6 @@ Added later (also SIL Open Font License 1.1, files from Fontsource):
   Aldrich           (c) 2011 The Aldrich Project Authors
   Exo 2             (c) 2013 The Exo Project Authors
   and more weights of Rajdhani, Orbitron, Oxanium, Chakra Petch and DM Sans.
+
+
+Icons: Material Design Icons @mdi/font 4.9.95 by Pictogrammers, Apache License 2.0, https://pictogrammers.com/docs/general/license (subset in mdi-icons-subset.ttf).

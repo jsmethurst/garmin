@@ -379,6 +379,7 @@
     if (els.some(function (e) { return e.type === 'hands' && e.sShow; })) warnings.push('Second hand only moves while the wrist is raised (high-power mode); it is hidden in low-power mode.');
     if (els.some(function (e) { return (e.type === 'text' && (e.source === 'second' || (e.source === 'time' && e.secs))); })) warnings.push('Seconds text freezes in low-power mode (the watch redraws once a minute).');
     if (els.some(function (e) { return e.type === 'text' && ['weatherDesc', 'temp'].indexOf(e.source) >= 0; })) warnings.push('Weather text and temperature only show data once the watch has synced weather from your phone (they read "--" until then). Sunrise and sunset fall back to Istanbul.');
+    if (els.some(function (e) { var c = e.type === 'text' ? GW.textChars(e) : null; return c && GW.bmpOnly(c).refused > 0; })) warnings.push('A text uses a character above U+FFFF (an emoji, for example). Those are not supported and are left out of the exported font.');
     if (!els.length) warnings.push('The design is empty.');
 
     return { name: name, type: isField ? 'datafield' : 'watchface', app: app, view: view, perms: perms, fonts: st.fonts, images: st.images, bg: bg, warnings: warnings, files: st.files, minApi: st.minApi, fontChars: st.fchars };

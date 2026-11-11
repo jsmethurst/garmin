@@ -45,6 +45,24 @@
     full: { label: 'Full ASCII + ° + Turkish letters', chars: (function () { var s = ''; for (var i = 32; i < 127; i++) s += String.fromCharCode(i); return s + '°ÇĞİŞÖÜçğıöşü'; })() }
   };
 
+  // the icon typeface: private-use characters, one per icon (basic plane only). Not offered as a text character set.
+  Object.defineProperty(GW.GLYPH_SETS, 'icons', { value: { label: 'Icons', chars: Object.keys(GW.MDI).map(function (k) { return String.fromCharCode(GW.MDI[k].cp); }).join('') }, enumerable: false });
+  // Characters above U+FFFF are two UTF-16 units and would break the per-unit glyph walk used everywhere: leave them out.
+  GW.bmpOnly = function (str) {
+    var out = '', refused = 0;
+    for (var i = 0; i < str.length; i++) {
+      var c = str.charCodeAt(i);
+      if (c >= 0xD800 && c <= 0xDFFF) { if (c <= 0xDBFF) refused++; continue; }
+      out += str[i];
+    }
+    return { chars: out, refused: refused };
+  };
+  // one bitmap font per icon size (16, 20, 24); the icons used at that size are the only glyphs exported
+  GW.iconFont = function (size) {
+    var id = 'ico' + size;
+    if (!GW.previewFonts[id]) GW.previewFonts[id] = { id: id, family: 'MDI Icons', weight: 400, px: size, glyphs: 'icons', spacing: 0, aa: 'mip' };
+    return id;
+  };
   Object.defineProperty(GW.GLYPH_SETS, 'tr', { value: GW.GLYPH_SETS.basic, enumerable: false }); // older designs used this id for the Turkish set
 
   // ---------- ensure web fonts are loaded before drawing ----------
@@ -53,6 +71,7 @@
     GW.FONT_FAMILIES.forEach(function (f) {
       f.weights.forEach(function (w) { jobs.push(document.fonts.load(w + ' 20px "' + f.family + '"')); jobs.push(document.fonts.load(w + ' 20px "' + f.family + '"', 'İŞĞÜ')); });
     });
+    jobs.push(document.fonts.load('24px "MDI Icons"', GW.GLYPH_SETS.icons.chars));
     return Promise.all(jobs).catch(function () { });
   };
   // `weight` is the weight the font FILE has (400 for a Regular, 300 for a Light ...); registering it explicitly means the browser matches the
@@ -275,7 +294,7 @@
     var met = GW.fontMetrics(f), chars = met.chars, placed, atlas, W = 0, H = 0, rot = f.rot ? GW.rotFontInfo(f, f.rot) : null;
     if (only != null) {
       var seen = {}; chars = '';
-      only.split('').forEach(function (ch) { if (!seen[ch] && met.glyphs[ch]) { seen[ch] = 1; chars += ch; } });
+      GW.bmpOnly(only).chars.split('').forEach(function (ch) { if (!seen[ch] && met.glyphs[ch]) { seen[ch] = 1; chars += ch; } });
       if (!chars) chars = ' ';
     }
     function box(ch) { var g = met.glyphs[ch]; return rot ? rot.glyphs[ch] : g; }

@@ -1,4 +1,5 @@
 /* Garmin Studio */
+@font-face { font-family: 'MDI Icons'; font-weight: 400; src: url(../fonts/mdi-icons-subset.ttf) format('truetype'); font-display: block; }
 @font-face { font-family: 'Rajdhani'; font-weight: 500; src: url(../fonts/rajdhani-latin-500-normal.woff2) format('woff2'); font-display: block; }
 @font-face { font-family: 'Rajdhani'; font-weight: 700; src: url(../fonts/rajdhani-latin-700-normal.woff2) format('woff2'); font-display: block; }
 @font-face { font-family: 'Orbitron'; font-weight: 500; src: url(../fonts/orbitron-latin-500-normal.woff2) format('woff2'); font-display: block; }
@@ -246,3 +247,8 @@ body[data-mode=field] .tgl.live, body[data-mode=field] #tabs [data-tab=face] { d
   .layers { max-height: 30vh; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.mdi { font-family: 'MDI Icons'; font-weight: 400; font-style: normal; line-height: 1; }
+.mdigrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 4px; margin: 4px 0 10px; }
+.mdigrid button { background: var(--panel); border: 1px solid var(--line2); border-radius: 4px; color: inherit; font-size: 22px; padding: 4px 0; cursor: pointer; font-family: 'MDI Icons'; }
+.mdigrid button.on { border-color: var(--accent, #4af); background: rgba(80,160,255,.18); }

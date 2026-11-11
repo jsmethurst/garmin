@@ -134,6 +134,35 @@
   function arcPoint(cx, cy, r, clockDeg) { var a = rad(clockDeg - 90); return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; }
   GW.arcProgress = arcProgress;
 
+  // Segmented arc: the sweep is cut into `segs` equal slices separated by `segGap` px (turned into degrees with gap / r); slice i covers
+  // the value range [i/N, (i+1)/N] and is filled in proportion to it. Whole degrees, so the preview and the watch agree.
+  function arcSlices(el) {
+    var n = Math.max(1, Math.min(60, N(el.segs || 1))), sgn = el.dir === 'ccw' ? -1 : 1, closed = el.sweep >= 359;
+    var gd = Math.max(0, el.segGap || 0) / Math.max(1, el.r) * 180 / Math.PI, a = (el.sweep - (closed ? n : n - 1) * gd) / n, out = [];
+    a = Math.max(1, a);
+    for (var i = 0; i < n; i++) out.push({ s: N(el.start + sgn * i * (a + gd)), len: Math.max(1, N(a)) });
+    return out;
+  }
+  function segArcDraw(ctx, el, env) {
+    var p = arcProgress(el, env), sl = arcSlices(el), n = sl.length, cw = el.dir !== 'ccw', sgn = cw ? 1 : -1, hw = el.pen / 2;
+    var col = q(el.color), trk = el.track === 'none' ? null : (el.track === 'auto' ? GW.dim(el.color) : q(el.track));
+    ctx.lineCap = 'butt';
+    function arcTo(s0, deg, color) {
+      ctx.strokeStyle = color; ctx.lineWidth = el.pen;
+      var a0 = rad(s0 - 90); ctx.beginPath(); ctx.arc(el.cx, el.cy, el.r, a0, a0 + sgn * rad(deg), !cw); ctx.stroke();
+    }
+    function cap(deg, color) { var pt = arcPoint(el.cx, el.cy, el.r, deg); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(pt[0], pt[1], hw, 0, Math.PI * 2); ctx.fill(); }
+    sl.forEach(function (c, i) {
+      var f = clamp(p * n - i, 0, 1), fl = Math.floor(c.len * f);
+      if (trk) arcTo(c.s, c.len, trk);
+      if (fl > 0) arcTo(c.s, fl, col);
+      if (el.round && c.len < 359) {
+        if (trk) cap(c.s + sgn * c.len, trk);
+        if (fl > 0) cap(c.s, col); else if (trk) cap(c.s, trk);
+        if (fl > 0) cap(c.s + sgn * fl, col);
+      }
+    });
+  }
   T.arc = {
     label: 'Arc gauge', icon: '◠',
     defaults: function () {
@@ -142,6 +171,7 @@
     },
     pos: [['cx', 'cy']],
     draw: function (ctx, el, env) {
+      if ((el.segs || 1) > 1) return segArcDraw(ctx, el, env);
       var p = arcProgress(el, env), cw = el.dir !== 'ccw', sgn = cw ? 1 : -1;
       var a0 = rad(el.start - 90), hw = el.pen / 2;
       var col = q(el.color), trk = el.track === 'none' ? null : (el.track === 'auto' ? GW.dim(el.color) : q(el.track));
@@ -181,6 +211,7 @@
         { k: 'color', t: 'color', label: 'Fill color' },
         { k: 'track', t: 'track', label: 'Track' },
         { k: 'round', t: 'check', label: 'Rounded ends' },
+        { t: 'row', fields: [{ k: 'segs', t: 'num', label: 'Segments (1 = one arc)', min: 1, max: 60 }, (el.segs || 1) > 1 ? { k: 'segGap', t: 'num', label: 'Gap (px)', min: 0, max: 20 } : null].filter(Boolean) },
         { t: 'row', fields: [{ k: 'pen', t: 'num', label: 'Thickness', min: 1, max: 40 }, { k: 'r', t: 'num', label: 'Radius', min: 5, max: 200 }] },
         { t: 'h', label: 'Sweep (clock degrees: 0 = 12 o’clock)' },
         { k: 'start', t: 'range', label: 'Start', min: 0, max: 359 },
@@ -202,6 +233,31 @@
       var track = el.track === 'none' ? null : GW.mcColor(el.track === 'auto' ? GW.dim(el.color) : el.track);
       var fc = GW.mcColor(el.color), cx = N(el.cx), cy = N(el.cy), R = N(el.r), hw = Math.max(1, N(el.pen / 2));
       var L = [];
+      if ((el.segs || 1) > 1) {
+        // the slice angles are class constants built once; the loop below only reads them
+        var sl = arcSlices(el), n = sl.length, id = String(el.id).replace(/[^A-Za-z0-9]/g, '');
+        cg.member('    const ARC_' + id + '_S = [' + sl.map(function (c) { return GW.garminAngle(c.s); }).join(', ') + '];');
+        cg.member('    const ARC_' + id + '_E = [' + sl.map(function (c) { return GW.garminAngle(c.s + (cw ? 1 : -1) * c.len); }).join(', ') + '];');
+        cg.member('    const ARC_' + id + '_L = [' + sl.map(function (c) { return c.len; }).join(', ') + '];');
+        var S = 'ARC_' + id + '_S[i]', E = 'ARC_' + id + '_E[i]', Ln = 'ARC_' + id + '_L[i]';
+        L.push('var q = prog(' + s.mcNum(el, cg) + ', ' + mn + ', ' + mx + ') * ' + n + '.0f;');
+        L.push('dc.setPenWidth(' + N(el.pen) + ');');
+        L.push('for (var i = 0; i < ' + n + '; i++) {');
+        L.push('    var f = q - i;', '    if (f < 0.0f) { f = 0.0f; }', '    if (f > 1.0f) { f = 1.0f; }', '    var fl = (' + Ln + ' * f).toNumber();');
+        if (track) L.push('    dc.setColor(' + track + ', Graphics.COLOR_TRANSPARENT);', '    dc.drawArc(' + cx + ', ' + cy + ', ' + R + ', ' + dirC + ', ' + S + ', ' + E + ');');
+        L.push('    if (fl > 0) {', '        dc.setColor(' + fc + ', Graphics.COLOR_TRANSPARENT);', '        dc.drawArc(' + cx + ', ' + cy + ', ' + R + ', ' + dirC + ', ' + S + ', ang(' + S + (cw ? ' - ' : ' + ') + 'fl));', '    }');
+        if (el.round) {
+          cg.helper('cap');
+          var ok = sl[0].len < 359;
+          if (ok) {
+            if (track) L.push('    dc.setColor(' + track + ', Graphics.COLOR_TRANSPARENT);', '    cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ' + E + ', ' + hw + ');');
+            L.push('    dc.setColor(' + (track ? '(fl > 0) ? ' + fc + ' : ' + track : fc) + ', Graphics.COLOR_TRANSPARENT);', '    cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ' + S + ', ' + hw + ');');
+            L.push('    if (fl > 0) {', '        dc.setColor(' + fc + ', Graphics.COLOR_TRANSPARENT);', '        cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ang(' + S + (cw ? ' - ' : ' + ') + 'fl), ' + hw + ');', '    }');
+          }
+        }
+        L.push('}', 'dc.setPenWidth(1);');
+        return L;
+      }
       L.push('var p = prog(' + s.mcNum(el, cg) + ', ' + mn + ', ' + mx + ');');
       L.push('var f = (' + sw + '.0 * p).toNumber();');
       L.push('dc.setPenWidth(' + N(el.pen) + ');');

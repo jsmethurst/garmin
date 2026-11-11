@@ -190,6 +190,9 @@ window.GW = window.GW || {};
     GW.assets = {};
     function fin() {
       var drawnAt = d.size || 280;   // the screen size this design was made for
+      (d.elements || []).forEach(function (e) {   // icons drawn from shapes in earlier versions become the nearest real icon
+        if (e.type === 'icon' && GW.ICON_LEGACY && GW.ICON_LEGACY[e.kind]) { e.kind = GW.ICON_LEGACY[e.kind]; e.size = e.size <= 16 ? 16 : (e.size <= 20 ? 20 : 24); delete e.accent; }
+      });
       (d.elements || []).forEach(function (e) { if (e.type === 'hexgauge') { e.type = 'seggauge'; e.shape = 'hex'; } });   // the hexagon gauge became a shape of the segment gauge
       GW.design = Object.assign(GW.blankDesign(), d, { size: drawnAt });
       if (GW.design.kind === 'datafield') GW.design.elements.forEach(function (e) { if (e.slot == null) e.slot = GW.design.dfSlot || 0; });

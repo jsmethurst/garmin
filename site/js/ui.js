@@ -368,6 +368,25 @@
       case 'dfsrc': return fDfSrc(el, f);
       case 'sysfont': return fSysFont(el, f);
       case 'glyphs': return fGlyphs(el);
+      case 'iconpick': {
+        var grid = h('div', { class: 'mdigrid' });
+        Object.keys(GW.MDI).forEach(function (k) {
+          var b = h('button', { type: 'button', title: GW.MDI[k].label + ' (' + k + ')', text: String.fromCharCode(GW.MDI[k].cp), class: k === el.kind ? 'on' : '' });
+          b.addEventListener('click', function () { el.kind = k; if (/^(Icon|.* icon)$/.test(el.name || '')) el.name = GW.MDI[k].label + ' icon'; fireChange(true); });
+          grid.appendChild(b);
+        });
+        return h('div', { class: 'f' }, [h('label', { text: 'Icon: ' + ((GW.MDI[el.kind] || {}).label || '') }), grid]);
+      }
+      case 'iconpreview': {   // the very glyph image that goes into the watch font, at its real size and enlarged without smoothing
+        var s0 = el.size || 20, cv = h('canvas', { width: s0 * 2 + 8, height: s0 }), cx = cv.getContext('2d');
+        GW.fontsReady().then(function () {
+          cx.fillStyle = '#000'; cx.fillRect(0, 0, cv.width, cv.height);
+          var pl = GW.iconPlace(Object.assign({}, el, { x: s0 / 2 + 2, y: s0 / 2 })); if (!pl) return;
+          GW.drawText(cx, pl.fid, pl.ch, pl.x, pl.yc, 'L', GW.q(el.color));
+        });
+        cv.style.cssText = 'width:' + (s0 * 2 + 8) * 4 + 'px;height:' + s0 * 4 + 'px;image-rendering:pixelated;background:#000;border:1px solid var(--line2);border-radius:4px;display:block';
+        return h('div', { class: 'f' }, [h('label', { text: 'Crispness at ' + s0 + ' px (enlarged 4×)' }), cv]);
+      }
       case 'fontsizes': {
         var ns = GW.fontSizesUsed(el); if (!ns) return null;
         return h('p', { class: 'muted small', text: ns + (ns === 1 ? ' size' : ' sizes') + ' of this typeface in the design. Every size is a separate font in watch memory; reuse sizes where you can (sizes 1 px apart are merged automatically).' });
@@ -709,12 +728,6 @@
       field('Clock', segCtl([[1, '24h'], [0, '12h']], s.is24 ? 1 : 0, function (v) { s.is24 = !!Number(v); GW.touch(false); GW.renderPanel(); }))
     ]);
     p.appendChild(u);
-    var chgc = h('input', { type: 'checkbox' }); chgc.checked = !!s.charging;
-    chgc.addEventListener('change', function () { s.charging = chgc.checked; GW.touch(false); });
-    p.appendChild(h('label', { class: 'chk' }, [chgc, 'Charging (shows the charging bolt)']));
-    var btc = h('input', { type: 'checkbox' }); btc.checked = s.btOn !== false;
-    btc.addEventListener('change', function () { s.btOn = btc.checked; GW.touch(false); });
-    p.appendChild(h('label', { class: 'chk' }, [btc, 'Phone connected (Bluetooth icon)']));
     p.appendChild(field('Weather (for icon + text)', (function () {
       var sel = h('select', {}, GW.WX_NAMES.slice(0, 8).map(function (n, i) { return h('option', { value: i, text: n }); }));
       sel.value = s.wx; sel.addEventListener('change', function () { s.wx = parseInt(sel.value); GW.touch(false); }); return sel;

@@ -163,6 +163,10 @@
       text('resources/fonts/fonts.xml', fx.join('\n') + '\n');
     }
 
+    if (src.fonts.some(function (f) { return f.family === 'MDI Icons'; })) {
+      text('NOTICE', 'Icons: Material Design Icons by Pictogrammers, Apache License 2.0, https://pictogrammers.com/docs/general/license\n');
+    }
+
     text('.vscode/launch.json', '{\n    "version": "0.2.0",\n    "configurations": [\n        {\n            "type": "monkeyc",\n            "request": "launch",\n            "name": "Run in simulator",\n            "stopAtLaunch": false,\n            "device": "' + device + '"\n        }\n    ]\n}\n');
     text('build.sh', buildSh(n, device), true);
     text('build.bat', buildBat(n, device));
