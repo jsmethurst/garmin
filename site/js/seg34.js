@@ -141,11 +141,10 @@
     els.push(src('Clock', seg, baseX, baseY, 'time', C.clock, 'C', { vtop: false, hmode: 'auto', lz: true, sep: ':' }));
     els.push(gradient(baseX, baseY, 240, 80));
     els.push(bar('Body battery bar', cX - hCW - 3 - 3 + 1.5, baseY + hCH + 1 - 40, 'bodyBat', C.body), bar('Watch battery bar', cX + hCW + 3 + 1.5, baseY + hCH + 1 - 40, 'battery', C.stress));
-    var secW = widthOf(small, '36'), secLeft = baseX + hCW - secW, nyW = widthOf(small, 'NY 09:40'), dateRight = baseX - hCW + nyW, nPos = secLeft - mX;
-    if (secLeft - dateRight < 3 * mX) nPos = (dateRight + secLeft) / 2;
-    els.push(src('New York time', small, baseX - hCW, y1, 'nyTime', C.date, 'L', { prefix: 'NY ' }));
-    els.push(src('Notifications', small, R(nPos), y1, 'notif', C.notif, 'C'));
-    els.push(src('Seconds', small, baseX + hCW, y1, 'second', C.date, 'R'));
+    // under the clock: New York time with EDT/EST on the left, stress on the right
+    els.push(src('New York time', small, baseX - hCW, y1, 'nyTime', C.date, 'L'), src('New York zone', small, baseX - hCW + widthOf(small, '09:40') + 8, y1, 'nyZone', C.fieldLbl, 'L'));
+    var sW = widthOf(small, '88');
+    els.push(lbl('Stress label', label, baseX + hCW - sW - 8, y1 + 3, 'STRES', C.fieldLbl, 'R'), src('Stress', small, baseX + hCW, y1, 'stress', C.stress, 'R'));
     var dw = Math.sqrt(cY * cY - (y3 - cY) * (y3 - cY)) * 2, left = R((280 - dw) / 2), dg = [4, 3, 4], tot = 11;
     var w1 = R(dg[0] * dw / tot), w2 = R(dg[1] * dw / tot), w3 = R(dg[2] * dw / tot);
     var xs = [left + R(w1 / 2), left + R(w1 + w2 / 2), left + R(w1 + w2 + w3 / 2)];
@@ -158,9 +157,6 @@
     });
     var fiveY = y3 + hmY + 5;
     els.push(T('Steps ghost', { font: large.id, x: cX - 45, y: fiveY, text: '#####', color: C.fieldBg, justify: 'L' }), src('Steps', large, cX + 45 - 1, fiveY, 'steps', C.dataVal, 'R'));
-    els.push(lbl('Steps label', label, cX - 45 - mX / 2, fiveY + (largeH - labelH) / 2, 'ADIM:', C.fieldLbl, 'R'));
-    els.push(T('Battery icon', { font: icons.id, x: cX, y: 280 - 18, text: 'B', color: '#555555', justify: 'C' }));
-    els.push(src('Battery bar', label, cX - 11, 280 - 18 + 3, 'battBar20', C.dataVal, 'L'));
     var d = GW.blankDesign(); d.name = 'Segment34 Türkçe'; d.bg = '#000000'; d.fonts = F; d.elements = els; d.size = 280;
     return d;
   }
