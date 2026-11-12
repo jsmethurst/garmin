@@ -74,7 +74,7 @@
       if (o.indexOf('secs') >= 0) f.push({ k: 'secs', t: 'check', label: 'Show seconds' });
       if (o.indexOf('sep') >= 0) f.push({ k: 'sep', t: 'seg', label: 'Separator', opts: [[':', ':'], ['.', '.'], [' ', 'space'], ['', 'none']] });
       if (o.indexOf('datefmt') >= 0) f.push({ t: 'datefmt' });
-      if (o.indexOf('trnames') >= 0) f.push({ k: 'tr', t: 'check', label: 'Turkish day and month names' });
+      if (o.indexOf('trnames') >= 0) f.push({ k: 'tr', t: 'check', label: 'Turkish names' });
       if (o.indexOf('unit_temp') >= 0) f.push({ k: 'unit', t: 'seg', label: 'Unit', opts: [['auto', 'Watch'], ['C', '°C'], ['F', '°F']] });
       if (o.indexOf('unit_dist') >= 0) f.push({ k: 'unit', t: 'seg', label: 'Unit', opts: [['auto', 'Watch'], ['km', 'km'], ['mi', 'mi']] });
       if (o.indexOf('unit_alt') >= 0) f.push({ k: 'unit', t: 'seg', label: 'Unit', opts: [['auto', 'Watch'], ['m', 'm'], ['ft', 'ft']] });

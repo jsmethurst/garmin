@@ -92,6 +92,21 @@
       members: ['    const WX_NAMES = ["Clear", "Part cloudy", "Cloudy", "Rain", "Snow", "Storm", "Fog", "Sleet", "--"];'],
       code: 'function wxName() {\n        return WX_NAMES[wxGroup()];\n    }'
     },
+    wxNameTr: {
+      deps: ['wxGroup'],
+      members: ['    const WX_NAMES_TR = ["AÇIK", "PARÇALI BULUTLU", "BULUTLU", "YAĞMURLU", "KARLI", "FIRTINALI", "SİSLİ", "KARLI YAĞMUR", "--"];'],
+      code: 'function wxNameTr() {\n        return WX_NAMES_TR[wxGroup()];\n    }'
+    },
+    windStr: {
+      needs: ['wx'],
+      members: ['    const WIND_EN = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];', '    const WIND_TR = ["K", "KD", "D", "GD", "G", "GB", "B", "KB"];'],
+      code: 'function windStr(tr) {\n        if (_wx == null || _wx.windBearing == null || _wx.windSpeed == null) { return "--"; }\n        var i = ((_wx.windBearing + 22) / 45).toNumber() % 8;\n        var kmh = (_wx.windSpeed * 3.6 + 0.5).toNumber();\n        return (tr ? WIND_TR[i] : WIND_EN[i]) + " " + kmh.toString() + (tr ? " KM/SA" : " KM/H");\n    }'
+    },
+    runKm7: {
+      imports: ['Toybox.UserProfile', 'Toybox.Activity', 'Toybox.Time'], perms: ['UserProfile'],
+      members: ['    var _runT = 0;', '    var _runV = 0.0;'],
+      code: 'function runKm7() {\n        var now = Time.now().value();\n        if (_runT == 0 || now - _runT >= 300) {\n            _runT = now;\n            var d = 0.0;\n            if (UserProfile has :getUserActivityHistory) {\n                var since = now - 604800;\n                var it = UserProfile.getUserActivityHistory();\n                var a = it.next();\n                while (a != null) {\n                    if (a.startTime != null && a.startTime.value() >= since && a.distance != null && a.type == Activity.SPORT_RUNNING) { d += a.distance; }\n                    a = it.next();\n                }\n            }\n            _runV = d / 1000.0;\n        }\n        return _runV;\n    }'
+    },
     // The watch's position, in this order: the activity fix (0,0 means "no fix"), the weather location from the phone, then the last
     // position seen. The Position.Location is handed on as it is (never rebuilt from degrees). Position.getInfo() is never called: it
     // interrupts sleep tracking. Until the watch has any position the face's default location is used, if one is set.

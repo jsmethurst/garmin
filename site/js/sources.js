@@ -255,9 +255,21 @@
   });
   GW.WX_NAMES = ['Clear', 'Part cloudy', 'Cloudy', 'Rain', 'Snow', 'Storm', 'Fog', 'Sleet', '--'];
   def('weatherDesc', {
-    label: 'Weather conditions', group: 'Environment', kind: 'str', opts: [], imports: ['Toybox.Weather'],
-    str: function (el, env) { return GW.WX_NAMES[env.sim.wx]; },
-    mcStr: function (el, cg) { cg.need('wx'); cg.helper('wxName'); return 'wxName()'; }
+    label: 'Weather conditions', group: 'Environment', kind: 'str', opts: ['trnames'], imports: ['Toybox.Weather'],
+    str: function (el, env) { return el.tr ? GW.WX_NAMES_TR[env.sim.wx] : GW.WX_NAMES[env.sim.wx]; },
+    mcStr: function (el, cg) { cg.need('wx'); cg.helper(el.tr ? 'wxNameTr' : 'wxName'); return el.tr ? 'wxNameTr()' : 'wxName()'; }
+  });
+  GW.WX_NAMES_TR = ['AÇIK', 'PARÇALI BULUTLU', 'BULUTLU', 'YAĞMURLU', 'KARLI', 'FIRTINALI', 'SİSLİ', 'KARLI YAĞMUR', '--'];
+  var WIND_EN = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], WIND_TR = ['K', 'KD', 'D', 'GD', 'G', 'GB', 'B', 'KB'];
+  def('wind', {
+    label: 'Wind (direction and speed)', group: 'Environment', kind: 'str', opts: ['trnames'], imports: ['Toybox.Weather'],
+    str: function (el, env) { var d = (el.tr ? WIND_TR : WIND_EN)[Math.floor((env.sim.windDeg + 22) / 45) % 8]; return d + ' ' + Math.round(env.sim.windMps * 3.6) + (el.tr ? ' KM/SA' : ' KM/H'); },
+    mcStr: function (el, cg) { cg.need('wx'); cg.helper('windStr'); return 'windStr(' + (el.tr ? 'true' : 'false') + ')'; }
+  });
+  def('runKm7', {
+    label: 'Running distance, last 7 days (km)', group: 'Activity', kind: 'str', opts: [], imports: ['Toybox.UserProfile', 'Toybox.Activity', 'Toybox.Time'], perms: ['UserProfile'],
+    str: function (el, env) { return env.sim.runWeekKm.toFixed(1); },
+    mcStr: function (el, cg) { cg.helper('runKm7'); return 'runKm7().format("%.1f")'; }
   });
   numeric('altitude', 'Altitude', 'Environment', {
     fn: 'altNow', range: [0, 3000], opts: ['unit_alt'], imports: ['Toybox.Activity'],

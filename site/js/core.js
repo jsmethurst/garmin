@@ -107,7 +107,7 @@ window.GW = window.GW || {};
     intMins: 95, intGoal: 150, distance: 6.2, notif: 3, temp: 17, wx: 1, lat: 41.01, lon: 28.98,
     runHr: 162, runKm: 7.37, runAvg: 318, runPlanKm: 10, lapNo: 8, lapKm: 0.41, lapPace: 305, lastLap: 312,
     runPace: 308, runCad: 172, runPow: 248, runAvgHr: 158, runMaxHr: 176, runAscent: 84, runCal: 512,
-    altitude: 312, moveBar: 2, recovery: 16, sunrise: 6 * 60 + 52, sunset: 18 * 60 + 14,
+    altitude: 312, moveBar: 2, recovery: 16, windDeg: 315, windMps: 3.3, runWeekKm: 18.4, sunrise: 6 * 60 + 52, sunset: 18 * 60 + 14,
     metric: true, is24: true
   };
 
