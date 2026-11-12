@@ -120,52 +120,54 @@
   }
 
   // ---------------------------------------------------------------- Segment34 MkII, Turkish
-  // The MkII look with other data, laid out as asked: sunrise / moon / sunset, weather, date, the clock, then a line with New York time and seconds,
-  // three dot-matrix fields (recovery, heart rate, km run in the last 7 days) and steps with a label. The small fonts carry the Turkish letters.
+  // Exactly the MkII layout, fonts and value formats; only the data differs and the labels are Turkish (the small fonts carry Ğ İ Ş).
+  // Top: sunrise / moon / sunset. Line 1: "17C, d12, PARÇALI" (temperature, wind arrow + km/h, condition). Line 2: date. Under the clock: New York time,
+  // notifications, seconds. Fields: recovery, heart rate, km run this week. Steps with a label. Bars: body battery (left), watch battery (right).
   function mk2tr() {
-    function mk(set, n, d) { var m = GW.parseFnt(d.fnt); return { id: 's34_' + n, family: 'Segment34 ' + n, weight: 400, px: m.lineHeight, glyphs: 'prebuilt', spacing: 0, aa: 'mip', prebuilt: { fnt: d.fnt, png: d.png, aa: d.aa, filter: d.filter || '' } }; }
-    var B = DATA.mk2, F = [mk(B, 'segments80wide', B.fonts.segments80wide), mk(B, 'storre', B.fonts.storre), mk(B, 'led_small_lines', B.tr.led_small_lines), mk(B, 'led', B.fonts.led), mk(B, 'smol', B.tr.smol), mk(B, 'moon', B.fonts.moon)];
-    var seg = F[0], tiny = F[1], small = F[2], large = F[3], label = F[4], moon = F[5];
-    var C = { clock: '#ffff00', clockBg: '#005555', dataVal: '#ffffff', fieldBg: '#005555', fieldLbl: '#55aaaa', date: '#ffff00', stress: '#ffaa00', body: '#00aaff', moon: '#ffffff' };
-    var cX = 140, cY = 140, mY = 9, hmY = R(mY / 2), baseX = 140, baseY = cY - 13 - 4, hCH = 40, hCW = 120, labelH = 8, labelM = 6, tinyH = 10, smallH = 13, largeH = 20;
-    var y1 = baseY + hCH + mY, y2 = y1 + smallH + mY, y3 = y2 + labelH + labelM + largeH, topH = labelH + hmY;
-    var els = [];
-    els.push(lbl('Doğuş label', label, cX - 20, mY, 'DOĞUŞ:', C.fieldLbl, 'R'), lbl('Batış label', label, cX + 20, mY, 'BATIŞ:', C.fieldLbl, 'L'));
+    var B = DATA.mk2;
+    function mk(n, d) { var m = GW.parseFnt(d.fnt); return { id: 's34_' + n, family: 'Segment34 ' + n, weight: 400, px: m.lineHeight, glyphs: 'prebuilt', spacing: 0, aa: 'mip', prebuilt: { fnt: d.fnt, png: d.png, aa: d.aa, filter: d.filter || '' } }; }
+    var F = [mk('segments80wide', B.fonts.segments80wide), mk('storre', B.fonts.storre), mk('led_small_lines', B.tr.led_small_lines), mk('led', B.fonts.led), mk('smol', B.tr.smol), mk('moon', B.fonts.moon), mk('icons', B.fonts.icons)];
+    var seg = F[0], tiny = F[1], small = F[2], large = F[3], label = F[4], moon = F[5], icons = F[6];
+    var C = { clock: '#ffff00', clockBg: '#005555', dataVal: '#ffffff', fieldBg: '#005555', fieldLbl: '#55aaaa', date: '#ffff00', notif: '#00aaff', stress: '#ffaa00', body: '#00aaff', moon: '#ffffff' };
+    var cX = 140, cY = 140, mY = 9, mX = 14, hmY = R(mY / 2), baseX = 140, baseY = cY - 13 - 4, hCH = 40, hCW = 120;
+    var labelH = 8, labelM = 6, tinyH = 10, smallH = 13, largeH = 20;
+    var yn1 = baseY - hCH - mY - smallH, yn2 = yn1 - mY - smallH, y1 = baseY + hCH + mY, y2 = y1 + smallH + mY, y3 = y2 + labelH + labelM + largeH;
+    var els = [], topH = labelH + hmY;
+    els.push(lbl('Sunrise label', label, cX - 20, mY, 'DOĞUŞ:', C.fieldLbl, 'R'), lbl('Sunset label', label, cX + 20, mY, 'BATIŞ:', C.fieldLbl, 'L'));
     els.push(src('Sunrise', tiny, cX - 20, mY + topH, 'sunrise', C.dataVal, 'R'), src('Sunset', tiny, cX + 20, mY + topH, 'sunset', C.dataVal, 'L'));
     els.push(T('Moon', { font: moon.id, x: cX, y: mY + Math.floor((topH + tinyH) / 2), source: 'moonGlyph', color: C.moon, justify: 'C', vtop: false }));
-    // weather (degrees, wind direction and speed, conditions) and the date, 16 px apart between the top row and the clock
-    var tW = widthOf(small, '17°'), wW = widthOf(small, 'KB 12 KM/SA'), wx0 = R(cX - (tW + 12 + wW) / 2);   // temperature and wind as one centred unit
-    els.push(src('Temperature', small, wx0, 38, 'temp', C.dataVal, 'L', { suffix: '°' }), src('Wind', small, wx0 + tW + 12, 38, 'wind', C.dataVal, 'L', { tr: true }));
-    els.push(src('Weather conditions', small, cX, 53, 'weatherDesc', C.dataVal, 'C', { tr: true, upper: true }));
-    els.push(src('Date', small, cX, 68, 'date', C.date, 'C', { fmt: 'D MMM YYYY ddd', tr: true, upper: true }));
+    els.push(src('Weather line', small, cX, yn2, 'wxLine', C.dataVal, 'C', { tr: true }), src('Date', small, cX, yn1, 'date', C.date, 'C', { fmt: 'ddd, D MMM YYYY', tr: true, upper: true }));
     els.push(T('Clock ghost', { font: seg.id, x: baseX, y: baseY, text: '#####', color: C.clockBg, justify: 'C', vtop: false }));
     els.push(src('Clock', seg, baseX, baseY, 'time', C.clock, 'C', { vtop: false, hmode: 'auto', lz: true, sep: ':' }));
     els.push(gradient(baseX, baseY, 240, 80));
     els.push(bar('Body battery bar', cX - hCW - 3 - 3 + 1.5, baseY + hCH + 1 - 40, 'bodyBat', C.body), bar('Watch battery bar', cX + hCW + 3 + 1.5, baseY + hCH + 1 - 40, 'battery', C.stress));
-    // under the clock: New York time on the left, seconds on the right
-    els.push(src('New York time', small, baseX - hCW, y1, 'nyTime', C.date, 'L', { prefix: 'NY ' }), src('New York zone', small, baseX - hCW + widthOf(small, 'NY 09:40') + 6, y1, 'nyZone', C.fieldLbl, 'L'));
+    var secW = widthOf(small, '36'), secLeft = baseX + hCW - secW, nyW = widthOf(small, 'NY 09:40'), dateRight = baseX - hCW + nyW, nPos = secLeft - mX;
+    if (secLeft - dateRight < 3 * mX) nPos = (dateRight + secLeft) / 2;
+    els.push(src('New York time', small, baseX - hCW, y1, 'nyTime', C.date, 'L', { prefix: 'NY ' }));
+    els.push(src('Notifications', small, R(nPos), y1, 'notif', C.notif, 'C'));
     els.push(src('Seconds', small, baseX + hCW, y1, 'second', C.date, 'R'));
     var dw = Math.sqrt(cY * cY - (y3 - cY) * (y3 - cY)) * 2, left = R((280 - dw) / 2), dg = [4, 3, 4], tot = 11;
     var w1 = R(dg[0] * dw / tot), w2 = R(dg[1] * dw / tot), w3 = R(dg[2] * dw / tot);
     var xs = [left + R(w1 / 2), left + R(w1 + w2 / 2), left + R(w1 + w2 + w3 / 2)];
-    var spec = [['TOPARLANMA:', 'recovery'], ['NABIZ:', 'hr'], ['HAFTA KOŞU KM:', 'runKm7']], dy = y2 + labelH + labelM;
-    spec.forEach(function (sp, i) {
+    var spec = [['TOPARLANMA:', 'recovery'], ['NABIZ:', 'hr'], ['HAFTA KM:', 'runKmWeek']], dy = y2 + labelH + labelM;
+    spec.forEach(function (s, i) {
       var half = R(18 * dg[i] / 2), ghost = ''; for (var k = 0; k < dg[i]; k++) ghost += '#';
-      els.push(lbl(sp[0].replace(':', '') + ' label', label, xs[i] - half + 3, y2, sp[0], C.fieldLbl, 'L'));
+      els.push(lbl(s[0].replace(':', '') + ' label', label, xs[i] - half + 3, y2, s[0], C.fieldLbl, 'L'));
       els.push(T('Field ghost ' + (i + 1), { font: large.id, x: xs[i] - half + 3, y: dy, text: ghost, color: C.fieldBg, justify: 'L' }));
-      els.push(src('Field ' + (i + 1), large, xs[i] + half - 1 + 3, dy, sp[1], C.dataVal, 'R'));
+      els.push(src('Field ' + (i + 1), large, xs[i] + half - 1 + 3, dy, s[1], C.dataVal, 'R'));
     });
-    // steps, with a label, below the three
-    var stepsY = y3 + 4;
-    els.push(lbl('ADIM label', label, cX - 45 + 3, stepsY, 'ADIM:', C.fieldLbl, 'L'));
-    els.push(T('Steps ghost', { font: large.id, x: cX - 45, y: stepsY + labelH + labelM, text: '#####', color: C.fieldBg, justify: 'L' }), src('Steps', large, cX + 45 - 1, stepsY + labelH + labelM, 'steps', C.dataVal, 'R'));
+    var fiveY = y3 + hmY + 5;
+    els.push(T('Steps ghost', { font: large.id, x: cX - 45, y: fiveY, text: '#####', color: C.fieldBg, justify: 'L' }), src('Steps', large, cX + 45 - 1, fiveY, 'steps', C.dataVal, 'R'));
+    els.push(lbl('Steps label', label, cX - 45 - mX / 2, fiveY + (largeH - labelH) / 2, 'ADIM:', C.fieldLbl, 'R'));
+    els.push(T('Battery icon', { font: icons.id, x: cX, y: 280 - 18, text: 'B', color: '#555555', justify: 'C' }));
+    els.push(src('Battery bar', label, cX - 11, 280 - 18 + 3, 'battBar20', C.dataVal, 'L'));
     var d = GW.blankDesign(); d.name = 'Segment34 Türkçe'; d.bg = '#000000'; d.fonts = F; d.elements = els; d.size = 280;
     return d;
   }
 
   GW.PRESETS.push(
     { id: 'segment34', name: 'Segment34 MkII', device: 'fenix6xpro', note: 'By ludw, for the fēnix 6X (280×280), pixel for pixel. MIT licence.', build: mk2, assets: function () { return { seg34grad: DATA.mk2.gradient }; } },
-    { id: 'segment34tr', name: 'Segment34 Türkçe', device: 'fenix6xpro', note: 'MkII look in Turkish: sunrise/moon/sunset, weather, date, clock, New York time, recovery, pulse, running km, steps.', build: mk2tr, assets: function () { return { seg34grad: DATA.mk2.gradient }; } },
+    { id: 'segment34tr', name: 'Segment34 Türkçe', device: 'fenix6xpro', note: 'The MkII layout and text styles unchanged, with your data and Turkish labels.', build: mk2tr, assets: function () { return { seg34grad: DATA.mk2.gradient }; } },
     { id: 'segment34max', name: 'Segment34 MAX', device: 'fenix6xpro', note: 'By ludw: larger type, histogram on top. For the fēnix 6X (280×280), pixel for pixel.', build: max, assets: function () { return { seg34grad: DATA.max.gradient }; } }
   );
 })(window.GW);

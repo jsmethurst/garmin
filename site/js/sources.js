@@ -260,11 +260,20 @@
     mcStr: function (el, cg) { cg.need('wx'); cg.helper(el.tr ? 'wxNameTr' : 'wxName'); return el.tr ? 'wxNameTr()' : 'wxName()'; }
   });
   GW.WX_NAMES_TR = ['AÇIK', 'PARÇALI BULUTLU', 'BULUTLU', 'YAĞMURLU', 'KARLI', 'FIRTINALI', 'SİSLİ', 'KARLI YAĞMUR', '--'];
-  var WIND_EN = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], WIND_TR = ['K', 'KD', 'D', 'GD', 'G', 'GB', 'B', 'KB'];
-  def('wind', {
-    label: 'Wind (direction and speed)', group: 'Environment', kind: 'str', opts: ['trnames'], imports: ['Toybox.Weather'],
-    str: function (el, env) { var d = (el.tr ? WIND_TR : WIND_EN)[Math.floor((env.sim.windDeg + 22) / 45) % 8]; return d + ' ' + Math.round(env.sim.windMps * 3.6) + (el.tr ? ' KM/SA' : ' KM/H'); },
-    mcStr: function (el, cg) { cg.need('wx'); cg.helper('windStr'); return 'windStr(' + (el.tr ? 'true' : 'false') + ')'; }
+  var WIND_ARROWS = 'abcdefgh';
+  def('wxLine', {
+    label: 'Weather line: temperature, wind (arrow + km/h), condition', group: 'Environment', kind: 'str', opts: ['trnames'], imports: ['Toybox.Weather', 'Toybox.Math'],
+    str: function (el, env) {
+      var CT = ['AÇIK', 'PARÇALI', 'BULUTLU', 'YAĞMUR', 'KAR', 'FIRTINA', 'SİS', 'KARLI YAĞ', '--'], CE = ['CLEAR', 'CLOUDY', 'CLOUDY', 'RAIN', 'SNOW', 'STORM', 'FOG', 'WINTRY', '--'];
+      var a = WIND_ARROWS.charAt(Math.round((env.sim.windDeg + 180) / 45) % 8), parts = [Math.round(env.sim.temp) + 'C', a + Math.round(env.sim.windMps * 3.6), (el.tr ? CT : CE)[env.sim.wx]];
+      return parts.join(', ');
+    },
+    mcStr: function (el, cg) { cg.need('wx'); cg.helper('wxLine'); return 'wxLine(' + (el.tr ? 'true' : 'false') + ')'; }
+  });
+  def('runKmWeek', {
+    label: 'Running distance this week (km)', group: 'Activity', kind: 'str', opts: [], imports: ['Toybox.UserProfile', 'Toybox.Activity', 'Toybox.Time', 'Toybox.Complications'], perms: ['UserProfile'],
+    str: function (el, env) { return env.sim.runWeekKm.toFixed(1); },
+    mcStr: function (el, cg) { cg.helper('runKmWeek'); return 'runKmWeek().format("%.1f")'; }
   });
   def('runKm7', {
     label: 'Running distance, last 7 days (km)', group: 'Activity', kind: 'str', opts: [], imports: ['Toybox.UserProfile', 'Toybox.Activity', 'Toybox.Time'], perms: ['UserProfile'],

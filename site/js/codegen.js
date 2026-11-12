@@ -97,10 +97,15 @@
       members: ['    const WX_NAMES_TR = ["AÇIK", "PARÇALI BULUTLU", "BULUTLU", "YAĞMURLU", "KARLI", "FIRTINALI", "SİSLİ", "KARLI YAĞMUR", "--"];'],
       code: 'function wxNameTr() {\n        return WX_NAMES_TR[wxGroup()];\n    }'
     },
-    windStr: {
-      needs: ['wx'],
-      members: ['    const WIND_EN = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];', '    const WIND_TR = ["K", "KD", "D", "GD", "G", "GB", "B", "KB"];'],
-      code: 'function windStr(tr) {\n        if (_wx == null || _wx.windBearing == null || _wx.windSpeed == null) { return "--"; }\n        var i = ((_wx.windBearing + 22) / 45).toNumber() % 8;\n        var kmh = (_wx.windSpeed * 3.6 + 0.5).toNumber();\n        return (tr ? WIND_TR[i] : WIND_EN[i]) + " " + kmh.toString() + (tr ? " KM/SA" : " KM/H");\n    }'
+    // Segment34's weather line: joinFour(temperature, wind, condition): "17C, d12, PARÇALI". The wind is an arrow (a letter of the font: a..h by bearing) and km/h.
+    wxLine: {
+      deps: ['wxGroup'], needs: ['wx'], imports: ['Toybox.Math'],
+      members: ['    const WXC_EN = ["CLEAR", "CLOUDY", "CLOUDY", "RAIN", "SNOW", "STORM", "FOG", "WINTRY", "--"];', '    const WXC_TR = ["AÇIK", "PARÇALI", "BULUTLU", "YAĞMUR", "KAR", "FIRTINA", "SİS", "KARLI YAĞ", "--"];'],
+      code: 'function wxLine(tr) {\n        var s = "";\n        if (_wx == null) { return s; }\n        if (_wx.temperature != null) { s = _wx.temperature.format("%d") + "C"; }\n        var w = "";\n        if (_wx.windSpeed != null) {\n            if (_wx.windBearing != null) { w = ((Math.round((_wx.windBearing.toFloat() + 180) / 45.0).toNumber() % 8) + 97).toChar().toString(); }\n            w += Math.round(_wx.windSpeed * 3.6).format("%01d");\n        }\n        if (w.length() > 0) { s = (s.length() > 0) ? s + ", " + w : w; }\n        var c = _wx.condition != null ? (tr ? WXC_TR[wxGroup()] : WXC_EN[wxGroup()]) : "";\n        if (c.length() > 0) { s = (s.length() > 0) ? s + ", " + c : c; }\n        return s;\n    }'
+    },
+    runKmWeek: {
+      deps: ['runKm7'], imports: ['Toybox.Complications'],
+      code: 'function runKmWeek() {\n        if (Toybox has :Complications) {\n            try {\n                var c = Complications.getComplication(new Complications.Id(Complications.COMPLICATION_TYPE_WEEKLY_RUN_DISTANCE));\n                if (c != null && c.value != null) { return c.value / 1000.0; }\n            } catch (e) { }\n        }\n        return runKm7();\n    }'
     },
     runKm7: {
       imports: ['Toybox.UserProfile', 'Toybox.Activity', 'Toybox.Time'], perms: ['UserProfile'],
