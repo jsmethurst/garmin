@@ -102,7 +102,7 @@
     var groups = {};
     GW.design.elements.forEach(function (el) {
       if (el.type !== 'text' || el.hidden) return;
-      var f = GW.customFont(el.font); if (!f) return;
+      var f = GW.customFont(el.font); if (!f || f.prebuilt) return;
       var base = GW.customFont(f.id.replace(/_s\d+$/, '')) || f, k = groupKey(base);
       (groups[k] = groups[k] || {})[rawPx(el, base)] = 1;
     });
@@ -125,6 +125,7 @@
   };
   GW.fontFor = function (el) {
     var f = GW.customFont(el.font), px = 0;
+    if (f && f.prebuilt) return el.font;   // a prebuilt font has one fixed size
     if (f) px = rawPx(el, GW.customFont(f.id.replace(/_s\d+$/, '')) || f);   // sized by cap height when asked: the 'H' is exactly `cap` pixels tall
     if (!f) return el.font;
     px = snapPx(f, px || f.px);
@@ -151,11 +152,36 @@
   // ---------- glyph metrics (shared by preview + export) ----------
   var scratch = document.createElement('canvas').getContext('2d');
   var cache = {};
-  function key(f) { return [f.family, f.weight, f.px, f.glyphs, f.spacing || 0, f.bold || 0, f.tabular ? 1 : 0, f.uniform ? 1 : 0].join('|'); }
+  function pkey(f) { var p = f.prebuilt; if (p._h == null) { var h = 5381, t = p.fnt + p.png.length; for (var i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0; Object.defineProperty(p, '_h', { value: h, enumerable: false, writable: true }); } return 'pre|' + f.id + '|' + p._h; }
+  function key(f) { if (f.prebuilt) return pkey(f); return [f.family, f.weight, f.px, f.glyphs, f.spacing || 0, f.bold || 0, f.tabular ? 1 : 0, f.uniform ? 1 : 0].join('|'); }
 
+  // A prebuilt bitmap font (a BMFont .fnt text and its .png atlas, e.g. one drawn by hand for a particular watch): the metrics are read from the .fnt,
+  // the glyph images are cut out of the atlas, and the very same two files are exported, so the face is pixel-for-pixel what its maker drew.
+  // f.prebuilt = { fnt: '<text of the .fnt>', png: 'data:image/png;base64,...', aa: true|false, filter: ' #1234567890' }
+  function parseFnt(txt) {
+    var com = /common [^\n]*lineHeight=(\d+)[^\n]*base=(\d+)/.exec(txt) || [0, 0, 0], glyphs = {}, chars = '';
+    txt.split('\n').forEach(function (ln) {
+      if (ln.indexOf('char ') !== 0) return;
+      var o = {}; ln.replace(/(\w+)=(-?\d+)/g, function (_, k, v) { o[k] = parseInt(v, 10); return ''; });
+      var ch = String.fromCharCode(o.id); chars += ch;
+      glyphs[ch] = { code: o.id, x0: o.xoffset, y0: o.yoffset - (+com[2]), w: o.width, h: o.height, adv: o.xadvance, sx: o.x, sy: o.y, blank: !(o.width > 0 && o.height > 0) };
+    });
+    return { asc: +com[2], desc: (+com[1]) - (+com[2]), lineHeight: +com[1], glyphs: glyphs, chars: chars, ready: true };
+  }
+  GW.parseFnt = parseFnt;
+  var atlases = {};
+  function atlasOf(f) {
+    var a = atlases[f.id];
+    if (a && a.src === f.prebuilt.png) return a;
+    a = atlases[f.id] = { src: f.prebuilt.png, img: new Image(), ok: false };
+    a.img.onload = function () { a.ok = true; Object.keys(glyphCache).forEach(function (k) { if (k.indexOf('pre|' + f.id + '|') === 0) delete glyphCache[k]; }); Object.keys(tintCache).forEach(function (k) { if (k.indexOf('pre|' + f.id + '|') === 0) delete tintCache[k]; }); if (GW.touch) GW.touch(false); };
+    a.img.src = f.prebuilt.png;
+    return a;
+  }
   GW.fontMetrics = function (f) {
     var k = key(f);
     if (cache[k] && cache[k].ready) return cache[k];
+    if (f.prebuilt) return (cache[k] = parseFnt(f.prebuilt.fnt));
     scratch.font = GW.fontCss(f);
     scratch.textBaseline = 'alphabetic'; scratch.textAlign = 'left';
     var chars = (GW.GLYPH_SETS[f.glyphs] || GW.GLYPH_SETS.digits).chars;
@@ -193,7 +219,7 @@
 
   // ---------- drawing text (preview) ----------
   // Returns the box {x,y,w,h} of the text; y is vertical CENTRE anchor, like TEXT_JUSTIFY_VCENTER on the watch.
-  GW.layoutText = function (ctx, fontId, text, x, y, justify) {
+  GW.layoutText = function (ctx, fontId, text, x, y, justify, top) {
     var w, h, sys = SYS[fontId], cf = !sys && GW.customFont(fontId);
     if (cf) {
       var met = GW.fontMetrics(cf);
@@ -207,7 +233,7 @@
     }
     // the watch places text on whole pixels (halves are dropped), so the preview does too
     var left = justify === 'L' ? x : (justify === 'R' ? x - w : x - Math.floor(w / 2));
-    return { x: left, y: Math.floor(y - h / 2), w: w, h: h };
+    return { x: left, y: top ? y : Math.floor(y - h / 2), w: w, h: h };   // top: y is the top of the line, like drawText without VCENTER
   };
 
   // One glyph on its own cleared canvas, white on transparent, drawn at an integer pen origin. The atlas that is exported and the
@@ -220,6 +246,16 @@
   }
   GW.glyphCanvas = function (f, ch, rot) {
     var met = GW.fontMetrics(f), g = met.glyphs[ch]; if (!g || g.blank) return null;
+    if (f.prebuilt) {   // cut the glyph out of the atlas: brightness is the opacity (white on black), as the Connect IQ compiler reads it
+      var at = atlasOf(f), kp = key(f) + '|' + ch + '|p'; if (glyphCache[kp]) return glyphCache[kp];
+      var pc = document.createElement('canvas'); pc.width = g.w; pc.height = g.h;
+      if (!at.ok) return pc;   // the atlas is still loading: draw nothing now, the preview repaints when it is there
+      var px = pc.getContext('2d', { willReadFrequently: true }); px.drawImage(at.img, g.sx, g.sy, g.w, g.h, 0, 0, g.w, g.h);
+      var im = px.getImageData(0, 0, g.w, g.h), d = im.data, aa = f.prebuilt.aa !== false;
+      for (var i = 0; i < d.length; i += 4) { var lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; lum = lum * (d[i + 3] / 255); d[i] = d[i + 1] = d[i + 2] = 255; d[i + 3] = aa ? lum : (lum >= 128 ? 255 : 0); }
+      px.putImageData(im, 0, 0); if (aa) quantize(pc, 4);
+      return (glyphCache[kp] = pc);
+    }
     var rinfo = rot ? GW.rotFontInfo(f, rot) : null, bb = rinfo ? rinfo.glyphs[ch] : null;
     var k = key(f) + '|' + ch + '|' + (f.aa || '') + '|' + (rot || 0); if (glyphCache[k]) return glyphCache[k];
     var c = document.createElement('canvas'); c.width = rinfo ? bb.w : g.w; c.height = rinfo ? bb.h : g.h;
@@ -239,14 +275,14 @@
     var ks = Object.keys(tintCache); if (ks.length > 400) delete tintCache[ks[0]];
     return (tintCache[k] = c);
   }
-  GW.drawText = function (ctx, fontId, text, x, y, justify, color) {
-    var b = GW.layoutText(ctx, fontId, text, x, y, justify), sys = SYS[fontId], cf = !sys && GW.customFont(fontId);
+  GW.drawText = function (ctx, fontId, text, x, y, justify, color, top) {
+    var b = GW.layoutText(ctx, fontId, text, x, y, justify, top), sys = SYS[fontId], cf = !sys && GW.customFont(fontId);
     ctx.fillStyle = color;
     ctx.textAlign = 'left';
     if (cf) {
       var met = GW.fontMetrics(cf);
       var cx = Math.round(b.x), base = Math.round(b.y) + met.asc;   // whole-pixel pen position and baseline, like the watch
-      if (cf.aa === 'mip') {   // device-style edges: draw the very glyph images that go into the exported font
+      if (cf.aa === 'mip' || cf.prebuilt) {   // device-style edges: draw the very glyph images that go into the exported font
         ctx.save(); ctx.imageSmoothingEnabled = false;
         for (var j = 0; j < text.length; j++) {
           var gg = met.glyphs[text[j]];
@@ -291,6 +327,12 @@
   // ---------- export: rasterise to BMFont (.fnt text + .png atlas) ----------
   // `only` (optional) is the list of characters the watch face can actually show; the rest of the font is left out of the file.
   GW.rasterizeFont = function (f, only) {
+    if (f.prebuilt) {   // exported exactly as it came: the same .fnt (with the atlas file name of this project) and the same .png bytes
+      var m = GW.fontMetrics(f), bin = atob(f.prebuilt.png.split(',')[1]), bytes = new Uint8Array(bin.length), ink = 0, n = 0;
+      for (var bi = 0; bi < bin.length; bi++) bytes[bi] = bin.charCodeAt(bi);
+      Object.keys(m.glyphs).forEach(function (ch) { var g = m.glyphs[ch]; if (!g.blank) { n++; ink += g.w * g.h; } });
+      return { name: f.id, fnt: f.prebuilt.fnt.replace(/(page id=0 file=")[^"]*(")/, '$1' + f.id + '.png$2'), bytes: bytes, canvas: null, size: 0, w: 0, h: 0, chars: m.chars.length, ink: ink, glyphs: n };
+    }
     var met = GW.fontMetrics(f), chars = met.chars, placed, atlas, W = 0, H = 0, rot = f.rot ? GW.rotFontInfo(f, f.rot) : null;
     if (only != null) {
       var seen = {}; chars = '';

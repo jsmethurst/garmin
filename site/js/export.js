@@ -154,10 +154,10 @@
       var fx = ['<fonts>'];
       src.fonts.forEach(function (f) {
         var r = GW.rasterizeFont(f, f.glyphs === 'auto' && src.fontChars && src.fontChars[f.id] ? src.fontChars[f.id] : undefined);
-        fx.push('    <font id="' + f.id + '" filename="' + f.id + '.fnt" antialias="true"/>'); // relative to this xml
+        fx.push('    <font id="' + f.id + '" filename="' + f.id + '.fnt" antialias="' + (f.prebuilt && f.prebuilt.aa === false ? 'false' : 'true') + '"' + (f.prebuilt && f.prebuilt.filter ? ' filter="' + xmlEsc(f.prebuilt.filter) + '"' : '') + '/>'); // relative to this xml
         mem.fonts.push({ id: f.id, family: f.family, px: f.px, w: r.w, h: r.h, chars: r.chars, glyphs: r.glyphs, ink: r.ink });
         text('resources/fonts/' + f.id + '.fnt', r.fnt);
-        jobs.push(canvasBytes(r.canvas).then(function (b) { text('resources/fonts/' + f.id + '.png', b); }));
+        if (r.bytes) text('resources/fonts/' + f.id + '.png', r.bytes); else jobs.push(canvasBytes(r.canvas).then(function (b) { text('resources/fonts/' + f.id + '.png', b); }));
       });
       fx.push('</fonts>');
       text('resources/fonts/fonts.xml', fx.join('\n') + '\n');

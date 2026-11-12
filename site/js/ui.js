@@ -907,7 +907,7 @@
     var box = h('div', { class: 'f', style: 'margin:0 0 14px' }, [h('label', { text: 'Memory estimate' })]);
     results.forEach(function (r) {
       var rows = [], total = 0;
-      r.mem.fonts.forEach(function (f) { var b = 197 + f.glyphs * 58 + 0.084 * f.ink; total += b; rows.push(f.family + ' ' + f.px + ' px, ' + f.glyphs + ' glyphs (atlas ' + f.w + '×' + f.h + '): ≈ ' + (b / 1024).toFixed(1) + ' KB'); });
+      r.mem.fonts.forEach(function (f) { var b = 197 + f.glyphs * 58 + 0.084 * f.ink; total += b; rows.push(f.family + ' ' + f.px + ' px, ' + f.glyphs + ' glyphs' + (f.w ? ' (atlas ' + f.w + '×' + f.h + ')' : ' (prebuilt)') + ': ≈ ' + (b / 1024).toFixed(1) + ' KB'); });
       r.mem.images.forEach(function (m) { var b = m.w * m.h; total += b; rows.push('Picture ' + m.id + ' ' + m.w + '×' + m.h + ': ' + (b / 1024).toFixed(1) + ' KB'); });
       var pct = total / 1024 / lim * 100;
       if (results.length > 1) box.appendChild(h('div', { class: 'muted small', text: r.label }));

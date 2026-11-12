@@ -60,11 +60,11 @@
     draw: function (ctx, el, env) {
       if (el.rot) { // rotated copy (export option): turn the text about its own anchor point
         ctx.save(); ctx.translate(el.x, el.y); ctx.rotate(rad(el.rot));
-        GW.drawText(ctx, GW.fontFor(el), T.text.string(el, env), 0, 0, el.justify, q(el.color)); ctx.restore(); return;
+        GW.drawText(ctx, GW.fontFor(el), T.text.string(el, env), 0, 0, el.justify, q(el.color), el.vtop); ctx.restore(); return;
       }
-      GW.drawText(ctx, GW.fontFor(el), T.text.string(el, env), el.x, el.y, el.justify, q(el.color));
+      GW.drawText(ctx, GW.fontFor(el), T.text.string(el, env), el.x, el.y, el.justify, q(el.color), el.vtop);
     },
-    box: function (el, env, ctx) { return GW.layoutText(ctx, GW.fontFor(el), T.text.string(el, env), el.x, el.y, el.justify); },
+    box: function (el, env, ctx) { return GW.layoutText(ctx, GW.fontFor(el), T.text.string(el, env), el.x, el.y, el.justify, el.vtop); },
     fields: function (el) {
       var src = GW.sources[el.source] || {}, o = src.opts || [], f = [];
       f.push({ k: 'source', t: 'source', label: 'Shows' });
@@ -81,12 +81,14 @@
       f.push({ t: 'h', label: 'Style' });
       f.push({ k: 'font', t: 'font', label: 'Typeface' });
       var bf = GW.customFont(el.font);
-      if (bf) {
+      if (bf && bf.prebuilt) f.push({ t: 'note', text: 'A prebuilt bitmap font: one fixed size, exactly as drawn.' });
+      if (bf && !bf.prebuilt) {
         f.push({ t: 'row', fields: [{ k: 'fontSize', t: 'numopt', label: 'Size (px)', ph: String(bf.px) }, { k: 'capH', t: 'numopt', label: 'or cap height (px)', ph: '' }, { t: 'spacing' }] });
         f.push({ t: 'row', fields: [{ t: 'thicken' }, { t: 'aa' }] });
         if (bf.upload) f.push({ t: 'weight' });
         f.push({ t: 'glyphs' }); f.push({ t: 'tabular' }); f.push({ t: 'uniform' }); f.push({ t: 'fontsizes' });
       }
+      f.push({ k: 'vtop', t: 'check', label: 'Y is the top of the line (like Garmin’s own drawText), not its middle' });
       f.push({ k: 'color', t: 'color', label: 'Color' });
       f.push({ k: 'justify', t: 'seg', label: 'Align on X', opts: [['L', 'Left'], ['C', 'Centre'], ['R', 'Right']] });
       f.push({ t: 'row', fields: [{ k: 'prefix', t: 'text', label: 'Before' }, { k: 'suffix', t: 'text', label: 'After' }] });
@@ -118,7 +120,7 @@
       }
       return [
         'dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);',
-        'dc.drawText(' + N(el.x) + ', ' + N(el.y) + ', ' + cg.font(fid) + ', ' + expr + ', Graphics.TEXT_JUSTIFY_' + j + ' | Graphics.TEXT_JUSTIFY_VCENTER);'
+        'dc.drawText(' + N(el.x) + ', ' + N(el.y) + ', ' + cg.font(fid) + ', ' + expr + ', Graphics.TEXT_JUSTIFY_' + j + (el.vtop ? '' : ' | Graphics.TEXT_JUSTIFY_VCENTER') + ');'
       ];
     }
   };

@@ -163,6 +163,9 @@
   // The presets are drawn on the 280 px screen; opening one on another watch converts it (see GW.convertSize).
   GW.applyPreset = function (id, done) {
     var p = GW.PRESETS.filter(function (x) { return x.id === id; })[0]; if (!p) return;
+    if (p.device && GW.DEVICE.id !== p.device) {   // laid out pixel for pixel for one watch: switch to it first, or it would be scaled
+      GW.setDevice(p.device); var ds = document.getElementById('deviceSel'); if (ds) ds.value = GW.DEVICE.id;
+    }
     var saved = GW.layouts && GW.layouts.find(p.name, p.kind === 'datafield' ? 'field' : 'watch');   // a saved layout with this name replaces the built-in
     GW.loadFrom(saved ? GW.clone(saved.data) : { design: Object.assign(p.build(), { size: 280 }), assets: p.assets ? p.assets() : {} }, done);
   };

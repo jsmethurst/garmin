@@ -154,6 +154,9 @@
         '            var w2 = adv[ch];\n            if (w2 == null) { w2 = 8; }\n            px += w2 * c;\n            py += w2 * sn;\n        }\n    }'
     },
     moonIllum: { deps: ['moonPhase'], imports: ['Toybox.Math'], code: 'function moonIllum() {\n        return ((1.0 - Math.cos(2.0 * Math.PI * moonPhase())) * 50.0 + 0.5).toNumber();\n    }' },
+    moonGlyph: { deps: ['moonPhase'], code: 'function moonGlyph() {\n        var d = moonPhase() * 29.53;\n        if (d < 3.0) { return "0"; }\n        if (d < 6.0) { return "1"; }\n        if (d < 10.0) { return "2"; }\n        if (d < 14.0) { return "3"; }\n        if (d < 18.0) { return "4"; }\n        if (d < 22.0) { return "5"; }\n        if (d < 26.0) { return "6"; }\n        if (d < 29.0) { return "7"; }\n        return "0";\n    }' },
+    recoveryNow: { needs: ['act'], code: 'function recoveryNow() {\n        if ((_act has :timeToRecovery) && _act.timeToRecovery != null) { return _act.timeToRecovery; }\n        return null;\n    }' },
+    battBar: { needs: ['sys'], code: 'function battBar(n) {\n        var k = ((_sys.battery / 100.0) * n + 0.5).toNumber();\n        var s = "";\n        for (var i = 0; i < n; i++) { s += (i < k) ? "|" : "{"; }\n        return s;\n    }' },
     moonName: {
       deps: ['moonPhase'],
       code: 'function moonName() {\n        var p = moonPhase();\n        if (p < 0.03 || p >= 0.97) { return "New moon"; }\n        if (p < 0.22) { return "Waxing crescent"; }\n        if (p < 0.28) { return "First quarter"; }\n        if (p < 0.47) { return "Waxing gibbous"; }\n' +

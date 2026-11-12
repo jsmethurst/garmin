@@ -325,6 +325,24 @@
     fn: 'moonIllum', range: [0, 100], imports: ['Toybox.Time', 'Toybox.Math'],
     num: function (e) { return Math.round((1 - Math.cos(2 * Math.PI * GW.moonPhase(e.now))) * 50); }
   });
+  // Segment34's moon is a letter of its own font: 0 (new) to 7 (waning crescent), cut at the same day counts into the cycle
+  def('moonGlyph', {
+    label: 'Moon phase (character of the Segment34 moon font)', group: 'Special', kind: 'str', opts: [], imports: ['Toybox.Time'],
+    str: function (el, env) { var d = GW.moonPhase(env.now) * 29.53; return String(d < 3 ? 0 : d < 6 ? 1 : d < 10 ? 2 : d < 14 ? 3 : d < 18 ? 4 : d < 22 ? 5 : d < 26 ? 6 : d < 29 ? 7 : 0); },
+    mcStr: function (el, cg) { cg.helper('moonGlyph'); return 'moonGlyph()'; }
+  });
+  def('battBar20', {
+    label: 'Battery as a bar of 20 characters (| full, { empty)', group: 'Device', kind: 'str', opts: [],
+    str: function (el, env) { var k = Math.round(env.sim.battery / 100 * 20), s = ''; for (var i = 0; i < 20; i++) s += i < k ? '|' : '{'; return s; },
+    mcStr: function (el, cg) { cg.need('sys'); cg.helper('battBar'); return 'battBar(20)'; }
+  });
+  def('battBar35', {
+    label: 'Battery as a bar of 35 characters (| full, { empty)', group: 'Device', kind: 'str', opts: [],
+    str: function (el, env) { var k = Math.round(env.sim.battery / 100 * 35), s = ''; for (var i = 0; i < 35; i++) s += i < k ? '|' : '{'; return s; },
+    mcStr: function (el, cg) { cg.need('sys'); cg.helper('battBar'); return 'battBar(35)'; }
+  });
+  numeric('recovery', 'Recovery time (hours)', 'Body', { fn: 'recoveryNow', needs: ['act'], range: [0, 96],
+    num: function (e) { return e.sim.recovery; } });
   def('moonName', {
     label: 'Moon phase name', group: 'Special', kind: 'str', opts: [], imports: ['Toybox.Time'],
     str: function (el, env) { return moonName(GW.moonPhase(env.now)); },
