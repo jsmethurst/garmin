@@ -657,6 +657,7 @@
       GW.SEG34_THEMES.forEach(function (t) { var o = h('option', { value: String(t.id), text: t.name }); if (t.id === d.s34.theme) o.selected = true; sel.appendChild(o); });
       sel.addEventListener('change', function () { GW.s34Apply(d, +sel.value); GW.commit(true); GW.renderPanel(); });
       p.appendChild(field('Colour scheme', sel));
+      if (d.s34.set === 'mk2') p.appendChild(field('Clock style', segCtl([['34', '34 segments'], ['17', '17 segments (blockier)']], String(d.s34.clock || 34), function (v) { GW.s34Clock(d, +v); GW.commit(true); GW.fontsReady && GW.fontsReady(); })));
     }
     p.appendChild(field('Background color', bg));
     p.appendChild(rotationField(d));

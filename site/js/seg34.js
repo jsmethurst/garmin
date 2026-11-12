@@ -44,14 +44,25 @@
   }
   GW.s34Apply = function (d, id) {
     var th = GW.SEG34_THEMES.filter(function (t) { return t.id === id; })[0]; if (!th) return;
-    d.s34 = { theme: id }; d.bg = th.c[0];
+    d.s34 = Object.assign(d.s34 || {}, { theme: id }); d.bg = th.c[0];
     d.elements.forEach(function (e) {
       var r = e.role || roleOf(e.name || '');
       if (r) { e.role = r; e.color = th.c[ROLE_IDX[r]]; }
       if (e.asset === 'seg34grad') e.hidden = th.c[0].toLowerCase() !== '#000000';   // the original draws its gradient on black backgrounds only
     });
   };
-  function themed(d, id) { GW.s34Apply(d, id); return d; }
+  function themed(d, id, set) { GW.s34Apply(d, id); d.s34.set = set; return d; }
+  // clock style: the original's "34 segments" (default) or "17 segments, blockier, more readable" (font segments80wide_2)
+  GW.s34Clock = function (d, style) {
+    var B = GW.SEG34[d.s34.set], want = style === 17 ? 's34_segments80wide_2' : 's34_segments80wide', other = style === 17 ? 's34_segments80wide' : 's34_segments80wide_2';
+    if (!d.fonts.some(function (f) { return f.id === want; })) {
+      var n = want.slice(4), dd = B.fonts[n], m = GW.parseFnt(dd.fnt);
+      d.fonts.push({ id: want, family: 'Segment34 ' + n, weight: 400, px: m.lineHeight, glyphs: 'prebuilt', spacing: 0, aa: 'mip', prebuilt: { fnt: dd.fnt, png: dd.png, aa: dd.aa, filter: dd.filter || '' } });
+    }
+    d.elements.forEach(function (e) { if (e.font === other) e.font = want; });
+    d.fonts = d.fonts.filter(function (f) { return f.id !== other; });
+    d.s34.clock = style === 17 ? 17 : 34;
+  };
 
   // ---------------------------------------------------------------- Segment34 MkII
   function mk2() {
@@ -100,7 +111,7 @@
     els.push(T('Battery icon', { font: icons.id, x: cX, y: 280 - 18, text: 'B', color: '#555555', justify: 'C' }));
     els.push(src('Battery bar', label, cX - 11, 280 - 18 + 3, 'battBar20', C.dataVal, 'L'));
     var d = GW.blankDesign(); d.name = 'Segment34 MkII'; d.bg = '#000000'; d.fonts = F; d.elements = els; d.size = 280;
-    return themed(d, 0);
+    return themed(d, 0, 'mk2');
   }
 
   // ---------------------------------------------------------------- Segment34 MAX
@@ -144,7 +155,7 @@
     els.push(T('Battery icon', { font: icons.id, x: cX, y: 280 - 25, text: 'C', color: '#555555', justify: 'C' }));
     els.push(src('Battery bar', batt, cX - 19, 280 - 25 + 4, 'battBar35', C.dataVal, 'L'));
     var d = GW.blankDesign(); d.name = 'Segment34 MAX'; d.bg = '#000000'; d.fonts = F; d.elements = els; d.size = 280;
-    return themed(d, 11);
+    return themed(d, 11, 'max');
   }
 
   // ---------------------------------------------------------------- Segment34 MkII, Turkish
@@ -186,7 +197,7 @@
     var fiveY = y3 + hmY + 5;
     els.push(T('Steps ghost', { font: large.id, x: cX - 45, y: fiveY, text: '#####', color: C.fieldBg, justify: 'L' }), src('Steps', large, cX + 45 - 1, fiveY, 'steps', C.dataVal, 'R'));
     var d = GW.blankDesign(); d.name = 'Segment34 Türkçe'; d.bg = '#000000'; d.fonts = F; d.elements = els; d.size = 280;
-    return themed(d, 0);
+    return themed(d, 0, 'mk2');
   }
 
   GW.PRESETS.push(
