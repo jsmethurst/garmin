@@ -156,6 +156,10 @@
       imports: ['Toybox.Time'],
       code: 'function moonPhase() {\n        var days = (Time.now().value() - 947182440).toFloat() / 86400.0;\n        var p = days / 29.530588853;\n        return p - p.toNumber().toFloat();\n    }'
     },
+    utcStr: {
+      imports: ['Toybox.Time', 'Toybox.Time.Gregorian'],
+      code: 'function utcStr() {\n        var i = Gregorian.utcInfo(Time.now(), Time.FORMAT_SHORT);\n        return i.hour.format("%02d") + ":" + i.min.format("%02d");\n    }'
+    },
     nyStr: {
       imports: ['Toybox.Time', 'Toybox.Time.Gregorian'],
       code: 'function nyStr(mode) {\n        var now = Time.now();\n        var year = Gregorian.utcInfo(now, Time.FORMAT_SHORT).year;\n' +

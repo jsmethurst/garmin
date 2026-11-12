@@ -141,10 +141,10 @@
     els.push(src('Clock', seg, baseX, baseY, 'time', C.clock, 'C', { vtop: false, hmode: 'auto', lz: true, sep: ':' }));
     els.push(gradient(baseX, baseY, 240, 80));
     els.push(bar('Body battery bar', cX - hCW - 3 - 3 + 1.5, baseY + hCH + 1 - 40, 'bodyBat', C.body), bar('Watch battery bar', cX + hCW + 3 + 1.5, baseY + hCH + 1 - 40, 'battery', C.stress));
-    // under the clock: New York time with EDT/EST on the left, stress on the right
+    // under the clock: New York time with EDT/EST on the left, UTC on the right
     els.push(src('New York time', small, baseX - hCW, y1, 'nyTime', C.date, 'L'), src('New York zone', small, baseX - hCW + widthOf(small, '09:40') + 8, y1, 'nyZone', C.fieldLbl, 'L'));
-    var sW = widthOf(small, '88');
-    els.push(lbl('Stress label', label, baseX + hCW - sW - 8, y1 + 3, 'STRES', C.fieldLbl, 'R'), src('Stress', small, baseX + hCW, y1, 'stress', C.stress, 'R'));
+    var uW = widthOf(small, 'UTC');
+    els.push(lbl('UTC label', small, baseX + hCW, y1, 'UTC', C.fieldLbl, 'R'), src('UTC time', small, baseX + hCW - uW - 8, y1, 'utcTime', C.date, 'R'));
     var dw = Math.sqrt(cY * cY - (y3 - cY) * (y3 - cY)) * 2, left = R((280 - dw) / 2), dg = [4, 3, 4], tot = 11;
     var w1 = R(dg[0] * dw / tot), w2 = R(dg[1] * dw / tot), w3 = R(dg[2] * dw / tot);
     var xs = [left + R(w1 / 2), left + R(w1 + w2 / 2), left + R(w1 + w2 + w3 / 2)];

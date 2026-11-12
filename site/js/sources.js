@@ -320,6 +320,11 @@
     str: function (el, env) { return nyParts(env.now).t; },
     mcStr: function (el, cg) { cg.helper('nyStr'); return 'nyStr(0)'; }
   });
+  def('utcTime', {
+    label: 'UTC time (24h)', group: 'Environment', kind: 'str', opts: [], imports: ['Toybox.Time', 'Toybox.Time.Gregorian'],
+    str: function (el, env) { var d = env.now; return ('0' + d.getUTCHours()).slice(-2) + ':' + ('0' + d.getUTCMinutes()).slice(-2); },
+    mcStr: function (el, cg) { cg.helper('utcStr'); return 'utcStr()'; }
+  });
   def('nyZone', {
     label: 'New York zone (EDT / EST)', group: 'Environment', kind: 'str', opts: [], imports: ['Toybox.Time', 'Toybox.Time.Gregorian'],
     str: function (el, env) { return nyParts(env.now).zone; },
