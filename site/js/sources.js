@@ -271,7 +271,7 @@
     mcStr: function (el, cg) { cg.need('wx'); cg.helper('wxLine'); return 'wxLine(' + (el.tr ? 'true' : 'false') + ')'; }
   });
   def('runKmWeek', {
-    label: 'Running distance this week (km)', group: 'Activity', kind: 'str', opts: [], imports: ['Toybox.UserProfile', 'Toybox.Activity', 'Toybox.Time', 'Toybox.Complications'], perms: ['UserProfile'],
+    label: 'Running distance this week (km)', group: 'Activity', kind: 'str', opts: [], imports: ['Toybox.UserProfile', 'Toybox.Activity', 'Toybox.Time', 'Toybox.Complications'], perms: ['UserProfile', 'ComplicationSubscriber'],
     str: function (el, env) { return env.sim.runWeekKm.toFixed(1); },
     mcStr: function (el, cg) { cg.helper('runKmWeek'); return 'runKmWeek().format("%.1f")'; }
   });

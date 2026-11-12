@@ -104,7 +104,7 @@
       code: 'function wxLine(tr) {\n        var s = "";\n        if (_wx == null) { return s; }\n        if (_wx.temperature != null) { s = _wx.temperature.format("%d") + "C"; }\n        var w = "";\n        if (_wx.windSpeed != null) {\n            if (_wx.windBearing != null) { w = ((Math.round((_wx.windBearing.toFloat() + 180) / 45.0).toNumber() % 8) + 97).toChar().toString(); }\n            w += Math.round(_wx.windSpeed * 3.6).format("%01d");\n        }\n        if (w.length() > 0) { s = (s.length() > 0) ? s + ", " + w : w; }\n        var c = _wx.condition != null ? (tr ? WXC_TR[wxGroup()] : WXC_EN[wxGroup()]) : "";\n        if (c.length() > 0) { s = (s.length() > 0) ? s + ", " + c : c; }\n        return s;\n    }'
     },
     runKmWeek: {
-      deps: ['runKm7'], imports: ['Toybox.Complications'],
+      deps: ['runKm7'], imports: ['Toybox.Complications'], perms: ['ComplicationSubscriber'],
       code: 'function runKmWeek() {\n        if (Toybox has :Complications) {\n            try {\n                var c = Complications.getComplication(new Complications.Id(Complications.COMPLICATION_TYPE_WEEKLY_RUN_DISTANCE));\n                if (c != null && c.value != null) { return c.value / 1000.0; }\n            } catch (e) { }\n        }\n        return runKm7();\n    }'
     },
     runKm7: {
