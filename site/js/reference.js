@@ -256,6 +256,56 @@
       });
     });
   }
+  // Repeats: bars standing on one baseline, equal pieces in a row, equal dots evenly spaced round a circle.
+  function median0(a) { var q = a.slice().sort(function (x, y) { return x - y; }); return q.length ? q[Math.floor(q.length / 2)] : 0; }
+  function findRepeats(objs) {
+    var res = [], cand = objs.filter(function (o) { return !o.ring && o.w >= 1 && o.h >= 1 && (o.w >= 1.5 || o.h >= 1.5) && o.w < 120 && o.h < 120; });
+    function bbox(list) { return bboxOfList(list); }
+    // (1) one baseline: bars of different heights, or equal segments
+    var byBottom = [], sortedB = cand.slice().sort(function (a, b) { return (a.y + a.h) - (b.y + b.h); });
+    sortedB.forEach(function (o) { var g = byBottom[byBottom.length - 1]; if (g && Math.abs((o.y + o.h) - g.base) <= 1.6) g.list.push(o); else byBottom.push({ base: o.y + o.h, list: [o] }); });
+    byBottom.forEach(function (g) {
+      var wmed = median0(g.list.map(function (o) { return o.w; })), row = g.list.filter(function (o) { return Math.abs(o.w - wmed) <= Math.max(1.6, 0.25 * wmed); }).sort(function (a, b) { return a.x - b.x; });
+      if (row.length < 4) return;
+      var pitches = []; for (var i = 1; i < row.length; i++) pitches.push(row[i].x - row[i - 1].x);
+      var pm = median0(pitches);
+      // keep the longest run with regular pitch
+      var best = [], cur = [row[0]];
+      for (var j = 1; j < row.length; j++) { if (Math.abs(pitches[j - 1] - pm) <= Math.max(1.6, 0.12 * pm) && row[j].x - (row[j - 1].x + row[j - 1].w) < 2.5 * wmed) cur.push(row[j]); else { if (cur.length > best.length) best = cur; cur = [row[j]]; } }
+      if (cur.length > best.length) best = cur;
+      if (best.length < 4) return;
+      var solid = best.filter(function (o) { return o.n / Math.max(1, o.w * o.h) >= 0.65; }).length >= 0.7 * best.length;   // bars and segments are solid; the glyphs of a text (0, 8, ...) have holes
+      if (!solid) return;
+      var hs = best.map(function (o) { return o.h; }), varies = Math.max.apply(null, hs) - Math.min.apply(null, hs) > 2.5, keys = best.map(function (o) { return o.key; }).filter(function (k, i, a) { return a.indexOf(k) === i; }).length;
+      var bb = bbox(best);
+      res.push({ kind: varies ? 'bars' : 'segments', members: best, x: bb.x, y: bb.y, w: bb.w, h: bb.h, label: (varies ? 'bars on a shared baseline' : 'equal segments in a row') + ' (' + best.length + ', pitch ' + pm.toFixed(1) + ' px' + (keys > 1 ? ', ' + keys + ' colours' : '') + ')' });
+    });
+    // (2) dots (or short strokes) evenly spaced on a circle: same colour, about the same size
+    var groups = {};
+    cand.forEach(function (o) { (groups[o.key] = groups[o.key] || []).push(o); });
+    function ringOf(list) {
+      if (list.length < 5) return null;
+      var cs = list.map(function (o) { return [o.x + o.w / 2, o.y + o.h / 2]; }), f = kasa(cs); if (!f || !isFinite(f.r) || f.r < 20 || f.r > 400) return null;
+      var res2 = cs.map(function (c) { return Math.hypot(c[0] - f.x, c[1] - f.y) - f.r; }), rms = Math.sqrt(res2.reduce(function (t, v) { return t + v * v; }, 0) / res2.length);
+      if (rms > Math.max(2.5, 0.03 * f.r)) return null;
+      var angs = cs.map(function (c) { return (Math.atan2(c[1] - f.y, c[0] - f.x) * 180 / Math.PI + 360) % 360; }).sort(function (a, b) { return a - b; }), gaps = [];
+      for (var i = 1; i < angs.length; i++) gaps.push(angs[i] - angs[i - 1]); gaps.push(360 - angs[angs.length - 1] + angs[0]);
+      var gm = median0(gaps), irregular = gaps.filter(function (v) { return Math.abs(v - gm) > Math.max(3, 0.3 * gm); }).length;
+      if (irregular > Math.max(1, list.length * 0.25)) return null;
+      return { f: f, list: list };
+    }
+    Object.keys(groups).forEach(function (g) {
+      var list = groups[g], r = ringOf(list);
+      if (!r && list.length >= 10) {   // two sizes of stroke (long and short ticks) may be in the group: try each size class
+        var med = median0(list.map(function (o) { return Math.max(o.w, o.h); }));
+        r = ringOf(list.filter(function (o) { return Math.max(o.w, o.h) <= med; })) || ringOf(list.filter(function (o) { return Math.max(o.w, o.h) > med; }));
+      }
+      if (!r) return;
+      var bb = bbox(r.list);
+      res.push({ kind: 'ring', members: r.list, x: bb.x, y: bb.y, w: bb.w, h: bb.h, label: 'points evenly spaced on a circle (' + r.list.length + ', centre ' + Math.round(r.f.x) + ', ' + Math.round(r.f.y) + ', radius ' + Math.round(r.f.r) + ')' });
+    });
+    return res;
+  }
   function detect() {
     if (!R.src) { GW.toast('Choose a picture first.'); return; }
     var S = GW.SIZE, D = S * DET, c = document.createElement('canvas'); c.width = c.height = D;
@@ -337,10 +387,12 @@
       clickable.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0, key: m[0].key, color: m[0].color, members: m, row: +rid, isRow: true });
     });
     clickable = dropFringe(clickable, bg);
+    R.repeats = findRepeats(out);
+    R.repeats.forEach(function (rp) { clickable.push({ x: rp.x, y: rp.y, w: rp.w, h: rp.h, key: rp.members[0].key, color: rp.members[0].color, members: rp.members, isRepeat: true, repeat: rp }); });
     R.all = out; R.boxes = clickable;
     R.boxes.forEach(function (b, n) { b.cid = n + 1; });
     GW.renderPanel(); redraw();
-    GW.toast(R.boxes.length + ' objects found (' + Object.keys(rows).filter(function (r) { return rows[r].length > 1; }).length + ' text rows). Click one on the preview.');
+    GW.toast(R.boxes.length + ' objects found (' + Object.keys(rows).filter(function (r) { return rows[r].length > 1; }).length + ' text rows, ' + (R.repeats || []).length + ' repeats). Click one, or drag a rectangle over several.');
   }
   GW.refDetect = detect;
 
@@ -350,9 +402,13 @@
       R.boxes.forEach(function (b) {
         var hov = R.hover === b;
         ctx.save(); ctx.lineWidth = (hov ? 2 : 1) / k; ctx.setLineDash(b.isRow ? [] : [3 / k, 2 / k]);
-        ctx.strokeStyle = hov ? '#ff2d55' : (b.isRow ? '#ff9f0a' : (b.ring ? '#bf5af2' : '#0a84ff'));
+        ctx.strokeStyle = hov ? '#ff2d55' : (b.isRepeat ? '#30d158' : (b.isRow ? '#ff9f0a' : (b.ring ? '#bf5af2' : '#0a84ff')));
         ctx.strokeRect(b.x - 0.5, b.y - 0.5, b.w + 1, b.h + 1); ctx.restore();
       });
+    }
+    if (R.drag && R.drag.on && R.drag.moved) {
+      ctx.save(); ctx.strokeStyle = '#ff2d55'; ctx.lineWidth = 1 / k; ctx.setLineDash([4 / k, 3 / k]);
+      ctx.strokeRect(Math.min(R.drag.a.x, R.drag.b.x), Math.min(R.drag.a.y, R.drag.b.y), Math.abs(R.drag.b.x - R.drag.a.x), Math.abs(R.drag.b.y - R.drag.a.y)); ctx.restore();
     }
     if (R.measure && R.measure.a && R.measure.b) {
       var a = R.measure.a, b2 = R.measure.b;
@@ -399,103 +455,207 @@
       return true;
     }
     if (!R.showBoxes || !R.boxes.length) return false;
+    var forced = !el || e.altKey;
     if (type === 'move') {
+      if (R.drag && R.drag.on) {   // dragging a rectangle over several objects
+        R.drag.b = { x: p.x, y: p.y }; R.drag.moved = R.drag.moved || Math.hypot(p.x - R.drag.a.x, p.y - R.drag.a.y) > 3; redraw(); return true;
+      }
       var b = boxAt(p);
       if (b !== R.hover) { R.hover = b; redraw(); }
       hideTip();
-      if (b && (!el || e.altKey)) {
+      if (b && forced) {
         tip = document.createElement('div'); tip.className = 'reftip';
-        tip.textContent = 'x ' + N(b.x) + '  y ' + N(b.y) + '  w ' + N(b.w) + '  h ' + N(b.h) + '  ' + b.color + (b.isRow ? '  · text row of ' + b.members.length : '');
+        tip.textContent = 'x ' + N(b.x) + '  y ' + N(b.y) + '  w ' + N(b.w) + '  h ' + N(b.h) + '  ' + b.color + (b.isRepeat ? '  · repeat: ' + b.repeat.label : (b.isRow ? '  · text row of ' + b.members.length : ''));
         tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY + 12) + 'px'; document.body.appendChild(tip);
       }
       return false;
     }
-    if (type === 'down' && (!el || e.altKey)) {   // Alt + click reaches a box that lies under an element
-      var bx = boxAt(p); if (!bx) return false;
-      openMenu(bx, e); return true;
+    if (type === 'down' && forced) {   // Alt + click reaches a box under an element; dragging draws a rectangle
+      R.drag = { a: { x: p.x, y: p.y }, b: { x: p.x, y: p.y }, on: true, moved: false, ev: e };
+      try { e.target.setPointerCapture(e.pointerId); } catch (x) { }
+      return true;
+    }
+    if (type === 'up' && R.drag && R.drag.on) {
+      var d = R.drag; R.drag = null; redraw();
+      if (d.moved) {
+        var rect = { x: Math.min(d.a.x, d.b.x), y: Math.min(d.a.y, d.b.y), w: Math.abs(d.b.x - d.a.x), h: Math.abs(d.b.y - d.a.y) };
+        var inside = (R.all || []).filter(function (o) { var cx = o.x + o.w / 2, cy = o.y + o.h / 2; return cx >= rect.x && cx <= rect.x + rect.w && cy >= rect.y && cy <= rect.y + rect.h; });
+        openMenu(makeRegion(inside, inside.length ? null : rect, rect), e);
+      } else {
+        var bx = boxAt(p); if (!bx) { GW.select(null); return true; }
+        openMenu(makeRegion(bx.members, null), e);
+      }
+      return true;
     }
     return false;
   };
 
-  // ---------------------------------------------------------------- click to place
-  function suggestFont(capH) {
-    var f = (GW.design.fonts || []).filter(function (x) { return !x.upload; })[0];
-    if (!f) {
-      f = { id: 'f_ref_dmsans500', family: 'DM Sans', weight: 500, px: 22, glyphs: 'auto', spacing: 0 };
-      GW.design.fonts.push(f);
+  // ---------------------------------------------------------------- regions and pixels
+  function bboxOfList(list) {
+    var x0 = Math.min.apply(null, list.map(function (b) { return b.x; })), y0 = Math.min.apply(null, list.map(function (b) { return b.y; }));
+    return { x: x0, y: y0, w: Math.max.apply(null, list.map(function (b) { return b.x + b.w; })) - x0, h: Math.max.apply(null, list.map(function (b) { return b.y + b.h; })) - y0 };
+  }
+  function makeRegion(members, rect, user) {
+    var bb = rect || bboxOfList(members), cnt = {}, best = null;
+    members.forEach(function (m) { cnt[m.key] = (cnt[m.key] || 0) + m.n; });
+    Object.keys(cnt).forEach(function (k) { if (best == null || cnt[k] > cnt[best]) best = k; });
+    var key = best != null ? +best : (R.bg != null ? R.bg : 0);
+    if (best == null && R.src) {   // a hand-drawn rectangle with no object inside: the strongest colour in it
+      try { var hh = pixelsOf({ x: bb.x, y: bb.y, w: bb.w, h: bb.h, bg: R.bg, members: [] }).hist(), bk = null; Object.keys(hh).forEach(function (k) { if (bk == null || hh[k] > hh[bk]) bk = k; }); if (bk != null) key = +bk; } catch (e) { }
     }
-    var px = GW.pxForCap(f.family, f.weight, Math.max(3, N(capH)));
-    return { font: f, px: px };
+    return { x: bb.x, y: bb.y, w: bb.w, h: bb.h, rect: user || rect || null, members: members, key: key, color: hexOfKey(key), bg: R.bg, centre: { x: GW.SIZE / 2, y: GW.SIZE / 2 }, all: R.all || [] };
   }
-  function placeText(b) {
-    var sf = suggestFont(b.h), f = sf.font, cp = Object.assign({}, f, { px: sf.px }), met = GW.fontMetrics(cp), g = met.glyphs['0'] || met.glyphs['H'];
-    var off = g ? met.asc + g.y0 + g.h / 2 - met.lineHeight / 2 : 0;   // text y is the middle of the line box, the ink sits a little off that
-    var el = GW.addElement('text', { name: 'Text (from reference)', source: 'custom', text: 'TEXT', font: f.id, color: GW.q(b.color), justify: 'C', x: N(b.x + b.w / 2), y: N(b.y + b.h / 2 - off), capH: N(b.h) });
-    GW.toast('Text placed. Suggested size ' + sf.px + ' px for a cap height of ' + N(b.h) + ' px (' + f.family + ').');
-    return el;
-  }
-  function placeImage(b) {
-    var w = Math.max(1, N(b.w)), h = Math.max(1, N(b.h)), c = document.createElement('canvas'); c.width = w; c.height = h;
+  // the region's pixels, quantised to the palette, as helpers for the element types
+  function pixelsOf(region) {
+    var pad = 2, x0 = Math.floor(region.x) - pad, y0 = Math.floor(region.y) - pad, w1 = Math.ceil(region.w) + 2 * pad, h1 = Math.ceil(region.h) + 2 * pad, w2 = w1 * DET, h2 = h1 * DET;
+    var c = document.createElement('canvas'); c.width = w2; c.height = h2;
     var x = c.getContext('2d', { willReadFrequently: true }); x.imageSmoothingQuality = 'high';
-    x.drawImage(R.src, (b.x - R.x) / R.s, (b.y - R.y) / R.s, b.w / R.s, b.h / R.s, 0, 0, w, h);
-    var id = x.getImageData(0, 0, w, h), d = id.data;
-    for (var i = 0; i < w * h; i++) if (R.bg != null && keyOf(d[i * 4], d[i * 4 + 1], d[i * 4 + 2]) === R.bg) d[i * 4 + 3] = 0;   // the display background becomes transparent
-    x.putImageData(id, 0, 0);
-    GW.addAsset(c.toDataURL('image/png'), function (aid) {
-      GW.addElement('image', { name: 'Image (from reference)', asset: aid, w: w, h: h, x: N(b.x + b.w / 2), y: N(b.y + b.h / 2) });
-      GW.toast('Image placed at its exact size (' + w + '×' + h + ' px).');
-    });
+    x.drawImage(R.src, (R.x - x0) * DET, (R.y - y0) * DET, R.src.width * R.s * DET, R.src.height * R.s * DET);
+    var d = x.getImageData(0, 0, w2, h2).data, key = new Int16Array(w2 * h2), k2 = new Int16Array(w2 * h2), i, px, py, dx, dy;
+    for (i = 0; i < w2 * h2; i++) key[i] = keyOf(d[i * 4], d[i * 4 + 1], d[i * 4 + 2]);
+    var cnt = new Uint8Array(64);
+    for (py = 0; py < h2; py++) for (px = 0; px < w2; px++) {   // the same 3x3 majority filter as the object search
+      i = py * w2 + px;
+      if (px === 0 || py === 0 || px === w2 - 1 || py === h2 - 1) { k2[i] = key[i]; continue; }
+      var seen = [], bestK = key[i], bestC = 0;
+      for (dy = -1; dy <= 1; dy++) for (dx = -1; dx <= 1; dx++) { var kv = key[i + dy * w2 + dx]; if (!cnt[kv]) seen.push(kv); cnt[kv]++; }
+      seen.forEach(function (kv) { if (cnt[kv] > bestC || (cnt[kv] === bestC && kv === key[i])) { bestC = cnt[kv]; bestK = kv; } cnt[kv] = 0; });
+      k2[i] = bestK;
+    }
+    var bg = region.bg != null ? region.bg : (R.bg != null ? R.bg : 0), pts = null, rx0 = region.x - 1, ry0 = region.y - 1, rx1 = region.x + region.w + 1, ry1 = region.y + region.h + 1;
+    if (region.rect) { rx0 = Math.min(rx0, region.rect.x); ry0 = Math.min(ry0, region.rect.y); rx1 = Math.max(rx1, region.rect.x + region.rect.w); ry1 = Math.max(ry1, region.rect.y + region.rect.h); }   // a hand-drawn rectangle may reach beyond the objects in it
+    var P = { x0: x0, y0: y0, w1: w1, h1: h1, padLeft1: N(region.x) - x0, padTop1: N(region.y) - y0, canvas: c };
+    function fgAll() {
+      if (pts) return pts; pts = [];
+      for (var yy = 0; yy < h2; yy++) for (var xx = 0; xx < w2; xx++) {
+        var k = k2[yy * w2 + xx]; if (k === bg) continue;
+        var dxp = x0 + (xx + 0.5) / DET, dyp = y0 + (yy + 0.5) / DET;
+        if (dxp >= rx0 && dxp <= rx1 && dyp >= ry0 && dyp <= ry1) pts.push([dxp, dyp, k]);
+      }
+      return pts;
+    }
+    P.fgPts = function () { return fgAll().map(function (p) { return [p[0], p[1]]; }); };
+    P.pointsOfKey = function (k) { return fgAll().filter(function (p) { return p[2] === k; }).map(function (p) { return [p[0], p[1]]; }); };
+    P.pointsInBox = function (b) { return fgAll().filter(function (p) { return p[0] >= b.x - 0.5 && p[0] <= b.x + b.w + 0.5 && p[1] >= b.y - 0.5 && p[1] <= b.y + b.h + 0.5 && p[2] === b.key; }).map(function (p) { return [p[0], p[1]]; }); };
+    P.bbox = function () { var a = fgAll(); if (!a.length) return { x: region.x, y: region.y, w: region.w, h: region.h }; var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; a.forEach(function (p) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; }); return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }; };
+    P.hist = function () { var h = {}; fgAll().forEach(function (p) { h[p[2]] = (h[p[2]] || 0) + 1; }); return h; };
+    P.keyAt = function (xd, yd) { var xx = Math.floor((xd - x0) * DET), yy = Math.floor((yd - y0) * DET); return xx < 0 || yy < 0 || xx >= w2 || yy >= h2 ? -1 : k2[yy * w2 + xx]; };
+    P.mask1 = new Uint8Array(w1 * h1);
+    fgAll().forEach(function (p) { P.mask1[Math.floor(p[1] - y0) * w1 + Math.floor(p[0] - x0)]++; });
+    for (i = 0; i < P.mask1.length; i++) P.mask1[i] = P.mask1[i] >= 2 * 2 ? 1 : 0;   // 2x2 sub-pixels at 2x resolution: at least half
+    return P;
   }
-  function placeShape(b) {
-    var thin = Math.min(b.w, b.h) <= 3, o = { name: 'Shape (from reference)', color: GW.q(b.color) };
-    if (thin) {
-      var horiz = b.w >= b.h, pen = Math.max(1, N(Math.min(b.w, b.h)));
-      Object.assign(o, horiz ? { kind: 'line', x: N(b.x), y: N(b.y + b.h / 2), x2: N(b.x + b.w), y2: N(b.y + b.h / 2), pen: pen } : { kind: 'line', x: N(b.x + b.w / 2), y: N(b.y), x2: N(b.x + b.w / 2), y2: N(b.y + b.h), pen: pen });
-    } else Object.assign(o, { kind: 'rect', fill: true, x: N(b.x + b.w / 2), y: N(b.y + b.h / 2), w: Math.max(1, N(b.w)), h: Math.max(1, N(b.h)) });
-    GW.addElement('shape', o);
+  GW.refPixelsOf = function (region) { return pixelsOf(region); };
+  GW.refInternal = { makeRegion: function (a, b, c) { return makeRegion(a, b, c); }, place: function (t, r, c) { return place(t, r, c); }, pixelsOf: pixelsOf, find: findRepeats };
+  GW.refUtil = { kasa: kasa, keyOf: keyOf, hexOfKey: hexOfKey, N: N, DET: DET };
+
+  // ---------------------------------------------------------------- click to place: every element type of GW.types
+  function typeList() {
+    var field = GW.design.kind === 'datafield';
+    return Object.keys(GW.types).filter(function (k) { return !GW.types[k].hidden && (k !== 'dfcell' || field); });
   }
-  function openMenu(b, e) {
+  function defaultProps(t, region) {   // no fromRegion: the default element, centred on the region and sized to fit
+    var def = t.defaults(), o = {}, pr = typeof t.pos === 'function' ? t.pos(def) : t.pos, cx = N(region.x + region.w / 2), cy = N(region.y + region.h / 2);
+    if (pr && pr[0]) { o[pr[0][0]] = cx; o[pr[0][1]] = cy; }
+    if ('w' in def) o.w = Math.max(1, N(region.w)); if ('h' in def) o.h = Math.max(1, N(region.h));
+    if ('size' in def) o.size = Math.max(4, N(Math.max(region.w, region.h)));
+    if ('r' in def && !('w' in def)) o.r = Math.max(2, N(Math.max(region.w, region.h) / 2));
+    if ('color' in def) o.color = GW.q(region.color);
+    return o;
+  }
+  function place(typeName, region, chosen) {
+    var t = GW.types[typeName], res = null;
+    try { res = chosen ? { props: chosen.props, note: chosen.note } : (t.fromRegion ? t.fromRegion(region, pixelsOf(region)) : null); } catch (err) { if (window.console) console.error('fromRegion failed', typeName, err); GW.toast(t.label + ': could not read this region (' + err.message + '). Placed as a default.'); }
+    if (res && res.choices && !chosen) return { choices: res };
+    var props = Object.assign({ name: t.label + ' (from reference)' }, res && res.props ? res.props : defaultProps(t, region));
+    if (res && res.addFont && !GW.customFont(res.addFont.id)) GW.design.fonts.push(res.addFont);
+    function go(extra) {
+      GW.addElement(typeName, Object.assign(props, extra || {}));   // pushes one undo step and shows the new layer
+      GW.toast(t.label + ' placed' + (res && res.note ? ': ' + res.note : (t.fromRegion ? '' : ' (default, centred on the region)')) + '.');
+    }
+    if (res && res.assetDataUrl) GW.addAsset(res.assetDataUrl, function (aid) { go({ asset: aid }); }); else go();
+    return null;
+  }
+  function openMenu(region, e) {
     closeMenu(); hideTip();
+    if (!R.src) return;
     menu = document.createElement('div'); menu.className = 'refmenu';
-    var head = document.createElement('div'); head.className = 'muted small'; head.textContent = (b.isRow ? 'Text row' : 'Object') + ' · ' + N(b.w) + '×' + N(b.h) + ' at ' + N(b.x) + ', ' + N(b.y) + ' · ' + b.color;
+    var head = document.createElement('div'); head.className = 'muted small';
+    head.textContent = region.members.length + ' object' + (region.members.length === 1 ? '' : 's') + ' · ' + N(region.w) + '×' + N(region.h) + ' at ' + N(region.x) + ', ' + N(region.y) + ' · ' + region.color;
     menu.appendChild(head);
-    [['Place text here', placeText], ['Place image here', placeImage], ['Place shape here', placeShape]].forEach(function (a) {
-      var btn = document.createElement('button'); btn.className = 'btn sm'; btn.textContent = a[0];
-      btn.addEventListener('click', function () { closeMenu(); a[1](b); });
+    var P = null, scored = typeList().map(function (k, i) {
+      var t = GW.types[k], sc = 0;
+      if (t.suggest) { try { P = P || pixelsOf(region); sc = t.suggest(region, P) || 0; } catch (x) { sc = 0; } }
+      return { k: k, sc: sc, i: i };
+    }).sort(function (a, b) { return b.sc - a.sc || a.i - b.i; });
+    scored.forEach(function (it) {
+      var t = GW.types[it.k], btn = document.createElement('button'); btn.className = 'btn sm' + (it.sc >= 0.5 ? ' primary' : ''); btn.style.textAlign = 'left';
+      btn.textContent = 'Place ' + t.label.toLowerCase() + (it.sc >= 0.5 ? '  ✓ likely' : '') + (t.fromRegion ? '' : '  (default)');
+      btn.addEventListener('click', function () {
+        var r = place(it.k, region);
+        if (r && r.choices) {   // a type may offer several readings (the icon: the three best matches)
+          menu.innerHTML = '';
+          var hd = document.createElement('div'); hd.className = 'muted small'; hd.textContent = 'Best matches: pick one'; menu.appendChild(hd);
+          r.choices.choices.forEach(function (ch) {
+            var b2 = document.createElement('button'); b2.className = 'btn sm'; b2.style.cssText = 'display:flex;align-items:center;gap:8px;text-align:left';
+            if (ch.preview) b2.appendChild(ch.preview);
+            var sp = document.createElement('span'); sp.textContent = ch.label; b2.appendChild(sp);
+            b2.addEventListener('click', function () { closeMenu(); place(it.k, region, ch); });
+            menu.appendChild(b2);
+          });
+        } else closeMenu();
+      });
       menu.appendChild(btn);
     });
-    menu.style.left = Math.min(window.innerWidth - 190, e.clientX + 8) + 'px'; menu.style.top = Math.min(window.innerHeight - 150, e.clientY + 8) + 'px';
+    menu.style.left = Math.max(4, Math.min(window.innerWidth - 270, e.clientX + 8)) + 'px'; menu.style.top = Math.max(4, Math.min(window.innerHeight - 40 - 30 * scored.length, e.clientY + 8)) + 'px';
+    menu.style.maxHeight = (window.innerHeight - 20) + 'px'; menu.style.overflowY = 'auto';
     document.body.appendChild(menu);
     setTimeout(function () { document.addEventListener('pointerdown', menuAway, true); }, 0);
   }
 
   // ---------------------------------------------------------------- analysis packet
+  // the CURRENT element catalogue, read from GW.types: nothing is hardcoded, a new type shows up here by itself
+  function flatFields(list, out) {
+    (list || []).forEach(function (f) { if (!f) return; if (f.t === 'row' && f.fields) flatFields(f.fields, out); else if (f.k) out.push(f.k + (f.label ? ' (' + f.label + ')' : '')); });
+    return out;
+  }
+  function catalogue() {
+    var L = [], field = GW.design.kind === 'datafield';
+    Object.keys(GW.types).forEach(function (k) {
+      var t = GW.types[k]; if (t.hidden || (k === 'dfcell' && !field)) return;
+      try {
+        var def = t.defaults(); delete def.type;
+        var fl = []; try { flatFields(t.fields(Object.assign({ type: k }, def)), fl); } catch (x) { }
+        L.push('- "' + k + '" = ' + t.label + (t.fromRegion ? ' [can be read off a region of the picture]' : ''));
+        L.push('    defaults: ' + JSON.stringify(def));
+        if (fl.length) L.push('    editable fields: ' + fl.join(', '));
+      } catch (x) { }
+    });
+    return L;
+  }
   function packet() {
     var S = GW.SIZE, L = [];
     L.push('# Garmin Studio: watch face analysis packet', '');
-    L.push('Task: look at the attached screenshot/photo of a watch face and rebuild it as a Garmin Studio design. Return ONE JSON object (no prose around it) that the Studio can open: {"design": {"name": "...", "bg": "#000000", "fonts": [...], "elements": [...]}}.', '');
-    L.push('## Device', GW.DEVICE.name + ' (' + GW.DEVICE.id + '), screen ' + S + '×' + S + ' px, round. Coordinates are screen pixels, origin top-left, x to the right, y down. Text and image elements are positioned by their CENTRE.');
+    L.push('Task: look at the attached screenshot/photo of a watch face and rebuild it as a Garmin Studio design. Return ONE JSON object (no prose around it) that the Studio can open with its Open button: {"design": {"name": "...", "bg": "#000000", "fonts": [...], "elements": [...]}}.', '');
+    L.push('## Device', GW.DEVICE.name + ' (' + GW.DEVICE.id + '), screen ' + S + '×' + S + ' px, round. Coordinates are screen pixels, origin top-left, x to the right, y down. Most elements are positioned by their CENTRE (x, y); arcs, ticks and hands by the centre of their circle (cx, cy).');
     L.push('Colours: only the 64-colour palette (each channel one of 00, 55, AA, FF), e.g. #00AAFF. Anything else is snapped to it.', '');
-    var objs = (R.boxes || []).slice().sort(function (a, b) { return b.w * b.h - a.w * a.h; }).slice(0, 120).sort(function (a, b) { return a.y - b.y || a.x - b.x; });
-    L.push('## Objects found in the picture (inside the display circle, in screen pixels; the largest ' + objs.length + ' of ' + (R.boxes || []).length + ', top to bottom)');
+    var objs = (R.boxes || []).filter(function (b) { return !b.isRepeat; }).sort(function (a, b) { return b.w * b.h - a.w * a.h; }).slice(0, 120).sort(function (a, b) { return a.y - b.y || a.x - b.x; });
+    L.push('## Objects found in the picture (inside the display circle, in screen pixels; the largest ' + objs.length + ' of ' + (R.boxes || []).filter(function (b) { return !b.isRepeat; }).length + ', top to bottom)');
     L.push('x | y | w | h | colour | kind');
     objs.forEach(function (b) { L.push([N(b.x), N(b.y), N(b.w), N(b.h), b.color, b.ring ? 'large ring or arc' : (b.isRow ? 'text row (' + b.members.length + ' glyph groups on one baseline)' : 'box')].join(' | ')); });
-    L.push('Colours are the nearest of the 64 palette colours to the picture, so thin text can look paler than it is. The boxes are the ink of the objects, not the text line box: a text element is centred on the middle of its ink for digits and capitals.');
+    L.push('Colours are the nearest of the 64 palette colours to the picture, so thin text can look paler than it is. The boxes are the ink of the objects, not the text line box.');
+    if ((R.repeats || []).length) { L.push('', '## Repeats found (strong hints for gauges, bar charts, tick rings, binary clocks)'); R.repeats.forEach(function (r) { L.push('- ' + r.label + ': box ' + N(r.x) + ', ' + N(r.y) + ', ' + N(r.w) + '×' + N(r.h) + ', colours ' + r.members.map(function (m) { return m.color; }).filter(function (c, i, a) { return a.indexOf(c) === i; }).join('/')); }); }
     if (R.calib) L.push('', 'The picture was lined up by fitting a circle (fit error ' + R.calib.rms.toFixed(2) + ' px, treated as: ' + R.calib.mode + ').');
-    L.push('', '## Element types (the defaults show every field; omit fields you do not need)');
-    Object.keys(GW.types).forEach(function (t) {
-      if (t === 'dfcell') return;
-      try { var def = GW.types[t].defaults(); delete def.type; L.push('- ' + t + ' (' + GW.types[t].label + '): ' + JSON.stringify(def)); } catch (x) { }
-    });
-    L.push('', 'Every element also needs "type", and may have "name". Typeface entries go in design.fonts: {"id":"fMain","family":"DM Sans","weight":500,"px":22,"glyphs":"auto","spacing":0}; a text element refers to it with "font":"fMain" and may override the size with "fontSize" (px) or "capH" (cap height in px). Available families: ' + GW.FONT_FAMILIES.map(function (f) { return f.family + ' ' + f.weights.join('/'); }).join(', ') + '. System fonts instead of a typeface entry: FONT_XTINY, FONT_TINY, FONT_SMALL, FONT_MEDIUM, FONT_LARGE, FONT_NUMBER_MILD, FONT_NUMBER_MEDIUM, FONT_NUMBER_HOT, FONT_NUMBER_THAI_HOT.');
-    L.push('Text element "source" values (data it can show; anything else uses source "custom" with "text"):');
-    GW.sourceGroups.forEach(function (g) { L.push('  ' + g + ': ' + GW.sourceList.filter(function (s) { return s.group === g; }).map(function (s) { return s.id + ' (' + s.label + ')'; }).join(', ')); });
-    L.push('Arcs and segment gauges take "source" of any numeric one (kind num). Icons: {"type":"icon","kind":"<name>","size":16|20|24,"color":"#ffffff","x":..,"y":..} with names: ' + Object.keys(GW.MDI).join(', ') + '.');
+    L.push('', '## Element catalogue (generated from the Studio itself; omit fields you do not need; every element also needs "type" and may have "name")');
+    catalogue().forEach(function (l) { L.push(l); });
+    L.push('', 'Typeface entries go in design.fonts: {"id":"fMain","family":"DM Sans","weight":500,"px":22,"glyphs":"auto","spacing":0}; a text element refers to it with "font":"fMain" and may override the size with "fontSize" (px) or "capH" (cap height in px). Available families: ' + GW.FONT_FAMILIES.map(function (f) { return f.family + ' ' + f.weights.join('/'); }).join(', ') + '. System fonts instead of a typeface entry: FONT_XTINY, FONT_TINY, FONT_SMALL, FONT_MEDIUM, FONT_LARGE, FONT_NUMBER_MILD, FONT_NUMBER_MEDIUM, FONT_NUMBER_HOT, FONT_NUMBER_THAI_HOT.');
+    L.push('', '## Data sources (text elements: "source"; arcs, gauges and bar charts take a numeric one, kind num; anything else is "custom" with "text")');
+    GW.sourceGroups.forEach(function (g) { L.push('  ' + g + ': ' + GW.sourceList.filter(function (s) { return s.group === g; }).map(function (s) { return s.id + ' (' + s.label + (s.kind === 'num' ? ', num' : '') + ')'; }).join(', ')); });
+    L.push('Icons: {"type":"icon","kind":"<name>","size":16|20|24,"color":"#ffffff","x":..,"y":..} with names: ' + Object.keys(GW.MDI).join(', ') + '.');
     L.push('', '## Memory rules (the watch crashes to the "IQ!" screen when it runs out)');
     L.push('- fēnix 6 / 6 Pro watch face: about 112 KB for the whole app; fēnix 6X Pro about 128 KB.');
-    L.push('- Every bitmap font size is a separate font in memory (a font atlas of its glyphs). Use as FEW font sizes as possible: ideally one size per typeface family, and few families. Sizes 1 px apart are merged automatically.');
-    L.push('- Pictures cost about one byte per pixel; avoid full-screen images and prefer shapes, arcs, gauges and icons.');
-    L.push('- Use the "Auto" character set for fonts (only the characters the design shows are exported).');
+    L.push('- Every bitmap font size is a separate font in memory, and its size depends on the glyphs it holds and their pixels (the atlas is cut to the characters used with the "auto" set). Use as FEW font sizes as possible: ideally one size per typeface family, and few families. Sizes 1 px apart are merged automatically.');
+    L.push('- Pictures cost about one byte per pixel; avoid full-screen images and prefer shapes, arcs, gauges, ticks and icons.');
     L.push('', 'Reply with the JSON only.');
     return L.join('\n');
   }
@@ -532,7 +692,7 @@
     p.appendChild(h('h4', { text: '2 · Find the objects' }));
     var sb = h('input', { type: 'checkbox' }); sb.checked = R.showBoxes; sb.addEventListener('change', function () { R.showBoxes = sb.checked; redraw(); });
     p.appendChild(h('div', { class: 'row' }, [h('button', { class: 'btn primary', text: 'Find objects', onclick: detect }), h('label', { class: 'chk' }, [sb, 'Show boxes'])]));
-    p.appendChild(h('p', { class: 'muted small', text: R.boxes.length ? R.boxes.length + ' objects. Hover for size and colour, click one on the preview (Alt+click if an element is in the way) to place text, an image or a shape there. Blue = one object, orange = a row of text, purple = a large ring.' : 'Only the inside of the display circle is searched. Line the picture up first.' }));
+    p.appendChild(h('p', { class: 'muted small', text: R.boxes.length ? R.boxes.length + ' objects. Hover for size and colour, click one on the preview (Alt+click if an element is in the way) to place text, an image or a shape there. Blue = one object, orange = a row of text, green = a repeat (bars, segments, dots on a circle), purple = a large ring. Drag a rectangle to pick several objects.' : 'Only the inside of the display circle is searched. Line the picture up first.' }));
     p.appendChild(h('h4', { text: '3 · Measure' }));
     function toolBtn(id, label) { return h('button', { class: 'btn' + (R.tool === id ? ' primary' : ''), text: label, onclick: function () { R.tool = R.tool === id ? null : id; if (R.tool !== 'measure') R.measure = null; GW.renderPanel(); redraw(); } }); }
     p.appendChild(h('div', { class: 'row' }, [toolBtn('dropper', 'Eyedropper'), toolBtn('measure', 'Measure')]));
