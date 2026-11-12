@@ -27,7 +27,7 @@
     var k = cv.width / GW.SIZE, env = GW.env();
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
     ctx.scale(k, k);
-    GW.renderDesign(ctx, GW.design, env);
+    GW.renderDesign(ctx, GW.design, env, true);
     overlay(env, k);
   }
   function overlay(env, k) {
@@ -74,6 +74,7 @@
         ctx.restore();
       }
     }
+    if (GW.refOverlay) GW.refOverlay(ctx, k);
     ctx.restore();
   }
   // corner grips (elements with `grips`): drag one to resize with the proportions kept
@@ -131,6 +132,7 @@
   }
   cv.addEventListener('pointerdown', function (e) {
     var p = toDesign(e), el = pick(p.x, p.y);
+    if (GW.refPointer && GW.refPointer('down', p, e, el)) return;
     GW.closeColor();
     var gr = gripAt(p);
     if (gr) {   // start resizing from a corner grip: the opposite corner stays where it is
@@ -160,6 +162,7 @@
   });
   cv.addEventListener('pointermove', function (e) {
     var p = toDesign(e);
+    if (GW.refPointer && !drag && GW.refPointer('move', p, e, pick(p.x, p.y))) return;
     var co = GW.design.kind === 'datafield' ? GW.slotRect(GW.design, GW.design.dfSlot || 0) : { x: 0, y: 0 };
     $('coords').textContent = 'x ' + Math.round(p.x - co.x) + ' · y ' + Math.round(p.y - co.y);
     if (drag && drag.resize) {
@@ -195,7 +198,7 @@
     if (moved) GW.history.commit();
     schedule();
   }
-  cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
+  cv.addEventListener('pointerup', function (e) { if (GW.refPointer && GW.refPointer('up', toDesign(e), e, null)) return; endDrag(); }); cv.addEventListener('pointercancel', endDrag);
   cv.addEventListener('pointerleave', function () { if (hoverId) { hoverId = null; schedule(); } $('coords').textContent = 'x – · y –'; });
 
   // drop an image file onto the stage

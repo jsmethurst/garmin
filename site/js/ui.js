@@ -85,6 +85,7 @@
     var p = $('panel'); p.innerHTML = '';
     if (tab === 'inspect') renderInspector(p);
     else if (tab === 'face') renderFace(p);
+    else if (tab === 'ref') GW.renderRefPanel(p);
     else renderSim(p);
   };
 
@@ -521,6 +522,7 @@
     return el;
   };
   GW.loadImageFile = loadImageFile;
+  GW.ui = { h: h, field: field, modal: modal, closeModal: closeModal, segCtl: segCtl };
   // quick add: every data source, grouped (same groups as the "Shows" menu)
   function dfQuickList() {
     return GW.DF_GROUPS.map(function (g) {

@@ -2,7 +2,7 @@
 (function (GW) {
   'use strict';
 
-  GW.renderDesign = function (ctx, design, env) {
+  GW.renderDesign = function (ctx, design, env, withRef) {
     var S = GW.SIZE;
     (design.fonts || []).forEach(function (f) { GW.previewFonts[f.id] = f; }); // lets thumbnails of other designs resolve their fonts
     ctx.save();
@@ -34,6 +34,7 @@
     }
     ctx.fillStyle = GW.q(design.kind === 'datafield' ? GW.dfTheme(design).bg : design.bg); ctx.fillRect(0, 0, inSlot ? slot.w : S, inSlot ? slot.h : S);
     if (design.bgImage && GW.assets[design.bgImage]) ctx.drawImage(GW.assets[design.bgImage].img, 0, 0, S, S);
+    if (withRef && !inSlot && GW.refDraw) GW.refDraw(ctx);   // the reference picture sits under every element
     design.elements.forEach(function (el) {
       if (el.hidden) return;
       var t = GW.types[el.type]; if (!t) return;

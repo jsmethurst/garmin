@@ -252,3 +252,5 @@ body[data-mode=field] .tgl.live, body[data-mode=field] #tabs [data-tab=face] { d
 .mdigrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 4px; margin: 4px 0 10px; }
 .mdigrid button { background: var(--panel); border: 1px solid var(--line2); border-radius: 4px; color: inherit; font-size: 22px; padding: 4px 0; cursor: pointer; font-family: 'MDI Icons'; }
 .mdigrid button.on { border-color: var(--accent, #4af); background: rgba(80,160,255,.18); }
+.reftip { position: fixed; z-index: 50; background: #111; color: #fff; font: 11px/1.3 ui-monospace, monospace; padding: 4px 7px; border-radius: 4px; pointer-events: none; white-space: nowrap; }
+.refmenu { position: fixed; z-index: 60; background: var(--panel, #fff); border: 1px solid var(--line2, #ccc); border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.25); min-width: 170px; }
