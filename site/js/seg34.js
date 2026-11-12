@@ -25,6 +25,34 @@
   }
   function gradient(cx, cy, w, h) { return GW.newElement('image', { name: 'Clock gradient', x: cx, y: cy, w: w, h: h, asset: 'seg34grad' }); }
 
+
+  // ---------------------------------------------------------------- colour schemes
+  // Every element gets a role (clock, data, labels ...); a scheme maps the roles to colours, as the original's theme strings do.
+  var ROLE_IDX = { clock: 1, clockBg: 2, dataVal: 4, fieldBg: 5, fieldLbl: 6, date: 7, notif: 9, stress: 10, body: 11, moon: 12 };
+  function roleOf(n) {
+    if (n === 'Clock') return 'clock';
+    if (n === 'Clock ghost') return 'clockBg';
+    if (/ghost/.test(n)) return 'fieldBg';
+    if (/ label$/.test(n) || n === 'New York zone') return 'fieldLbl';
+    if (/^(Date|New York time|UTC time|Seconds)$/.test(n)) return 'date';
+    if (n === 'Notifications') return 'notif';
+    if (/^(Stress bar|Watch battery bar)$/.test(n)) return 'stress';
+    if (n === 'Body battery bar') return 'body';
+    if (n === 'Moon') return 'moon';
+    if (/^(Sunrise|Sunset|Weather line|Field \d|Steps|Alarm icon|Do not disturb icon|Battery bar)/.test(n)) return 'dataVal';
+    return null;
+  }
+  GW.s34Apply = function (d, id) {
+    var th = GW.SEG34_THEMES.filter(function (t) { return t.id === id; })[0]; if (!th) return;
+    d.s34 = { theme: id }; d.bg = th.c[0];
+    d.elements.forEach(function (e) {
+      var r = e.role || roleOf(e.name || '');
+      if (r) { e.role = r; e.color = th.c[ROLE_IDX[r]]; }
+      if (e.asset === 'seg34grad') e.hidden = th.c[0].toLowerCase() !== '#000000';   // the original draws its gradient on black backgrounds only
+    });
+  };
+  function themed(d, id) { GW.s34Apply(d, id); return d; }
+
   // ---------------------------------------------------------------- Segment34 MkII
   function mk2() {
     var F = fontsOf(DATA.mk2, ['segments80wide', 'storre', 'led_small_lines', 'led', 'smol', 'moon', 'icons']);
@@ -72,7 +100,7 @@
     els.push(T('Battery icon', { font: icons.id, x: cX, y: 280 - 18, text: 'B', color: '#555555', justify: 'C' }));
     els.push(src('Battery bar', label, cX - 11, 280 - 18 + 3, 'battBar20', C.dataVal, 'L'));
     var d = GW.blankDesign(); d.name = 'Segment34 MkII'; d.bg = '#000000'; d.fonts = F; d.elements = els; d.size = 280;
-    return d;
+    return themed(d, 0);
   }
 
   // ---------------------------------------------------------------- Segment34 MAX
@@ -88,7 +116,7 @@
     var hist = [18, 22, 30, 28, 35, 40, 33, 27, 22, 19, 25, 31, 45, 52, 48, 41, 36, 30, 27, 24, 20, 23, 29, 34], half = R(hist.length * 4 / 2);
     hist.forEach(function (v, i) {
       var h = R(v / (100 / 20));
-      els.push(GW.newElement('shape', { name: 'Histogram ' + (i + 1), kind: 'rect', fill: true, x: cX - half + i * 4 + 1, y: yn3 + (20 - h) + h / 2, w: 2, h: h, color: v <= 25 ? C.body : C.stress }));
+      els.push(GW.newElement('shape', { name: 'Histogram ' + (i + 1), kind: 'rect', fill: true, x: cX - half + i * 4 + 1, y: yn3 + (20 - h) + h / 2, w: 2, h: h, color: v <= 25 ? C.body : C.stress, role: v <= 25 ? 'body' : 'stress' }));
     });
     els.push(src('Weather line 1', small, cX, yn2, 'temp', C.dataVal, 'C'), src('Weather line 2', small, cX, yn1, 'weatherDesc', C.dataVal, 'C', { upper: true }));
     els.push(T('Clock ghost', { font: seg.id, x: baseX, y: baseY, text: '#####', color: C.clockBg, justify: 'C', vtop: false }));
@@ -116,7 +144,7 @@
     els.push(T('Battery icon', { font: icons.id, x: cX, y: 280 - 25, text: 'C', color: '#555555', justify: 'C' }));
     els.push(src('Battery bar', batt, cX - 19, 280 - 25 + 4, 'battBar35', C.dataVal, 'L'));
     var d = GW.blankDesign(); d.name = 'Segment34 MAX'; d.bg = '#000000'; d.fonts = F; d.elements = els; d.size = 280;
-    return d;
+    return themed(d, 11);
   }
 
   // ---------------------------------------------------------------- Segment34 MkII, Turkish
@@ -158,7 +186,7 @@
     var fiveY = y3 + hmY + 5;
     els.push(T('Steps ghost', { font: large.id, x: cX - 45, y: fiveY, text: '#####', color: C.fieldBg, justify: 'L' }), src('Steps', large, cX + 45 - 1, fiveY, 'steps', C.dataVal, 'R'));
     var d = GW.blankDesign(); d.name = 'Segment34 Türkçe'; d.bg = '#000000'; d.fonts = F; d.elements = els; d.size = 280;
-    return d;
+    return themed(d, 0);
   }
 
   GW.PRESETS.push(

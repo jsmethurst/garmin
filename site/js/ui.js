@@ -652,6 +652,12 @@
     var d = GW.design;
     var bg = h('button', { class: 'swatch', type: 'button' }, [h('i', { style: 'background:' + GW.q(d.bg) }), h('span', { text: GW.q(d.bg) })]);
     bg.addEventListener('click', function () { GW.pickColor(bg, d.bg, function (c) { d.bg = c; GW.commit(true); }); });
+    if (d.s34 && GW.SEG34_THEMES) {   // Segment34 faces: the original's colour schemes and some more
+      var sel = h('select', { class: 'sel' });
+      GW.SEG34_THEMES.forEach(function (t) { var o = h('option', { value: String(t.id), text: t.name }); if (t.id === d.s34.theme) o.selected = true; sel.appendChild(o); });
+      sel.addEventListener('change', function () { GW.s34Apply(d, +sel.value); GW.commit(true); GW.renderPanel(); });
+      p.appendChild(field('Colour scheme', sel));
+    }
     p.appendChild(field('Background color', bg));
     p.appendChild(rotationField(d));
     // where sunrise / sunset and the world map put you until the watch has a position of its own
