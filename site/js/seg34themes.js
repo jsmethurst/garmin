@@ -39,6 +39,16 @@
     { id: 33, name: "Steel grey", c: ["#000000","#AAAAAA","#555555","#TRANSP","#FFFFFF","#555555","#555555","#AAAAAA","#TRANSP","#AAAAAA","#AAAAAA","#FFFFFF","#FFFFFF"] },
     { id: 34, name: "Midnight", c: ["#000000","#5555FF","#000055","#TRANSP","#FFFFFF","#000055","#5555FF","#AAAAFF","#TRANSP","#55AAFF","#FFAA00","#55AAFF","#FFFFFF"] },
     { id: 35, name: "Pink on white", c: ["#FFFFFF","#FF0055","#AAAAAA","#TRANSP","#000000","#AAAAAA","#FF0055","#000000","#TRANSP","#000000","#FF5500","#55AAFF","#555555"] },
-    { id: 36, name: "Teal on white", c: ["#FFFFFF","#00AAAA","#AAAAAA","#TRANSP","#000000","#AAAAAA","#00AAAA","#000000","#TRANSP","#000000","#FF5500","#55AAFF","#555555"] }
+    { id: 36, name: "Teal on white", c: ["#FFFFFF","#00AAAA","#AAAAAA","#TRANSP","#000000","#AAAAAA","#00AAAA","#000000","#TRANSP","#000000","#FF5500","#55AAFF","#555555"] },
+    { id: 37, name: "High contrast yellow", c: ["#000000","#FFFF00","#555500","#TRANSP","#FFFFFF","#555500","#FFFF00","#FFFF00","#TRANSP","#00FFFF","#FF5500","#00FFFF","#FFFFFF"] },
+    { id: 38, name: "High contrast cyan", c: ["#000000","#00FFFF","#005555","#TRANSP","#FFFFFF","#005555","#00FFFF","#00FFFF","#TRANSP","#FFFF00","#FF5500","#FFFF00","#FFFFFF"] },
+    { id: 39, name: "High contrast green", c: ["#000000","#00FF00","#005500","#TRANSP","#FFFFFF","#005500","#55FF55","#55FF55","#TRANSP","#00FFFF","#FF5500","#00FFFF","#FFFFFF"] },
+    { id: 40, name: "High contrast orange", c: ["#000000","#FFAA00","#555555","#TRANSP","#FFFFFF","#555555","#FFAA00","#FFAA00","#TRANSP","#00FFFF","#FF5500","#00FFFF","#FFFFFF"] },
+    { id: 41, name: "High contrast white", c: ["#000000","#FFFFFF","#555555","#TRANSP","#FFFFFF","#555555","#FFFFFF","#FFFFFF","#TRANSP","#00FFFF","#FFAA00","#00FFFF","#FFFFFF"] },
+    { id: 42, name: "High contrast magenta", c: ["#000000","#FF55FF","#550055","#TRANSP","#FFFFFF","#550055","#FF55FF","#FF55FF","#TRANSP","#00FFFF","#FFFF00","#00FFFF","#FFFFFF"] },
+    { id: 43, name: "High contrast red", c: ["#000000","#FF5555","#550000","#TRANSP","#FFFFFF","#550000","#FF5555","#FF5555","#TRANSP","#00FFFF","#FFFF00","#00FFFF","#FFFFFF"] },
+    { id: 44, name: "Black on yellow", c: ["#FFFF00","#000000","#AAAA00","#TRANSP","#000000","#AAAA00","#000000","#000000","#TRANSP","#0000AA","#AA0000","#0000AA","#000000"] },
+    { id: 45, name: "Black on cyan", c: ["#00FFFF","#000000","#55AAAA","#TRANSP","#000000","#55AAAA","#000000","#000000","#TRANSP","#0000AA","#AA0000","#0000AA","#000000"] },
+    { id: 46, name: "Black on orange", c: ["#FFAA00","#000000","#AA5500","#TRANSP","#000000","#AA5500","#000000","#000000","#TRANSP","#0000AA","#AA0000","#0000AA","#000000"] }
   ];
 })(window.GW);
