@@ -47,7 +47,8 @@ function balanced(src) {
     const view = get(/View\.mc$/), app = get(/App\.mc$/), man = get(/manifest\.xml$/);
     if (!view || !app || !man || !get(/monkey\.jungle$/) || !get(/launcher_icon\.png$/)) { fail(id, 'missing core files'); continue; }
     for (const f of res.files.filter(f => /\.(mc|xml|fnt)$/.test(f.path))) {
-      if (/undefined|NaN|\[object|Infinity/.test(f.text)) fail(id, f.path + ' contains undefined/NaN');
+      // the embedded design (base64) can contain any letters, "NaN" included, by chance: only the rest of the file is checked
+      if (/undefined|NaN|\[object|Infinity/.test(f.text.replace(/GWD1_[A-Za-z0-9+\/=_-]*_GWD1/g, ''))) fail(id, f.path + ' contains undefined/NaN');
     }
     for (const f of [view, app]) if (!balanced(f.text)) fail(id, f.path + ' has unbalanced brackets');
     for (const m of view.text.matchAll(/function (drawEl\d+)\(/g)) if (!view.text.includes('        ' + m[1] + '(dc);')) fail(id, m[1] + ' never called');
