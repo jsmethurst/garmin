@@ -129,21 +129,6 @@
       deps: ['locObj'],
       code: 'function locNow() {\n        var l = locObj();\n        return (l == null) ? null : l.toDegrees();\n    }'
     },
-    // Text over a hand: the part of the text that lies inside a hand polygon is drawn again in another colour. The screen can only clip to
-    // rectangles, so each hand is cut into strips two pixels high and the text is redrawn through each strip.
-    overHands: {
-      imports: ['Toybox.Graphics'],
-      code: 'function overHands(dc, s, font, x, y, fl, jx, vtop, col) {\n        var d = dc.getTextDimensions(s, font);\n        var w = d[0];\n        var h = d[1];\n' +
-        '        var left = x - ((jx == 1) ? w / 2 : ((jx == 2) ? w : 0));\n        var top = vtop ? y : y - h / 2;\n' +
-        '        var polys = [_hpH, _hpM];\n        dc.setColor(col, Graphics.COLOR_TRANSPARENT);\n' +
-        '        for (var yy = top.toNumber(); yy < top + h; yy += 2) {\n            var yc = yy + 1;\n' +
-        '            for (var k = 0; k < 2; k++) {\n                var p = polys[k];\n                if (p == null) { continue; }\n                var lo = 9999;\n                var hi = -9999;\n' +
-        '                for (var i = 0; i < p.size(); i++) {\n                    var a = p[i];\n                    var b = p[(i + 1) % p.size()];\n' +
-        '                    if ((a[1] <= yc && b[1] > yc) || (b[1] <= yc && a[1] > yc)) {\n                        var xx = a[0] + (yc - a[1]).toFloat() * (b[0] - a[0]) / (b[1] - a[1]);\n                        if (xx < lo) { lo = xx; }\n                        if (xx > hi) { hi = xx; }\n                    }\n                }\n' +
-        '                if (hi >= lo) {\n                    var xa = (lo.toNumber() > left) ? lo.toNumber() : left.toNumber();\n                    var xb = (hi.toNumber() < left + w) ? hi.toNumber() : (left + w).toNumber();\n' +
-        '                    if (xb > xa) {\n                        dc.setClip(xa, yy, xb - xa + 1, 2);\n                        dc.drawText(x, y, font, s, fl);\n                    }\n                }\n            }\n        }\n' +
-        '        dc.setClip(0, 0, dc.getWidth(), dc.getHeight());\n    }'
-    },
     sunMark: {
       deps: ['locObj'], needs: ['wx'], imports: ['Toybox.Weather', 'Toybox.Time', 'Toybox.Time.Gregorian'],
       members: ['    var _mkMin = -1;', '    var _mk = null;'],

@@ -151,13 +151,13 @@
         els.push(E('sunmark', { name: 'Next sunrise / sunset', rr: 116, r: 9, color: '#ff5500', halo: '' }));
         // the hands go under all the text, so the text stays readable when a hand passes over it
         els.push(E('hands', { name: 'Hands', style: 'sword', hLen: 74, hW: 11, mLen: 106, mW: 8, hColor: '#000000', mColor: '#000000', oW: 0,
-          sShow: true, sLen: 118, sTail: 24, sW: 2, sColor: '#ff5500', hub: 5, hubColor: '#ff5500' }));
+          sShow: true, sLen: 118, sTail: 24, sW: 2, sColor: '#ff5500', hub: 5, hubColor: '#ff5500',
+          zoneColor: '#aaaaaa', zones: [[95, 55, 90, 48], [40, 117, 64, 48], [95, 177, 90, 48], [178, 110, 60, 62]] }));   // the four text boxes: the hands turn light grey inside them
         function t(name, x, y, src, font, color, o) { return E('text', Object.assign({ name: name, x: x, y: y, source: src, font: font, color: color, justify: 'C' }, o || {})); }
         els.push(t('Weekday', 208, 121, 'date', 'fLab', '#ff5500', { fmt: 'ddd', tr: true, upper: true }), t('Day', 208, 141, 'date', 'fVal', '#000000', { fmt: 'DD' }), t('Month', 208, 162, 'date', 'fLab', '#000000', { fmt: 'MMM', tr: true, upper: true }));
         els.push(t('Zone', 140, 67, 'nyZone', 'fLab', '#ff5500'), t('New York time', 140, 89, 'nyTime', 'fVal', '#000000'));
         var P = { er5h6mz: [72, 129], expaney: [72, 151], e5d8iap: [140, 189], em6n0to: [140, 211] };   // NABIZ at 9 o'clock, PİL at 6
         Object.keys(P).forEach(function (id) { by[id].x = P[id][0]; by[id].y = P[id][1]; els.push(by[id]); });
-        els.forEach(function (e) { if (e.type === 'text') e.overHands = '#ffffff'; });   // text turns white where a hand lies under it
         b.elements = els; b.name = 'Bosphorus Analog';
         b.fonts = b.fonts.filter(function (f) { return f.id === 'fLab' || f.id === 'fVal'; });
         b.fonts.forEach(function (f) { if (f.id === 'fLab') f.px = 15; if (f.id === 'fVal') f.px = 27; });
