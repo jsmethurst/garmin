@@ -157,6 +157,7 @@
         els.push(t('Zone', 140, 67, 'nyZone', 'fLab', '#ff5500'), t('New York time', 140, 89, 'nyTime', 'fVal', '#000000'));
         var P = { er5h6mz: [72, 129], expaney: [72, 151], e5d8iap: [140, 189], em6n0to: [140, 211] };   // NABIZ at 9 o'clock, PİL at 6
         Object.keys(P).forEach(function (id) { by[id].x = P[id][0]; by[id].y = P[id][1]; els.push(by[id]); });
+        els.forEach(function (e) { if (e.type === 'text') e.overHands = '#ffffff'; });   // text turns white where a hand lies under it
         b.elements = els; b.name = 'Bosphorus Analog';
         b.fonts = b.fonts.filter(function (f) { return f.id === 'fLab' || f.id === 'fVal'; });
         b.fonts.forEach(function (f) { if (f.id === 'fLab') f.px = 15; if (f.id === 'fVal') f.px = 27; });

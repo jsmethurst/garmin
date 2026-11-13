@@ -63,6 +63,16 @@
         GW.drawText(ctx, GW.fontFor(el), T.text.string(el, env), 0, 0, el.justify, q(el.color), el.vtop); ctx.restore(); return;
       }
       GW.drawText(ctx, GW.fontFor(el), T.text.string(el, env), el.x, el.y, el.justify, q(el.color), el.vtop);
+      if (el.overHands) {   // the part of the text that lies over a hand is drawn again in another colour
+        var polys = GW.handPolys(GW.design, env);
+        if (polys.length) {
+          ctx.save(); ctx.beginPath();
+          polys.forEach(function (pts) { pts.forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); });
+          ctx.clip('nonzero');
+          GW.drawText(ctx, GW.fontFor(el), T.text.string(el, env), el.x, el.y, el.justify, q(el.overHands), el.vtop);
+          ctx.restore();
+        }
+      }
     },
     box: function (el, env, ctx) { return GW.layoutText(ctx, GW.fontFor(el), T.text.string(el, env), el.x, el.y, el.justify, el.vtop); },
     fields: function (el) {
@@ -93,6 +103,7 @@
       f.push({ k: 'justify', t: 'seg', label: 'Align on X', opts: [['L', 'Left'], ['C', 'Centre'], ['R', 'Right']] });
       f.push({ t: 'row', fields: [{ k: 'prefix', t: 'text', label: 'Before' }, { k: 'suffix', t: 'text', label: 'After' }] });
       f.push({ k: 'upper', t: 'check', label: 'UPPERCASE' });
+      f.push({ k: 'overHands', t: 'optcolor', label: 'Colour where an analog hand is under it' });
       f.push({ t: 'h', label: 'Position (text centre line)' });
       f.push({ t: 'row', fields: [{ k: 'x', t: 'num', label: 'X', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y', min: -50, max: 330 }] });
       return f;
@@ -118,10 +129,15 @@
           'rotTxt(dc, ' + rf.ref + ', ' + rf.adv + ', ' + rf.m + ', ' + expr + ', ' + (el.x - k * Math.sin(th)).toFixed(1) + ', ' + (el.y + k * Math.cos(th)).toFixed(1) + ', ' + ({ L: 0, C: 1, R: 2 }[el.justify] == null ? 1 : { L: 0, C: 1, R: 2 }[el.justify]) + ');'
         ];
       }
-      return [
+      var out = [
         'dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);',
         'dc.drawText(' + N(el.x) + ', ' + N(el.y) + ', ' + cg.font(fid) + ', ' + expr + ', Graphics.TEXT_JUSTIFY_' + j + (el.vtop ? '' : ' | Graphics.TEXT_JUSTIFY_VCENTER') + ');'
       ];
+      if (el.overHands && (cg.design.elements || []).some(function (e) { return e.type === 'hands' && !e.hidden; })) {
+        cg.helper('overHands');
+        out.push('overHands(dc, ' + expr + ', ' + cg.font(fid) + ', ' + N(el.x) + ', ' + N(el.y) + ', Graphics.TEXT_JUSTIFY_' + j + (el.vtop ? '' : ' | Graphics.TEXT_JUSTIFY_VCENTER') + ', ' + ({ L: 0, C: 1, R: 2 }[el.justify] == null ? 1 : { L: 0, C: 1, R: 2 }[el.justify]) + ', ' + (el.vtop ? 'true' : 'false') + ', ' + GW.mcColor(el.overHands) + ');');
+      }
+      return out;
     }
   };
 
@@ -368,6 +384,13 @@
     var s = Math.sin(ang), c = Math.cos(ang);
     return pts.map(function (p) { return [cx + p[0] * c + p[1] * s, cy + p[0] * s - p[1] * c]; });
   }
+  // the hour and minute hand outlines for the time in env (used to turn the text white where a hand lies under it)
+  GW.handPolys = function (design, env) {
+    var h = (design.elements || []).filter(function (e) { return e.type === 'hands' && !e.hidden; })[0];
+    if (!h) return [];
+    var hA = ((env.h % 12) * 60 + env.m) * Math.PI / 360, mA = env.m * Math.PI / 30;
+    return [rotPts(handPoly(h.style, h.hW, h.hLen, h.hLen * 0.12), h.cx, h.cy, hA), rotPts(handPoly(h.style, h.mW, h.mLen, h.mLen * 0.1), h.cx, h.cy, mA)];
+  };
   T.hands = {
     label: 'Analog hands', icon: '◔',
     defaults: function () {
@@ -441,13 +464,14 @@
         L.push('drawHand(dc, ' + cx + ', ' + cy + ', hA, ' + ptsToMc(handPoly(el.style, el.hW + 2 * o, el.hLen + o, el.hLen * 0.12 + o)) + ');');
       }
       L.push('dc.setColor(' + GW.mcColor(el.hColor) + ', Graphics.COLOR_TRANSPARENT);');
-      L.push('drawHand(dc, ' + cx + ', ' + cy + ', hA, ' + ptsToMc(handPoly(el.style, el.hW, el.hLen, el.hLen * 0.12)) + ');');
+      cg.member('    var _hpH = null;'); cg.member('    var _hpM = null;');
+      L.push('_hpH = drawHand(dc, ' + cx + ', ' + cy + ', hA, ' + ptsToMc(handPoly(el.style, el.hW, el.hLen, el.hLen * 0.12)) + ');');
       if (o > 0) {
         L.push('dc.setColor(' + GW.mcColor(el.oColor) + ', Graphics.COLOR_TRANSPARENT);');
         L.push('drawHand(dc, ' + cx + ', ' + cy + ', mA, ' + ptsToMc(handPoly(el.style, el.mW + 2 * o, el.mLen + o, el.mLen * 0.1 + o)) + ');');
       }
       L.push('dc.setColor(' + GW.mcColor(el.mColor) + ', Graphics.COLOR_TRANSPARENT);');
-      L.push('drawHand(dc, ' + cx + ', ' + cy + ', mA, ' + ptsToMc(handPoly(el.style, el.mW, el.mLen, el.mLen * 0.1)) + ');');
+      L.push('_hpM = drawHand(dc, ' + cx + ', ' + cy + ', mA, ' + ptsToMc(handPoly(el.style, el.mW, el.mLen, el.mLen * 0.1)) + ');');
       if (el.sShow) {
         L.push('if (!_isSleeping) {');
         L.push('    var sA = _clk.sec * Math.PI / 30.0;');
