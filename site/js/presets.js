@@ -49,6 +49,15 @@
           label(46, 246, '_', F, c2, { justify: 'L' })
         ]);
       } },
+    { id: 'terminaltr', name: 'Terminal Türkçe', blurb: 'Green-on-black shell prompt in Turkish: time, date, New York, next sunrise or sunset, battery days, pulse, temperature, steps.',
+      build: function () {
+        var F = 'f_term17', B = 'f_term52', c1 = '#00ff55', c2 = '#00aa55';
+        var els = [label(48, 38, 'fenix@6x:~$ şimdi_', F, c2, { justify: 'L' }), txt(48, 80, 'time', B, c1, { justify: 'L', secs: false })];
+        [['date', 'tarih  ', '', { fmt: 'ddd DD MMM YYYY', tr: true }], ['nyFull', 'est    ', '', {}], ['sunNextLabel', '', '', { tr: true }],
+         ['batteryDays', 'pil    ', ' gün', {}], ['hr', 'nabız  ', ' bpm', {}], ['temp', 'sıcak  ', '°C', { unit: 'C' }], ['steps', 'adım   ', '', {}]
+        ].forEach(function (r, i) { els.push(txt(48, 120 + i * 18, r[0], F, c1, Object.assign({ justify: 'L', prefix: r[1], suffix: r[2] }, r[3]))); });
+        return D('Terminal Türkçe', '#000000', [font(B, 'Share Tech Mono', 400, 52, 'digits'), font(F, 'Share Tech Mono', 400, 17, 'full')], els);
+      } },
     { id: 'pilot', name: 'Pilot', blurb: 'Classic analog: sword hands, big numerals, a date window at 3.',
       build: function () {
         var N = 'f_pil38';

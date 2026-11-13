@@ -325,6 +325,22 @@
     str: function (el, env) { var d = env.now; return ('0' + d.getUTCHours()).slice(-2) + ':' + ('0' + d.getUTCMinutes()).slice(-2); },
     mcStr: function (el, cg) { cg.helper('utcStr'); return 'utcStr()'; }
   });
+  def('nyFull', {
+    label: 'New York time with EDT / EST ("13:29 EST")', group: 'Environment', kind: 'str', opts: [], imports: ['Toybox.Time', 'Toybox.Time.Gregorian'],
+    str: function (el, env) { var n = nyParts(env.now); return n.t + ' ' + n.zone; },
+    mcStr: function (el, cg) { cg.helper('nyStr'); return '(nyStr(0) + " " + nyStr(1))'; }
+  });
+  def('sunNextLabel', {
+    label: 'Next sunrise / sunset with its name ("doğuş 06:52")', group: 'Environment', kind: 'str', opts: ['trnames'], imports: ['Toybox.Weather', 'Toybox.Time', 'Toybox.Time.Gregorian'],
+    str: function (el, env) {
+      var now = env.h * 60 + env.m, sim = env.sim, set = now >= sim.sunrise && now < sim.sunset, m = now < sim.sunrise ? sim.sunrise : (now < sim.sunset ? sim.sunset : sim.sunrise);
+      return (set ? (el.tr ? 'batış  ' : 'sunset ') : (el.tr ? 'doğuş  ' : 'sunrise')) + minToStr(env, m);
+    },
+    mcStr: function (el, cg) {
+      cg.need('wx'); cg.helper('sunStr'); cg.helper('sunMark');
+      return '((sunMark() != null && sunMark()[1]) ? ' + GW.mcLit(el.tr ? 'batış  ' : 'sunset ') + ' : ' + GW.mcLit(el.tr ? 'doğuş  ' : 'sunrise') + ') + sunStr(0)';
+    }
+  });
   def('nyZone', {
     label: 'New York zone (EDT / EST)', group: 'Environment', kind: 'str', opts: [], imports: ['Toybox.Time', 'Toybox.Time.Gregorian'],
     str: function (el, env) { return nyParts(env.now).zone; },
