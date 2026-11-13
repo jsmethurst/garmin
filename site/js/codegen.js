@@ -24,7 +24,7 @@
       imports: ['Toybox.Math'],
       code: 'function drawHand(dc, cx, cy, a, pts) {\n        var s = Math.sin(a);\n        var c = Math.cos(a);\n        var out = new [pts.size()];\n' +
         '        for (var i = 0; i < pts.size(); i++) {\n            var u = pts[i][0];\n            var v = pts[i][1];\n' +
-        '            out[i] = [(cx + u * c + v * s).toNumber(), (cy + u * s - v * c).toNumber()];\n        }\n        dc.fillPolygon(out);\n    }'
+        '            out[i] = [(cx + u * c + v * s).toNumber(), (cy + u * s - v * c).toNumber()];\n        }\n        dc.fillPolygon(out);\n        return out;\n    }'
     },
     hourNum: { needs: ['clk'], code: 'function hourNum(mode) {\n        var h = _clk.hour;\n        var use24 = (mode == 1) ? true : ((mode == 2) ? false : System.getDeviceSettings().is24Hour);\n        if (!use24) {\n            h = h % 12;\n            if (h == 0) { h = 12; }\n        }\n        return h;\n    }' },
     hourStr: { deps: ['hourNum'], code: 'function hourStr(mode, lz) {\n        var h = hourNum(mode);\n        return lz ? h.format("%02d") : h.toString();\n    }' },

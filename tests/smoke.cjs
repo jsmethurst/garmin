@@ -51,6 +51,8 @@ function balanced(src) {
       if (/undefined|NaN|\[object|Infinity/.test(f.text.replace(/GWD1_[A-Za-z0-9+\/=_-]*_GWD1/g, ''))) fail(id, f.path + ' contains undefined/NaN');
     }
     for (const f of [view, app]) if (!balanced(f.text)) fail(id, f.path + ' has unbalanced brackets');
+    // the hands remember their polygons for text outlines: drawHand must hand them back
+    if (/= drawHand\(/.test(view.text) && !/function drawHand[\s\S]*?return out;/.test(view.text)) fail(id, 'drawHand does not return its polygon');
     // Monkey C allows at most 9 arguments in a call or a declaration (the compiler rejects more)
     for (const ln of view.text.split('\n')) {
       const code = ln.replace(/"(\\.|[^"\\])*"/g, '""');
