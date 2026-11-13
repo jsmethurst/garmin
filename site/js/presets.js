@@ -146,7 +146,7 @@
         var els = [by.eysp853];
         els.push(E('ticks', { name: 'Minute ticks', r: 126, len: 5, count: 60, major: 0, width: 1, color: '#aaaaaa' }));
         els.push(E('ticks', { name: 'Hour batons', r: 126, len: 12, count: 12, major: 3, majorLen: 17, width: 3, majorWidth: 4, color: '#000000', majorColor: '#000000' }));
-        els.push(rect(140, 22, 5, 17, '#ff5500', { name: '12 marker' }));
+        els.push(rect(140, 22, 6, 20, '#ff5500', { name: '12 marker' }));
         els.push(E('shape', { name: 'Date window', kind: 'rect', x: 208, y: 141, w: 60, h: 62, fill: false, pen: 1, color: '#aaaaaa' }));
         // the hands go under all the text, so the text stays readable when a hand passes over it
         els.push(E('hands', { name: 'Hands', style: 'sword', hLen: 74, hW: 11, mLen: 106, mW: 8, hColor: '#000000', mColor: '#000000', oW: 0,
