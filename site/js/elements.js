@@ -372,7 +372,7 @@
     label: 'Analog hands', icon: '◔',
     defaults: function () {
       return { type: 'hands', name: 'Hands', cx: 140, cy: 140, style: 'taper', hLen: 70, hW: 10, hColor: '#ffffff', mLen: 108, mW: 8, mColor: '#ffffff',
-        sShow: true, sLen: 122, sW: 2, sColor: '#ff5500', sTail: 26, hub: 6, hubColor: '#ff5500' };
+        sShow: true, sLen: 122, sW: 2, sColor: '#ff5500', sTail: 26, hub: 6, hubColor: '#ff5500', oW: 0, oColor: '#000000' };
     },
     pos: [['cx', 'cy']],
     draw: function (ctx, el, env) {
@@ -382,7 +382,10 @@
         pts.forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); });
         ctx.closePath(); ctx.fill();
       }
+      var o = el.oW || 0;   // outline: the same hand drawn a little bigger in the outline colour underneath
+      if (o > 0) poly(rotPts(handPoly(el.style, el.hW + 2 * o, el.hLen + o, el.hLen * 0.12 + o), el.cx, el.cy, hA), q(el.oColor));
       poly(rotPts(handPoly(el.style, el.hW, el.hLen, el.hLen * 0.12), el.cx, el.cy, hA), q(el.hColor));
+      if (o > 0) poly(rotPts(handPoly(el.style, el.mW + 2 * o, el.mLen + o, el.mLen * 0.1 + o), el.cx, el.cy, mA), q(el.oColor));
       poly(rotPts(handPoly(el.style, el.mW, el.mLen, el.mLen * 0.1), el.cx, el.cy, mA), q(el.mColor));
       if (el.sShow) {
         ctx.strokeStyle = q(el.sColor); ctx.lineWidth = el.sW; ctx.lineCap = 'butt';
@@ -390,7 +393,7 @@
         ctx.moveTo(el.cx - el.sTail * Math.sin(sA), el.cy + el.sTail * Math.cos(sA));
         ctx.lineTo(el.cx + el.sLen * Math.sin(sA), el.cy - el.sLen * Math.cos(sA)); ctx.stroke();
       }
-      if (el.hub > 0) { ctx.fillStyle = q(el.hubColor); ctx.beginPath(); ctx.arc(el.cx, el.cy, el.hub, 0, Math.PI * 2); ctx.fill(); }
+      if (el.hub > 0) { if (o > 0) { ctx.fillStyle = q(el.oColor); ctx.beginPath(); ctx.arc(el.cx, el.cy, el.hub + o, 0, Math.PI * 2); ctx.fill(); } ctx.fillStyle = q(el.hubColor); ctx.beginPath(); ctx.arc(el.cx, el.cy, el.hub, 0, Math.PI * 2); ctx.fill(); }
     },
     box: function (el) { var r = Math.max(el.mLen, el.sShow ? el.sLen : 0, 12); return { x: el.cx - r, y: el.cy - r, w: r * 2, h: r * 2 }; },
     hit: function (el, x, y) {
@@ -417,6 +420,9 @@
         { k: 'sShow', t: 'check', label: 'Show second hand' },
         el.sShow ? { k: 'sColor', t: 'color', label: 'Color' } : null,
         el.sShow ? { t: 'row', fields: [{ k: 'sLen', t: 'num', label: 'Length', min: 10, max: 140 }, { k: 'sTail', t: 'num', label: 'Tail', min: 0, max: 60 }, { k: 'sW', t: 'num', label: 'Width', min: 1, max: 8 }] } : null,
+        { t: 'h', label: 'Outline (hour and minute hands)' },
+        { k: 'oColor', t: 'color', label: 'Color' },
+        { k: 'oW', t: 'num', label: 'Thickness (0 = none)', min: 0, max: 6 },
         { t: 'h', label: 'Centre cap' },
         { k: 'hubColor', t: 'color', label: 'Color' },
         { k: 'hub', t: 'num', label: 'Radius (0 = none)', min: 0, max: 20 },
@@ -429,8 +435,17 @@
       var cx = N(el.cx), cy = N(el.cy), L = [];
       L.push('var hA = ((_clk.hour % 12) * 60 + _clk.min) * Math.PI / 360.0;');
       L.push('var mA = _clk.min * Math.PI / 30.0;');
+      var o = el.oW || 0;
+      if (o > 0) {
+        L.push('dc.setColor(' + GW.mcColor(el.oColor) + ', Graphics.COLOR_TRANSPARENT);');
+        L.push('drawHand(dc, ' + cx + ', ' + cy + ', hA, ' + ptsToMc(handPoly(el.style, el.hW + 2 * o, el.hLen + o, el.hLen * 0.12 + o)) + ');');
+      }
       L.push('dc.setColor(' + GW.mcColor(el.hColor) + ', Graphics.COLOR_TRANSPARENT);');
       L.push('drawHand(dc, ' + cx + ', ' + cy + ', hA, ' + ptsToMc(handPoly(el.style, el.hW, el.hLen, el.hLen * 0.12)) + ');');
+      if (o > 0) {
+        L.push('dc.setColor(' + GW.mcColor(el.oColor) + ', Graphics.COLOR_TRANSPARENT);');
+        L.push('drawHand(dc, ' + cx + ', ' + cy + ', mA, ' + ptsToMc(handPoly(el.style, el.mW + 2 * o, el.mLen + o, el.mLen * 0.1 + o)) + ');');
+      }
       L.push('dc.setColor(' + GW.mcColor(el.mColor) + ', Graphics.COLOR_TRANSPARENT);');
       L.push('drawHand(dc, ' + cx + ', ' + cy + ', mA, ' + ptsToMc(handPoly(el.style, el.mW, el.mLen, el.mLen * 0.1)) + ');');
       if (el.sShow) {
@@ -444,6 +459,7 @@
         L.push('}');
       }
       if (el.hub > 0) {
+        if (o > 0) { L.push('dc.setColor(' + GW.mcColor(el.oColor) + ', Graphics.COLOR_TRANSPARENT);'); L.push('dc.fillCircle(' + cx + ', ' + cy + ', ' + N(el.hub + o) + ');'); }
         L.push('dc.setColor(' + GW.mcColor(el.hubColor) + ', Graphics.COLOR_TRANSPARENT);');
         L.push('dc.fillCircle(' + cx + ', ' + cy + ', ' + N(el.hub) + ');');
       }
@@ -976,6 +992,49 @@
 
   // ================= SUN ICON (sunrise / sunset picture) =================
   // geometry in absolute design coordinates, shared by the preview and the generator
+  // ================= SUN MARK ON THE DIAL =================
+  // The next sunrise or sunset as a small sun at its place on a 12-hour dial: before sunset the setting sun, after it the rising sun.
+  function sunNextMin(env) {
+    var now = env.h * 60 + env.m, sim = env.sim;
+    if (now < sim.sunrise) return { min: sim.sunrise, set: false };
+    if (now < sim.sunset) return { min: sim.sunset, set: true };
+    return { min: sim.sunrise, set: false };
+  }
+  T.sunmark = {
+    label: 'Next sun event on dial', icon: '☀',
+    defaults: function () { return { type: 'sunmark', name: 'Sun on dial', cx: 140, cy: 140, rr: 112, r: 6, color: '#ff5500', halo: '#ffffff' }; },
+    pos: [['cx', 'cy']],
+    sunEl: function (el, env) {
+      var n = sunNextMin(env), a = n.min * Math.PI / 360;   // 12 hours = one turn
+      return { n: n, x: el.cx + el.rr * Math.sin(a), y: el.cy - el.rr * Math.cos(a), a: a };
+    },
+    draw: function (ctx, el, env) {
+      var u = T.sunmark.sunEl(el, env);
+      if (el.halo) { ctx.fillStyle = q(el.halo); ctx.beginPath(); ctx.arc(u.x, u.y, el.r * 1.7, 0, Math.PI * 2); ctx.fill(); }
+      T.sunicon.draw(ctx, { x: u.x, y: u.y, r: el.r, kind: u.n.set ? 'set' : 'rise', color: el.color, rot: 0 });
+    },
+    box: function (el) { return { x: el.cx - el.rr - el.r * 2, y: el.cy - el.rr - el.r * 2, w: (el.rr + el.r * 2) * 2, h: (el.rr + el.r * 2) * 2 }; },
+    hit: function (el, x, y) { var u = T.sunmark.sunEl(el, GW.env()); return Math.hypot(x - u.x, y - u.y) <= el.r * 2.2; },
+    fields: function () {
+      return [
+        { k: 'color', t: 'color', label: 'Sun color' },
+        { k: 'halo', t: 'color', label: 'Clear behind it (dial color)' },
+        { k: 'r', t: 'range', label: 'Size', min: 3, max: 16 },
+        { k: 'rr', t: 'range', label: 'Distance from centre', min: 20, max: 140 },
+        { t: 'row', fields: [{ k: 'cx', t: 'num', label: 'Centre X', min: 0, max: 280 }, { k: 'cy', t: 'num', label: 'Centre Y', min: 0, max: 280 }] }
+      ];
+    },
+    gen: function (el, cg) {
+      cg.helper('sunMark'); cg.need('wx');
+      var L = ['var mk = sunMark();', 'if (mk != null) {', '    var a = mk[0] * Math.PI / 360.0;',
+        '    var sx = ' + N(el.cx) + ' + (' + N(el.rr) + ' * Math.sin(a)).toNumber();', '    var sy = ' + N(el.cy) + ' - (' + N(el.rr) + ' * Math.cos(a)).toNumber();'];
+      if (el.halo) { L.push('    dc.setColor(' + GW.mcColor(el.halo) + ', Graphics.COLOR_TRANSPARENT);', '    dc.fillCircle(sx, sy, ' + N(Math.round(el.r * 1.7)) + ');'); }
+      L.push('    dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);', '    drawSun(dc, sx, sy, ' + N(el.r) + ', mk[1]);', '}');
+      cg.helper('drawSun');
+      return L;
+    }
+  };
+
   function sunGeom(el) {
     var r = el.r, a = rad(el.rot || 0), c = Math.cos(a), s = Math.sin(a), rise = el.kind !== 'set';
     var hy = r * 0.7, cy = rise ? hy - r * 0.2 : hy + r * 0.45;   // horizon line / disc centre (local, y down)

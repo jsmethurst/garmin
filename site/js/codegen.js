@@ -129,6 +129,24 @@
       deps: ['locObj'],
       code: 'function locNow() {\n        var l = locObj();\n        return (l == null) ? null : l.toDegrees();\n    }'
     },
+    sunMark: {
+      deps: ['locObj'], needs: ['wx'], imports: ['Toybox.Weather', 'Toybox.Time', 'Toybox.Time.Gregorian'],
+      members: ['    var _mkMin = -1;', '    var _mk = null;'],
+      code: 'function sunMark() {\n        var min = System.getClockTime().min;\n        if (_mkMin == min) { return _mk; }\n        _mkMin = min;\n        _mk = null;\n' +
+        '        var loc = locObj();\n        if (loc == null) { return null; }\n        var now = Time.now();\n        var rise = Weather.getSunrise(loc, now);\n        var sset = Weather.getSunset(loc, now);\n' +
+        '        var m = null;\n        var isSet = false;\n' +
+        '        if (rise != null && now.lessThan(rise)) {\n            m = rise;\n        } else if (sset != null && now.lessThan(sset)) {\n            m = sset;\n            isSet = true;\n        } else {\n            m = Weather.getSunrise(loc, now.add(new Time.Duration(86400)));\n        }\n' +
+        '        if (m == null) { return null; }\n        var t = Gregorian.info(m, Time.FORMAT_SHORT);\n        _mk = [t.hour * 60 + t.min, isSet];\n        return _mk;\n    }'
+    },
+    drawSun: {
+      imports: ['Toybox.Math'],
+      code: 'function drawSun(dc, x, y, r, isSet) {\n        var hy = r * 0.7;\n        var cy = isSet ? hy + r * 0.45 : hy - r * 0.2;\n        var pts = [];\n' +
+        '        for (var d = 180; d <= 360; d += 15) {\n            var a = d * Math.PI / 180.0;\n            var py = cy + r * Math.sin(a);\n            if (py <= hy) {\n                pts.add([(x + r * Math.cos(a)).toNumber(), (y + py).toNumber()]);\n            }\n        }\n' +
+        '        if (pts.size() > 2) { dc.fillPolygon(pts); }\n        var pen = (r / 4 > 2) ? (r / 4) : 2;\n        dc.setPenWidth(pen);\n' +
+        '        var degs = isSet ? [-135, -90, -45] : [-150, -120, -90, -60, -30];\n' +
+        '        for (var i = 0; i < degs.size(); i++) {\n            var b = degs[i] * Math.PI / 180.0;\n            var y2 = cy + r * 1.85 * Math.sin(b);\n            if (y2 < hy - 2) {\n                dc.drawLine((x + r * 1.35 * Math.cos(b)).toNumber(), (y + cy + r * 1.35 * Math.sin(b)).toNumber(), (x + r * 1.85 * Math.cos(b)).toNumber(), (y + y2).toNumber());\n            }\n        }\n' +
+        '        dc.drawLine((x - r * 2).toNumber(), (y + hy).toNumber(), (x + r * 2).toNumber(), (y + hy).toNumber());\n        dc.setPenWidth(1);\n    }'
+    },
     sunStr: {
       deps: ['locObj'], needs: ['wx'],
       code: 'function sunStr(mode) {\n        var loc = locObj();\n        if (loc == null) { return "--:--"; }\n        var now = Time.now();\n        var m = null;\n' +
