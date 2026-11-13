@@ -150,7 +150,7 @@
         els.push(E('shape', { name: 'Date window', kind: 'rect', x: 208, y: 141, w: 60, h: 62, fill: false, pen: 1, color: '#aaaaaa' }));
         // the hands go under all the text, so the text stays readable when a hand passes over it
         els.push(E('hands', { name: 'Hands', style: 'sword', hLen: 74, hW: 11, mLen: 106, mW: 8, hColor: '#000000', mColor: '#000000', oW: 0,
-          sShow: true, sLen: 118, sTail: 24, sW: 2, sColor: '#ff5500', hub: 5, hubColor: '#ff5500' }));
+          only: 'hm', sShow: false, hub: 0 }));
         function t(name, x, y, src, font, color, o) { return E('text', Object.assign({ name: name, x: x, y: y, source: src, font: font, color: color, justify: 'C' }, o || {})); }
         els.push(t('Weekday', 208, 121, 'date', 'fLab', '#ff5500', { fmt: 'ddd', tr: true, upper: true }), t('Day', 208, 141, 'date', 'fVal', '#000000', { fmt: 'DD' }), t('Month', 208, 162, 'date', 'fLab', '#000000', { fmt: 'MMM', tr: true, upper: true }));
         els.push(t('Zone', 140, 67, 'nyZone', 'fLab', '#ff5500'), t('New York time', 140, 89, 'nyTime', 'fVal', '#000000'));
@@ -158,6 +158,8 @@
         Object.keys(P).forEach(function (id) { by[id].x = P[id][0]; by[id].y = P[id][1]; els.push(by[id]); });
         els.forEach(function (e) { if (e.type === 'text') { e.halo = '#aaaaaa'; e.haloW = 2; } });   // a thin light-grey outline round the text, only where a hand lies under it
         els.push(E('sunmark', { name: 'Next sunrise / sunset', rr: 116, r: 9, color: '#ff5500', halo: '' }));   // last, so it draws over everything
+        // the second hand and cap go on top of everything, the sun marker included
+        els.push(E('hands', { name: 'Second hand', style: 'sword', only: 'top', hLen: 74, mLen: 106, sShow: true, sLen: 118, sTail: 24, sW: 2, sColor: '#ff5500', hub: 5, hubColor: '#ff5500' }));
         b.elements = els; b.name = 'Bosphorus Analog';
         b.fonts = b.fonts.filter(function (f) { return f.id === 'fLab' || f.id === 'fVal'; });
         b.fonts.forEach(function (f) { if (f.id === 'fLab') f.px = 15; if (f.id === 'fVal') f.px = 27; });

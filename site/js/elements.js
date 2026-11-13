@@ -386,7 +386,7 @@
   }
   // the hour and minute hand shapes for the time in env: text can carry a thin outline that shows only where a hand lies under it
   GW.handPolys = function (design, env) {
-    var h = (design.elements || []).filter(function (e) { return e.type === 'hands' && !e.hidden; })[0];
+    var h = (design.elements || []).filter(function (e) { return e.type === 'hands' && !e.hidden && e.only !== 'top'; })[0];
     if (!h) return [];
     var hA = ((env.h % 12) * 60 + env.m) * Math.PI / 360, mA = env.m * Math.PI / 30;
     return [rotPts(handPoly(h.style, h.hW, h.hLen, h.hLen * 0.12), h.cx, h.cy, hA), rotPts(handPoly(h.style, h.mW, h.mLen, h.mLen * 0.1), h.cx, h.cy, mA)];
@@ -407,18 +407,18 @@
         pts.forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); });
         ctx.closePath(); ctx.fill();
       }
-      var o = el.oW || 0;   // outline: the same hand drawn a little bigger in the outline colour underneath
-      if (o > 0) poly(rotPts(handPoly(el.style, el.hW + 2 * o, el.hLen + o, el.hLen * 0.12 + o), el.cx, el.cy, hA), q(el.oColor));
-      poly(rotPts(handPoly(el.style, el.hW, el.hLen, el.hLen * 0.12), el.cx, el.cy, hA), q(el.hColor));
-      if (o > 0) poly(rotPts(handPoly(el.style, el.mW + 2 * o, el.mLen + o, el.mLen * 0.1 + o), el.cx, el.cy, mA), q(el.oColor));
-      poly(rotPts(handPoly(el.style, el.mW, el.mLen, el.mLen * 0.1), el.cx, el.cy, mA), q(el.mColor));
-      if (el.sShow) {
+      var o = el.oW || 0, hm = el.only !== 'top', top = el.only !== 'hm';   // 'hm': hour and minute hands only, 'top': second hand and cap only (so they can be layered apart)
+      if (hm && o > 0) poly(rotPts(handPoly(el.style, el.hW + 2 * o, el.hLen + o, el.hLen * 0.12 + o), el.cx, el.cy, hA), q(el.oColor));
+      if (hm) poly(rotPts(handPoly(el.style, el.hW, el.hLen, el.hLen * 0.12), el.cx, el.cy, hA), q(el.hColor));
+      if (hm && o > 0) poly(rotPts(handPoly(el.style, el.mW + 2 * o, el.mLen + o, el.mLen * 0.1 + o), el.cx, el.cy, mA), q(el.oColor));
+      if (hm) poly(rotPts(handPoly(el.style, el.mW, el.mLen, el.mLen * 0.1), el.cx, el.cy, mA), q(el.mColor));
+      if (top && el.sShow) {
         ctx.strokeStyle = q(el.sColor); ctx.lineWidth = el.sW; ctx.lineCap = 'butt';
         ctx.beginPath();
         ctx.moveTo(el.cx - el.sTail * Math.sin(sA), el.cy + el.sTail * Math.cos(sA));
         ctx.lineTo(el.cx + el.sLen * Math.sin(sA), el.cy - el.sLen * Math.cos(sA)); ctx.stroke();
       }
-      if (el.hub > 0) { if (o > 0) { ctx.fillStyle = q(el.oColor); ctx.beginPath(); ctx.arc(el.cx, el.cy, el.hub + o, 0, Math.PI * 2); ctx.fill(); } ctx.fillStyle = q(el.hubColor); ctx.beginPath(); ctx.arc(el.cx, el.cy, el.hub, 0, Math.PI * 2); ctx.fill(); }
+      if (top && el.hub > 0) { if (o > 0) { ctx.fillStyle = q(el.oColor); ctx.beginPath(); ctx.arc(el.cx, el.cy, el.hub + o, 0, Math.PI * 2); ctx.fill(); } ctx.fillStyle = q(el.hubColor); ctx.beginPath(); ctx.arc(el.cx, el.cy, el.hub, 0, Math.PI * 2); ctx.fill(); }
     },
     box: function (el) { var r = Math.max(el.mLen, el.sShow ? el.sLen : 0, 12); return { x: el.cx - r, y: el.cy - r, w: r * 2, h: r * 2 }; },
     hit: function (el, x, y) {
@@ -435,6 +435,7 @@
     fields: function (el) {
       return [
         { k: 'style', t: 'seg', label: 'Hand style', opts: [['bar', 'Bar'], ['taper', 'Taper'], ['sword', 'Sword']] },
+        { k: 'only', t: 'seg', label: 'Draws', opts: [['', 'All'], ['hm', 'Hour + minute'], ['top', 'Second + cap']] },
         { t: 'h', label: 'Hour hand' },
         { k: 'hColor', t: 'color', label: 'Color' },
         { t: 'row', fields: [{ k: 'hLen', t: 'num', label: 'Length', min: 10, max: 140 }, { k: 'hW', t: 'num', label: 'Width', min: 2, max: 30 }] },
@@ -458,23 +459,23 @@
     gen: function (el, cg) {
       cg.need('clk'); cg.helper('drawHand');
       var cx = N(el.cx), cy = N(el.cy), L = [];
-      L.push('var hA = ((_clk.hour % 12) * 60 + _clk.min) * Math.PI / 360.0;');
-      L.push('var mA = _clk.min * Math.PI / 30.0;');
+      var hm = el.only !== 'top', top = el.only !== 'hm';
+      if (hm) { L.push('var hA = ((_clk.hour % 12) * 60 + _clk.min) * Math.PI / 360.0;'); L.push('var mA = _clk.min * Math.PI / 30.0;'); }
       cg.member('    var _hpH = null;'); cg.member('    var _hpM = null;');
       var o = el.oW || 0;
-      if (o > 0) {
+      if (hm && o > 0) {
         L.push('dc.setColor(' + GW.mcColor(el.oColor) + ', Graphics.COLOR_TRANSPARENT);');
         L.push('drawHand(dc, ' + cx + ', ' + cy + ', hA, ' + ptsToMc(handPoly(el.style, el.hW + 2 * o, el.hLen + o, el.hLen * 0.12 + o)) + ');');
       }
-      L.push('dc.setColor(' + GW.mcColor(el.hColor) + ', Graphics.COLOR_TRANSPARENT);');
-      L.push('_hpH = drawHand(dc, ' + cx + ', ' + cy + ', hA, ' + ptsToMc(handPoly(el.style, el.hW, el.hLen, el.hLen * 0.12)) + ');');
-      if (o > 0) {
+      if (hm) L.push('dc.setColor(' + GW.mcColor(el.hColor) + ', Graphics.COLOR_TRANSPARENT);');
+      if (hm) L.push('_hpH = drawHand(dc, ' + cx + ', ' + cy + ', hA, ' + ptsToMc(handPoly(el.style, el.hW, el.hLen, el.hLen * 0.12)) + ');');
+      if (hm && o > 0) {
         L.push('dc.setColor(' + GW.mcColor(el.oColor) + ', Graphics.COLOR_TRANSPARENT);');
         L.push('drawHand(dc, ' + cx + ', ' + cy + ', mA, ' + ptsToMc(handPoly(el.style, el.mW + 2 * o, el.mLen + o, el.mLen * 0.1 + o)) + ');');
       }
-      L.push('dc.setColor(' + GW.mcColor(el.mColor) + ', Graphics.COLOR_TRANSPARENT);');
-      L.push('_hpM = drawHand(dc, ' + cx + ', ' + cy + ', mA, ' + ptsToMc(handPoly(el.style, el.mW, el.mLen, el.mLen * 0.1)) + ');');
-      if (el.sShow) {
+      if (hm) L.push('dc.setColor(' + GW.mcColor(el.mColor) + ', Graphics.COLOR_TRANSPARENT);');
+      if (hm) L.push('_hpM = drawHand(dc, ' + cx + ', ' + cy + ', mA, ' + ptsToMc(handPoly(el.style, el.mW, el.mLen, el.mLen * 0.1)) + ');');
+      if (top && el.sShow) {
         L.push('if (!_isSleeping) {');
         L.push('    var sA = _clk.sec * Math.PI / 30.0;');
         L.push('    dc.setColor(' + GW.mcColor(el.sColor) + ', Graphics.COLOR_TRANSPARENT);');
@@ -484,7 +485,7 @@
         L.push('    dc.setPenWidth(1);');
         L.push('}');
       }
-      if (el.hub > 0) {
+      if (top && el.hub > 0) {
         if (o > 0) { L.push('dc.setColor(' + GW.mcColor(el.oColor) + ', Graphics.COLOR_TRANSPARENT);'); L.push('dc.fillCircle(' + cx + ', ' + cy + ', ' + N(el.hub + o) + ');'); }
         L.push('dc.setColor(' + GW.mcColor(el.hubColor) + ', Graphics.COLOR_TRANSPARENT);');
         L.push('dc.fillCircle(' + cx + ', ' + cy + ', ' + N(el.hub) + ');');
