@@ -157,7 +157,8 @@
         var P = { er5h6mz: [72, 129], expaney: [72, 151], e5d8iap: [140, 189], em6n0to: [140, 211] };   // NABIZ at 9 o'clock, PİL at 6
         Object.keys(P).forEach(function (id) { by[id].x = P[id][0]; by[id].y = P[id][1]; els.push(by[id]); });
         els.forEach(function (e) { if (e.type === 'text') { e.halo = '#aaaaaa'; e.haloW = 2; } });   // a thin light-grey outline round the text, only where a hand lies under it
-        els.push(E('sunmark', { name: 'Next sunrise / sunset', rr: 116, r: 9, color: '#ff5500', halo: '' }));   // last, so it draws over everything
+        els.push(E('alarmmark', { name: 'Alarm', rr: 116, r: 8, color: '#0055aa', halo: '#ffffff', time: '07:00' }));   // typed-in alarm time: the watch cannot tell a face when an alarm rings
+        els.push(E('sunmark', { name: 'Next sunrise / sunset', rr: 116, r: 9, color: '#ff5500', halo: '#ffffff' }));   // last, so it draws over everything
         // the second hand and cap go on top of everything, the sun marker included
         els.push(E('hands', { name: 'Second hand', style: 'sword', only: 'top', hLen: 74, mLen: 106, sShow: true, sLen: 118, sTail: 24, sW: 2, sColor: '#ff5500', hub: 5, hubColor: '#ff5500' }));
         b.elements = els; b.name = 'Bosphorus Analog';
