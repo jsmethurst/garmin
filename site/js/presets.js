@@ -140,7 +140,7 @@
       } },
     { id: 'bigdata', name: 'Bosphorus',
       build: function () { return GW.clone(BOSPHORUS); } },
-    { id: 'bosphorusanalog', name: 'Bosphorus Analog', blurb: 'Bosphorus with an analog dial: outlined leaf hands under the text, a sun that marks the next sunrise or sunset on the dial, date and New York time.',
+    { id: 'bosphorusanalog', name: 'Bosphorus Analog', blurb: 'Bosphorus with an analog dial: leaf hands under the text, a sun that marks the next sunrise or sunset on the dial, date and New York time.',
       build: function () {
         var b = GW.clone(BOSPHORUS), by = {}; b.elements.forEach(function (e) { by[e.id] = e; });
         var els = [by.eysp853];
@@ -148,14 +148,15 @@
         els.push(E('ticks', { name: 'Hour batons', r: 126, len: 12, count: 12, major: 3, majorLen: 17, width: 3, majorWidth: 4, color: '#000000', majorColor: '#000000' }));
         els.push(rect(140, 22, 5, 17, '#ff5500', { name: '12 marker' }));
         els.push(E('shape', { name: 'Date window', kind: 'rect', x: 207, y: 141, w: 70, h: 54, fill: false, pen: 1, color: '#aaaaaa' }));
-        els.push(E('sunmark', { name: 'Next sunrise / sunset', rr: 100, r: 6, color: '#ff5500', halo: '#ffffff' }));
+        els.push(E('sunmark', { name: 'Next sunrise / sunset', rr: 116, r: 9, color: '#ff5500', halo: '' }));
         // the hands go under all the text, so the text stays readable when a hand passes over it
-        els.push(E('hands', { name: 'Hands', style: 'sword', hLen: 62, hW: 13, mLen: 100, mW: 10, hColor: '#ffffff', mColor: '#ffffff', oColor: '#000000', oW: 3,
+        els.push(E('hands', { name: 'Hands', style: 'sword', hLen: 62, hW: 11, mLen: 100, mW: 8, hColor: '#000000', mColor: '#000000', oW: 0,
           sShow: true, sLen: 118, sTail: 24, sW: 2, sColor: '#ff5500', hub: 5, hubColor: '#ff5500' }));
         function t(name, x, y, src, font, color, o) { return E('text', Object.assign({ name: name, x: x, y: y, source: src, font: font, color: color, justify: 'C' }, o || {})); }
         els.push(t('Weekday', 207, 124, 'date', 'fLab', '#ff5500', { fmt: 'ddd', tr: true, upper: true }), t('Day', 207, 141, 'date', 'fVal', '#000000', { fmt: 'DD' }), t('Month and year', 207, 159, 'date', 'fLab', '#000000', { fmt: 'MMM YYYY', tr: true, upper: true }));
         els.push(t('Zone', 124, 72, 'nyZone', 'fLab', '#ff5500', { justify: 'R' }), t('New York time', 130, 72, 'nyTime', 'fSun', '#000000', { justify: 'L' }));
-        ['eg8ysys', 'es9rs41', 'er5h6mz', 'expaney', 'e5d8iap', 'em6n0to'].forEach(function (id) { els.push(by[id]); });
+        var P = { er5h6mz: [68, 132], expaney: [68, 150], e5d8iap: [140, 192], em6n0to: [140, 210] };   // NABIZ at 9 o'clock, PİL at 6
+        Object.keys(P).forEach(function (id) { by[id].x = P[id][0]; by[id].y = P[id][1]; els.push(by[id]); });
         b.elements = els; b.name = 'Bosphorus Analog';
         b.fonts = b.fonts.filter(function (f) { return f.id === 'fDate' || f.id === 'fLab' || f.id === 'fVal' || f.id === 'fSun'; });
         return b;
