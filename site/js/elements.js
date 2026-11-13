@@ -1037,15 +1037,16 @@
     },
     draw: function (ctx, el, env) {
       var u = T.sunmark.sunEl(el, env);
-      if (el.halo) { ctx.fillStyle = q(el.halo); ctx.beginPath(); ctx.arc(u.x, u.y, el.r * 2, 0, Math.PI * 2); ctx.fill(); }
-      T.sunicon.draw(ctx, { x: u.x, y: u.y, r: el.r, kind: u.n.set ? 'set' : 'rise', color: el.color, rot: 0 });
+      var kind = u.n.set ? 'set' : 'rise';
+      if (el.halo) GW.haloOffsets(1).forEach(function (d) { T.sunicon.draw(ctx, { x: u.x + d[0], y: u.y + d[1], r: el.r, kind: kind, color: el.halo, rot: 0 }); });   // a 1 px outline round the icon only
+      T.sunicon.draw(ctx, { x: u.x, y: u.y, r: el.r, kind: kind, color: el.color, rot: 0 });
     },
     box: function (el) { return { x: el.cx - el.rr - el.r * 2, y: el.cy - el.rr - el.r * 2, w: (el.rr + el.r * 2) * 2, h: (el.rr + el.r * 2) * 2 }; },
     hit: function (el, x, y) { var u = T.sunmark.sunEl(el, GW.env()); return Math.hypot(x - u.x, y - u.y) <= el.r * 2.2; },
     fields: function () {
       return [
         { k: 'color', t: 'color', label: 'Sun color' },
-        { k: 'halo', t: 'color', label: 'Clear behind it (dial color)' },
+        { k: 'halo', t: 'optcolor', label: 'Thin outline round the sun (dial color)' },
         { k: 'r', t: 'range', label: 'Size', min: 3, max: 16 },
         { k: 'rr', t: 'range', label: 'Distance from centre', min: 20, max: 140 },
         { t: 'row', fields: [{ k: 'cx', t: 'num', label: 'Centre X', min: 0, max: 280 }, { k: 'cy', t: 'num', label: 'Centre Y', min: 0, max: 280 }] }
@@ -1055,61 +1056,9 @@
       cg.helper('sunMark'); cg.need('wx');
       var L = ['var mk = sunMark();', 'if (mk != null) {', '    var a = mk[0] * Math.PI / 360.0;',
         '    var sx = ' + N(el.cx) + ' + (' + N(el.rr) + ' * Math.sin(a)).toNumber();', '    var sy = ' + N(el.cy) + ' - (' + N(el.rr) + ' * Math.cos(a)).toNumber();'];
-      if (el.halo) { L.push('    dc.setColor(' + GW.mcColor(el.halo) + ', Graphics.COLOR_TRANSPARENT);', '    dc.fillCircle(sx, sy, ' + N(Math.round(el.r * 2)) + ');'); }
+      if (el.halo) { L.push('    dc.setColor(' + GW.mcColor(el.halo) + ', Graphics.COLOR_TRANSPARENT);'); GW.haloOffsets(1).forEach(function (d) { L.push('    drawSun(dc, sx + (' + d[0] + '), sy + (' + d[1] + '), ' + N(el.r) + ', mk[1]);'); }); }
       L.push('    dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);', '    drawSun(dc, sx, sy, ' + N(el.r) + ', mk[1]);', '}');
       cg.helper('drawSun');
-      return L;
-    }
-  };
-
-  // ================= ALARM MARK ON THE DIAL =================
-  // A small bell at the place on a 12-hour dial where the alarm rings, when that is within the next 12 hours. A watch face cannot read alarm times
-  // (Connect IQ only tells it how many alarms are set), so the time is typed in here and the bell shows only while the watch has an alarm set.
-  function bellParts(x, y, r) {
-    var pts = [];
-    for (var d = 180; d <= 360; d += 20) pts.push([x + r * 0.8 * Math.cos(rad(d)), y - r * 0.1 + r * 0.8 * Math.sin(rad(d))]);
-    pts.push([x + r * 0.95, y + r * 0.45], [x + r * 1.1, y + r * 0.7], [x - r * 1.1, y + r * 0.7], [x - r * 0.95, y + r * 0.45]);
-    return { pts: pts, cx: x, cy: y + r * 0.95, cr: Math.max(1.5, r * 0.25) };
-  }
-  function alarmMin(el) { var m = /^(\d{1,2}):(\d{2})$/.exec(el.time || ''); return m ? (+m[1] % 24) * 60 + (+m[2]) : 7 * 60; }
-  T.alarmmark = {
-    label: 'Alarm on dial', icon: '🔔',
-    defaults: function () { return { type: 'alarmmark', name: 'Alarm on dial', cx: 140, cy: 140, rr: 116, r: 8, color: '#0055aa', halo: '#ffffff', time: '07:00' }; },
-    pos: [['cx', 'cy']],
-    place: function (el, env) {
-      var a = alarmMin(el), now = env.h * 60 + env.m, diff = (a - now + 1440) % 1440;
-      if (!(env.sim.alarms > 0) || diff >= 720) return null;
-      var ang = a * Math.PI / 360;
-      return { x: el.cx + el.rr * Math.sin(ang), y: el.cy - el.rr * Math.cos(ang) };
-    },
-    draw: function (ctx, el, env) {
-      var u = T.alarmmark.place(el, env); if (!u) return;
-      if (el.halo) { ctx.fillStyle = q(el.halo); ctx.beginPath(); ctx.arc(u.x, u.y, el.r * 1.8, 0, Math.PI * 2); ctx.fill(); }
-      var b = bellParts(u.x, u.y, el.r);
-      ctx.fillStyle = q(el.color); ctx.beginPath(); b.pts.forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); ctx.fill();
-      ctx.beginPath(); ctx.arc(b.cx, b.cy, b.cr, 0, Math.PI * 2); ctx.fill();
-    },
-    box: function (el) { return { x: el.cx - el.rr - el.r * 2, y: el.cy - el.rr - el.r * 2, w: (el.rr + el.r * 2) * 2, h: (el.rr + el.r * 2) * 2 }; },
-    hit: function (el, x, y) { var u = T.alarmmark.place(el, GW.env()); return !!u && Math.hypot(x - u.x, y - u.y) <= el.r * 2; },
-    fields: function () {
-      return [
-        { k: 'time', t: 'text', label: 'Alarm time (HH:MM, 24 h) — the watch cannot tell the face this' },
-        { k: 'color', t: 'color', label: 'Bell color' },
-        { k: 'halo', t: 'optcolor', label: 'Clear behind it (dial color)' },
-        { k: 'r', t: 'range', label: 'Size', min: 3, max: 16 },
-        { k: 'rr', t: 'range', label: 'Distance from centre', min: 20, max: 140 },
-        { t: 'row', fields: [{ k: 'cx', t: 'num', label: 'Centre X', min: 0, max: 280 }, { k: 'cy', t: 'num', label: 'Centre Y', min: 0, max: 280 }] }
-      ];
-    },
-    gen: function (el, cg) {
-      var a = alarmMin(el), L = [];
-      L.push('if (System.getDeviceSettings().alarmCount > 0) {', '    var c = System.getClockTime();', '    var diff = (' + a + ' - (c.hour * 60 + c.min) + 1440) % 1440;', '    if (diff < 720) {',
-        '        var ang = ' + a + ' * Math.PI / 360.0;', '        var ax = ' + N(el.cx) + ' + (' + N(el.rr) + ' * Math.sin(ang)).toNumber();', '        var ay = ' + N(el.cy) + ' - (' + N(el.rr) + ' * Math.cos(ang)).toNumber();');
-      if (el.halo) L.push('        dc.setColor(' + GW.mcColor(el.halo) + ', Graphics.COLOR_TRANSPARENT);', '        dc.fillCircle(ax, ay, ' + N(Math.round(el.r * 1.8)) + ');');
-      var b = bellParts(0, 0, el.r);
-      L.push('        dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);',
-        '        dc.fillPolygon([' + b.pts.map(function (p) { return '[ax + (' + p[0].toFixed(1) + '), ay + (' + p[1].toFixed(1) + ')]'; }).join(', ') + ']);',
-        '        dc.fillCircle(ax, ay + ' + N(Math.round(b.cy)) + ', ' + N(Math.round(b.cr)) + ');', '    }', '}');
       return L;
     }
   };
