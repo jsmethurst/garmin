@@ -162,7 +162,7 @@
         els.push(E('hands', { name: 'Second hand', style: 'sword', only: 'top', hLen: 74, mLen: 106, sShow: true, sLen: 118, sTail: 24, sW: 2, sColor: '#ff5500', hub: 5, hubColor: '#ff5500' }));
         b.elements = els; b.name = 'Bosphorus Analog';
         b.fonts = b.fonts.filter(function (f) { return f.id === 'fLab' || f.id === 'fVal'; });
-        b.fonts.forEach(function (f) { if (f.id === 'fLab') f.px = 15; if (f.id === 'fVal') f.px = 27; });
+        b.fonts.forEach(function (f) { f.aa = 'mip'; if (f.id === 'fLab') f.px = 16; if (f.id === 'fVal') f.px = 27; });   // device-style edges (the screen blends edges in only 4 steps), and the pixel sizes whose letter stems land best on the pixel grid
         return b;
       } },
     { id: 'run', name: 'Run screen', kind: 'datafield',
