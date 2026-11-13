@@ -148,19 +148,16 @@
         els.push(E('ticks', { name: 'Hour batons', r: 126, len: 12, count: 12, major: 3, majorLen: 17, width: 3, majorWidth: 4, color: '#000000', majorColor: '#000000' }));
         els.push(rect(140, 22, 5, 17, '#ff5500', { name: '12 marker' }));
         els.push(E('shape', { name: 'Date window', kind: 'rect', x: 208, y: 141, w: 60, h: 62, fill: false, pen: 1, color: '#aaaaaa' }));
-        els.push(E('sunmark', { name: 'Next sunrise / sunset', rr: 116, r: 9, color: '#ff5500', halo: '' }));
         // the hands go under all the text, so the text stays readable when a hand passes over it
         els.push(E('hands', { name: 'Hands', style: 'sword', hLen: 74, hW: 11, mLen: 106, mW: 8, hColor: '#000000', mColor: '#000000', oW: 0,
-          sShow: true, sLen: 118, sTail: 24, sW: 2, sColor: '#ff5500', hub: 5, hubColor: '#ff5500',
-          zoneColor: '#aaaaaa', zones: [[124, 58, 32, 18], [99, 74, 82, 26],                 // EST label, time
-            [49, 121, 46, 16], [46, 137, 52, 26],                 // NABIZ label, value
-            [127, 178, 28, 20], [101, 197, 78, 26],               // PİL label, value
-            [188, 112, 40, 17], [193, 129, 30, 24], [190, 153, 36, 17]] }));   // date: weekday, day, month. Each box hugs its text; the hands turn light grey inside them
+          sShow: true, sLen: 118, sTail: 24, sW: 2, sColor: '#ff5500', hub: 5, hubColor: '#ff5500' }));
         function t(name, x, y, src, font, color, o) { return E('text', Object.assign({ name: name, x: x, y: y, source: src, font: font, color: color, justify: 'C' }, o || {})); }
         els.push(t('Weekday', 208, 121, 'date', 'fLab', '#ff5500', { fmt: 'ddd', tr: true, upper: true }), t('Day', 208, 141, 'date', 'fVal', '#000000', { fmt: 'DD' }), t('Month', 208, 162, 'date', 'fLab', '#000000', { fmt: 'MMM', tr: true, upper: true }));
         els.push(t('Zone', 140, 67, 'nyZone', 'fLab', '#ff5500'), t('New York time', 140, 89, 'nyTime', 'fVal', '#000000'));
         var P = { er5h6mz: [72, 129], expaney: [72, 151], e5d8iap: [140, 189], em6n0to: [140, 211] };   // NABIZ at 9 o'clock, PİL at 6
         Object.keys(P).forEach(function (id) { by[id].x = P[id][0]; by[id].y = P[id][1]; els.push(by[id]); });
+        els.forEach(function (e) { if (e.type === 'text') { e.halo = '#aaaaaa'; e.haloW = 1; } });   // a thin light-grey outline round the text, only where a hand lies under it
+        els.push(E('sunmark', { name: 'Next sunrise / sunset', rr: 116, r: 9, color: '#ff5500', halo: '' }));   // last, so it draws over everything
         b.elements = els; b.name = 'Bosphorus Analog';
         b.fonts = b.fonts.filter(function (f) { return f.id === 'fLab' || f.id === 'fVal'; });
         b.fonts.forEach(function (f) { if (f.id === 'fLab') f.px = 15; if (f.id === 'fVal') f.px = 27; });
