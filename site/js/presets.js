@@ -140,6 +140,28 @@
       } },
     { id: 'bigdata', name: 'Bosphorus',
       build: function () { return GW.clone(BOSPHORUS); } },
+    { id: 'bosphorusanalog', name: 'Bosphorus Analog', blurb: 'Bosphorus with an analog dial: leaf hands, steps ring, date and New York windows, sunrise and sunset.',
+      build: function () {
+        var b = GW.clone(BOSPHORUS), by = {}; b.elements.forEach(function (e) { by[e.id] = e; });
+        var keep = ['eysp853', 'e5tshgp', 'ecb7tb6', 'e34m122', 'eho5mx2', 'eg8ysys', 'es9rs41', 'er5h6mz', 'expaney', 'e5d8iap', 'em6n0to'];
+        var els = [by.eysp853];
+        els.push(E('ticks', { name: 'Minute ticks', r: 126, len: 5, count: 60, major: 0, width: 1, color: '#aaaaaa' }));
+        els.push(E('ticks', { name: 'Hour batons', r: 126, len: 12, count: 12, major: 3, majorLen: 17, width: 3, majorWidth: 4, color: '#000000', majorColor: '#000000' }));
+        els.push(rect(140, 22, 5, 17, '#ff5500', { name: '12 marker' }));
+        ['ecb7tb6', 'eho5mx2'].forEach(function (id) { by[id].y = 72; }); by.e5tshgp.y = 72; by.e34m122.y = 72;
+        els.push(by.e5tshgp, by.ecb7tb6, by.e34m122, by.eho5mx2);
+        // two windows: date at 3, New York time at 9
+        function win(x, name) { return E('shape', { name: name, kind: 'rect', x: x, y: 140, w: 58, h: 40, fill: false, pen: 1, color: '#aaaaaa' }); }
+        els.push(win(212, 'Date window'), win(68, 'New York window'));
+        function t(name, x, y, src, font, color, o) { return E('text', Object.assign({ name: name, x: x, y: y, source: src, font: font, color: color, justify: 'C' }, o || {})); }
+        els.push(t('Weekday', 212, 131, 'date', 'fLab', '#ff5500', { fmt: 'ddd', tr: true, upper: true }), t('Day', 212, 149, 'date', 'fVal', '#000000', { fmt: 'DD' }));
+        els.push(t('Zone', 68, 131, 'nyZone', 'fLab', '#ff5500'), t('New York time', 68, 149, 'nyTime', 'fSun', '#000000'));
+        keep.slice(5).forEach(function (id) { els.push(by[id]); });
+        els.push(E('hands', { name: 'Hands', style: 'sword', hLen: 62, hW: 11, mLen: 100, mW: 8, hColor: '#000000', mColor: '#000000', sShow: true, sLen: 118, sTail: 24, sW: 2, sColor: '#ff5500', hub: 6, hubColor: '#ff5500' }));
+        b.elements = els; b.name = 'Bosphorus Analog';
+        b.fonts = b.fonts.filter(function (f) { return f.id === 'fDate' || f.id === 'fLab' || f.id === 'fVal' || f.id === 'fSun'; });
+        return b;
+      } },
     { id: 'run', name: 'Run screen', kind: 'datafield',
       build: function () {
         // laid out like Garmin's own data screen: heart rate on top, four cells in a grid (clockwise from the top left: elapsed time,
