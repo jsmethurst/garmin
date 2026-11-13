@@ -133,8 +133,8 @@
     // and the text is drawn a pixel to each side through the part of every strip that lies inside the hand.
     hugText: {
       imports: ['Toybox.Graphics'],
-      code: 'function hugText(dc, s, font, x, y, fl, jx, vtop, col, offs) {\n        var d = dc.getTextDimensions(s, font);\n        var w = d[0];\n        var h = d[1];\n' +
-        '        var left = x - ((jx == 1) ? w / 2 : ((jx == 2) ? w : 0));\n        var top = vtop ? y : y - h / 2;\n' +
+      code: 'function hugText(dc, s, font, x, y, fl, col, offs) {\n        var d = dc.getTextDimensions(s, font);\n        var w = d[0];\n        var h = d[1];\n' +
+        '        var jx = fl & 3;\n        var left = x - ((jx == 1) ? w / 2 : ((jx == 0) ? w : 0));\n        var top = ((fl & 4) == 0) ? y : y - h / 2;\n' +
         '        var polys = [_hpH, _hpM];\n        dc.setColor(col, Graphics.COLOR_TRANSPARENT);\n' +
         '        for (var yy = (top - 2).toNumber(); yy < top + h + 2; yy += 2) {\n            var yc = yy + 1;\n' +
         '            for (var k = 0; k < 2; k++) {\n                var p = polys[k];\n                if (p == null) { continue; }\n                var lo = 9999.0;\n                var hi = -9999.0;\n' +

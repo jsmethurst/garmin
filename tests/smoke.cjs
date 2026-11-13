@@ -51,6 +51,19 @@ function balanced(src) {
       if (/undefined|NaN|\[object|Infinity/.test(f.text.replace(/GWD1_[A-Za-z0-9+\/=_-]*_GWD1/g, ''))) fail(id, f.path + ' contains undefined/NaN');
     }
     for (const f of [view, app]) if (!balanced(f.text)) fail(id, f.path + ' has unbalanced brackets');
+    // Monkey C allows at most 9 arguments in a call or a declaration (the compiler rejects more)
+    for (const ln of view.text.split('\n')) {
+      const code = ln.replace(/"(\\.|[^"\\])*"/g, '""');
+      for (const m of code.matchAll(/\b([A-Za-z_]\w*)\(/g)) {
+        let depth = 1, n = 0, any = false;
+        for (let i = m.index + m[0].length; i < code.length && depth > 0; i++) {
+          const c = code[i];
+          if ('([{'.includes(c)) depth++; else if (')]}'.includes(c)) depth--; else if (c === ',' && depth === 1) n++;
+          if (depth > 0 && !/\s/.test(c)) any = true;
+        }
+        if (any && n + 1 > 9) fail(id, 'too many arguments (' + (n + 1) + ') in ' + m[1] + '(...) : ' + ln.trim().slice(0, 80));
+      }
+    }
     for (const m of view.text.matchAll(/function (drawEl\d+)\(/g)) if (!view.text.includes('        ' + m[1] + '(dc);')) fail(id, m[1] + ' never called');
     for (const h of helpers) {
       const used = new RegExp('[^.\\w]' + h + '\\(').test(view.text.replace(new RegExp('function ' + h + '\\('), ''));

@@ -132,8 +132,9 @@
       var out = [];
       if (el.halo && (cg.design.elements || []).some(function (e) { return e.type === 'hands' && !e.hidden; })) {
         cg.helper('hugText');
-        var offs = GW.haloOffsets(el.haloW || 1).map(function (d) { return '[' + d[0] + ', ' + d[1] + ']'; }).join(', ');
-        out.push('hugText(dc, ' + expr + ', ' + cg.font(fid) + ', ' + N(el.x) + ', ' + N(el.y) + ', Graphics.TEXT_JUSTIFY_' + j + (el.vtop ? '' : ' | Graphics.TEXT_JUSTIFY_VCENTER') + ', ' + ({ L: 0, C: 1, R: 2 }[el.justify] == null ? 1 : { L: 0, C: 1, R: 2 }[el.justify]) + ', ' + (el.vtop ? 'true' : 'false') + ', ' + GW.mcColor(el.halo) + ', [' + offs + ']);');
+        var hw = el.haloW || 1, offs = 'HALO_' + hw;   // one shared constant per outline width, not a new list on every redraw
+        cg.member('    const HALO_' + hw + ' = [' + GW.haloOffsets(hw).map(function (d) { return '[' + d[0] + ', ' + d[1] + ']'; }).join(', ') + '];');
+        out.push('hugText(dc, ' + expr + ', ' + cg.font(fid) + ', ' + N(el.x) + ', ' + N(el.y) + ', Graphics.TEXT_JUSTIFY_' + j + (el.vtop ? '' : ' | Graphics.TEXT_JUSTIFY_VCENTER') + ', ' + GW.mcColor(el.halo) + ', ' + offs + ');');
       }
       out.push('dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);',
         'dc.drawText(' + N(el.x) + ', ' + N(el.y) + ', ' + cg.font(fid) + ', ' + expr + ', Graphics.TEXT_JUSTIFY_' + j + (el.vtop ? '' : ' | Graphics.TEXT_JUSTIFY_VCENTER') + ');');
