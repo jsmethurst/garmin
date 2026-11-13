@@ -55,6 +55,7 @@
     pos: [['x', 'y']],
     string: function (el, env) {
       var s = (el.prefix || '') + GW.srcStr(el, env) + (el.suffix || '');
+      if (el.lower) s = GW.trLower(s);
       return el.upper ? s.toUpperCase() : s;
     },
     draw: function (ctx, el, env) {
@@ -103,6 +104,7 @@
       f.push({ k: 'justify', t: 'seg', label: 'Align on X', opts: [['L', 'Left'], ['C', 'Centre'], ['R', 'Right']] });
       f.push({ t: 'row', fields: [{ k: 'prefix', t: 'text', label: 'Before' }, { k: 'suffix', t: 'text', label: 'After' }] });
       f.push({ k: 'upper', t: 'check', label: 'UPPERCASE' });
+      f.push({ k: 'lower', t: 'check', label: 'lowercase (Turkish dates and names are lowered correctly)' });
       f.push({ k: 'halo', t: 'optcolor', label: 'Outline where an analog hand is under it' });
       f.push({ t: 'h', label: 'Position (text centre line)' });
       f.push({ t: 'row', fields: [{ k: 'x', t: 'num', label: 'X', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y', min: -50, max: 330 }] });
@@ -117,6 +119,7 @@
       if (el.suffix) parts.push(GW.mcLit(el.suffix));
       var expr = parts.join(' + ');
       if (el.upper) expr = '(' + expr + ').toUpper()';
+      if (el.lower && !(el.source === 'date' && el.tr)) expr = '(' + expr + ').toLower()';   // Turkish dates carry their own lower-case tables
       var j = { L: 'LEFT', C: 'CENTER', R: 'RIGHT' }[el.justify] || 'CENTER';
       var fid = GW.fontFor(el), cf = el.rot && GW.customFont(fid);
       var tch = GW.textChars(el);

@@ -98,6 +98,11 @@
       code: 'function wxNameTr() {\n        return WX_NAMES_TR[wxGroup()];\n    }'
     },
     // Segment34's weather line: joinFour(temperature, wind, condition): "17C, d12, PARÇALI". The wind is an arrow (a letter of the font: a..h by bearing) and km/h.
+    tempCond: {
+      deps: ['wxGroup'], needs: ['wx'],
+      members: ['    const WXL_TR = ["açık", "parçalı", "bulutlu", "yağmur", "kar", "fırtına", "sis", "karlı yağ", "--"];'],
+      code: 'function tempCond() {\n        var s = "";\n        if (_wx == null) { return s; }\n        if (_wx.temperature != null) { s = _wx.temperature.format("%d") + "°C"; }\n        if (_wx.condition != null) {\n            var c = WXL_TR[wxGroup()];\n            s = (s.length() > 0) ? s + ", " + c : c;\n        }\n        return s;\n    }'
+    },
     wxLine: {
       deps: ['wxGroup'], needs: ['wx'], imports: ['Toybox.Math'],
       members: ['    const WXC_EN = ["CLEAR", "CLOUDY", "CLOUDY", "RAIN", "SNOW", "STORM", "FOG", "WINTRY", "--"];', '    const WXC_TR = ["AÇIK", "PARÇALI", "BULUTLU", "YAĞMUR", "KAR", "FIRTINA", "SİS", "KARLI YAĞ", "--"];'],

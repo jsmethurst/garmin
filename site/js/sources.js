@@ -59,6 +59,7 @@
     if (last < fmt.length) out.push({ lit: fmt.slice(last) });
     return out;
   };
+  GW.trLower = function (s) { return String(s).replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase(); };   // Turkish rules: İ → i, I → ı
   var TR_D3 = ['PAZ', 'PZT', 'SAL', 'ÇAR', 'PER', 'CUM', 'CMT'];
   var TR_DAY = ['PAZAR', 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ'];
   var TR_M3 = ['OCA', 'ŞUB', 'MAR', 'NİS', 'MAY', 'HAZ', 'TEM', 'AĞU', 'EYL', 'EKİ', 'KAS', 'ARA'];
@@ -148,18 +149,19 @@
   });
   def('date', {
     label: 'Date', group: 'Time', kind: 'str', opts: ['datefmt', 'trnames'],
-    str: function (el, env) { return dateStr(env, el.fmt || 'ddd DD MMM', el.tr); },
+    str: function (el, env) { var s = dateStr(env, el.fmt || 'ddd DD MMM', el.tr); return el.lower ? GW.trLower(s) : s; },
     mcStr: function (el, cg) {
-      var parts = GW.dateParts(el.fmt || 'ddd DD MMM'), out = [];
+      var parts = GW.dateParts(el.fmt || 'ddd DD MMM'), out = [], lw = el.lower ? GW.trLower : function (x) { return x; }, sx = el.lower ? 'L' : '';
+      var trArr = function (a) { return '[' + a.map(function (x) { return '"' + lw(x) + '"'; }).join(', ') + ']'; };   // lower case when the text asks for it: the watch cannot lower-case Turkish letters itself
       parts.forEach(function (p) {
         if (p.lit != null) { out.push(mcLit(p.lit)); return; }
         switch (p.tok) {
-          case 'DDDD': if (el.tr) { cg.need('ds'); cg.member('    const TR_DAY = ' + trArr(TR_DAY) + ';'); out.push('TR_DAY[_ds.day_of_week - 1]'); } else { cg.need('dl'); out.push('_dl.day_of_week'); } break;
-          case 'ddd': if (el.tr) { cg.need('ds'); cg.member('    const TR_D3 = ' + trArr(TR_D3) + ';'); out.push('TR_D3[_ds.day_of_week - 1]'); } else { cg.need('dm'); out.push('_dm.day_of_week'); } break;
+          case 'DDDD': if (el.tr) { cg.need('ds'); cg.member('    const TR_DAY' + sx + ' = ' + trArr(TR_DAY) + ';'); out.push('TR_DAY' + sx + '[_ds.day_of_week - 1]'); } else { cg.need('dl'); out.push('_dl.day_of_week'); } break;
+          case 'ddd': if (el.tr) { cg.need('ds'); cg.member('    const TR_D3' + sx + ' = ' + trArr(TR_D3) + ';'); out.push('TR_D3' + sx + '[_ds.day_of_week - 1]'); } else { cg.need('dm'); out.push('_dm.day_of_week'); } break;
           case 'DD': cg.need('ds'); out.push('_ds.day.format("%02d")'); break;
           case 'D': cg.need('ds'); out.push('_ds.day.toString()'); break;
-          case 'MMMM': if (el.tr) { cg.need('ds'); cg.member('    const TR_MON = ' + trArr(TR_MON) + ';'); out.push('TR_MON[_ds.month - 1]'); } else { cg.need('dl'); out.push('_dl.month'); } break;
-          case 'MMM': if (el.tr) { cg.need('ds'); cg.member('    const TR_M3 = ' + trArr(TR_M3) + ';'); out.push('TR_M3[_ds.month - 1]'); } else { cg.need('dm'); out.push('_dm.month'); } break;
+          case 'MMMM': if (el.tr) { cg.need('ds'); cg.member('    const TR_MON' + sx + ' = ' + trArr(TR_MON) + ';'); out.push('TR_MON' + sx + '[_ds.month - 1]'); } else { cg.need('dl'); out.push('_dl.month'); } break;
+          case 'MMM': if (el.tr) { cg.need('ds'); cg.member('    const TR_M3' + sx + ' = ' + trArr(TR_M3) + ';'); out.push('TR_M3' + sx + '[_ds.month - 1]'); } else { cg.need('dm'); out.push('_dm.month'); } break;
           case 'MM': cg.need('ds'); out.push('_ds.month.format("%02d")'); break;
           case 'M': cg.need('ds'); out.push('_ds.month.toString()'); break;
           case 'YYYY': cg.need('ds'); out.push('_ds.year.toString()'); break;
@@ -325,28 +327,29 @@
     str: function (el, env) { var d = env.now; return ('0' + d.getUTCHours()).slice(-2) + ':' + ('0' + d.getUTCMinutes()).slice(-2); },
     mcStr: function (el, cg) { cg.helper('utcStr'); return 'utcStr()'; }
   });
-  def('nyFull', {
-    label: 'New York time with EDT / EST ("13:29 EST")', group: 'Environment', kind: 'str', opts: [], imports: ['Toybox.Time', 'Toybox.Time.Gregorian'],
-    str: function (el, env) { var n = nyParts(env.now); return n.t + ' ' + n.zone; },
-    mcStr: function (el, cg) { cg.helper('nyStr'); return '(nyStr(0) + " " + nyStr(1))'; }
-  });
-  def('sunNextLabel', {
-    label: 'Next sunrise / sunset with its name ("doğuş 06:52")', group: 'Environment', kind: 'str', opts: ['trnames'], imports: ['Toybox.Weather', 'Toybox.Time', 'Toybox.Time.Gregorian'],
-    str: function (el, env) {
-      var now = env.h * 60 + env.m, sim = env.sim, set = now >= sim.sunrise && now < sim.sunset, m = now < sim.sunrise ? sim.sunrise : (now < sim.sunset ? sim.sunset : sim.sunrise);
-      return (set ? (el.tr ? 'batış  ' : 'sunset ') : (el.tr ? 'doğuş  ' : 'sunrise')) + minToStr(env, m);
-    },
-    mcStr: function (el, cg) {
-      cg.need('wx'); cg.helper('sunStr'); cg.helper('sunMark');
-      return '((sunMark() != null && sunMark()[1]) ? ' + GW.mcLit(el.tr ? 'batış  ' : 'sunset ') + ' : ' + GW.mcLit(el.tr ? 'doğuş  ' : 'sunrise') + ') + sunStr(0)';
-    }
-  });
   def('nyZone', {
     label: 'New York zone (EDT / EST)', group: 'Environment', kind: 'str', opts: [], imports: ['Toybox.Time', 'Toybox.Time.Gregorian'],
     str: function (el, env) { return nyParts(env.now).zone; },
     mcStr: function (el, cg) { cg.helper('nyStr'); return 'nyStr(1)'; }
   });
 
+  def('sunNextName', {
+    label: 'Name of the next sun event (sunrise / sunset)', group: 'Environment', kind: 'str', opts: ['trnames'], imports: ['Toybox.Weather', 'Toybox.Time', 'Toybox.Time.Gregorian'],
+    str: function (el, env) {
+      var now = env.h * 60 + env.m, set = now >= env.sim.sunrise && now < env.sim.sunset;
+      return set ? (el.tr ? 'batış' : 'sunset') : (el.tr ? 'doğuş' : 'sunrise');
+    },
+    mcStr: function (el, cg) {
+      cg.need('wx'); cg.helper('sunMark');
+      return '((sunMark() != null && sunMark()[1]) ? ' + GW.mcLit(el.tr ? 'batış' : 'sunset') + ' : ' + GW.mcLit(el.tr ? 'doğuş' : 'sunrise') + ')';
+    }
+  });
+  var WXL_TR = ['açık', 'parçalı', 'bulutlu', 'yağmur', 'kar', 'fırtına', 'sis', 'karlı yağ', '--'];
+  def('tempCond', {
+    label: 'Temperature and conditions ("17°C, parçalı", lower case Turkish)', group: 'Environment', kind: 'str', opts: [], imports: ['Toybox.Weather'],
+    str: function (el, env) { return Math.round(env.sim.temp) + '°C, ' + WXL_TR[env.sim.wx]; },
+    mcStr: function (el, cg) { cg.need('wx'); cg.helper('tempCond'); return 'tempCond()'; }
+  });
   // --- Special (not in Garmin's own faces) ---
   numeric('dayPct', 'Day elapsed %', 'Special', {
     fn: 'dayPct', needs: ['clk'], range: [0, 100],
