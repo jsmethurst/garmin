@@ -152,7 +152,10 @@
         // the hands go under all the text, so the text stays readable when a hand passes over it
         els.push(E('hands', { name: 'Hands', style: 'sword', hLen: 74, hW: 11, mLen: 106, mW: 8, hColor: '#000000', mColor: '#000000', oW: 0,
           sShow: true, sLen: 118, sTail: 24, sW: 2, sColor: '#ff5500', hub: 5, hubColor: '#ff5500',
-          zoneColor: '#aaaaaa', zones: [[95, 55, 90, 48], [40, 117, 64, 48], [95, 177, 90, 48], [178, 110, 60, 62]] }));   // the four text boxes: the hands turn light grey inside them
+          zoneColor: '#aaaaaa', zones: [[124, 58, 32, 18], [99, 74, 82, 26],                 // EST label, time
+            [49, 121, 46, 16], [46, 137, 52, 26],                 // NABIZ label, value
+            [127, 178, 28, 20], [101, 197, 78, 26],               // PİL label, value
+            [188, 112, 40, 17], [193, 129, 30, 24], [190, 153, 36, 17]] }));   // date: weekday, day, month. Each box hugs its text; the hands turn light grey inside them
         function t(name, x, y, src, font, color, o) { return E('text', Object.assign({ name: name, x: x, y: y, source: src, font: font, color: color, justify: 'C' }, o || {})); }
         els.push(t('Weekday', 208, 121, 'date', 'fLab', '#ff5500', { fmt: 'ddd', tr: true, upper: true }), t('Day', 208, 141, 'date', 'fVal', '#000000', { fmt: 'DD' }), t('Month', 208, 162, 'date', 'fLab', '#000000', { fmt: 'MMM', tr: true, upper: true }));
         els.push(t('Zone', 140, 67, 'nyZone', 'fLab', '#ff5500'), t('New York time', 140, 89, 'nyTime', 'fVal', '#000000'));
