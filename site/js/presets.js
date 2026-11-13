@@ -156,7 +156,7 @@
         els.push(t('Zone', 140, 67, 'nyZone', 'fLab', '#ff5500'), t('New York time', 140, 89, 'nyTime', 'fVal', '#000000'));
         var P = { er5h6mz: [72, 129], expaney: [72, 151], e5d8iap: [140, 189], em6n0to: [140, 211] };   // NABIZ at 9 o'clock, PİL at 6
         Object.keys(P).forEach(function (id) { by[id].x = P[id][0]; by[id].y = P[id][1]; els.push(by[id]); });
-        els.forEach(function (e) { if (e.type === 'text') { e.halo = '#aaaaaa'; e.haloW = 1; } });   // a thin light-grey outline round the text, only where a hand lies under it
+        els.forEach(function (e) { if (e.type === 'text') { e.halo = '#aaaaaa'; e.haloW = 2; } });   // a thin light-grey outline round the text, only where a hand lies under it
         els.push(E('sunmark', { name: 'Next sunrise / sunset', rr: 116, r: 9, color: '#ff5500', halo: '' }));   // last, so it draws over everything
         b.elements = els; b.name = 'Bosphorus Analog';
         b.fonts = b.fonts.filter(function (f) { return f.id === 'fLab' || f.id === 'fVal'; });
