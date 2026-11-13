@@ -154,8 +154,8 @@
           sShow: true, sLen: 118, sTail: 24, sW: 2, sColor: '#ff5500', hub: 5, hubColor: '#ff5500' }));
         function t(name, x, y, src, font, color, o) { return E('text', Object.assign({ name: name, x: x, y: y, source: src, font: font, color: color, justify: 'C' }, o || {})); }
         els.push(t('Weekday', 208, 124, 'date', 'fLab', '#ff5500', { fmt: 'ddd', tr: true, upper: true }), t('Day', 208, 141, 'date', 'fVal', '#000000', { fmt: 'DD' }), t('Month', 208, 159, 'date', 'fLab', '#000000', { fmt: 'MMM', tr: true, upper: true }));
-        els.push(t('Zone', 124, 72, 'nyZone', 'fLab', '#ff5500', { justify: 'R' }), t('New York time', 130, 72, 'nyTime', 'fSun', '#000000', { justify: 'L' }));
-        var P = { er5h6mz: [68, 132], expaney: [68, 150], e5d8iap: [140, 192], em6n0to: [140, 210] };   // NABIZ at 9 o'clock, PİL at 6
+        els.push(t('Zone', 140, 70, 'nyZone', 'fLab', '#ff5500'), t('New York time', 140, 88, 'nyTime', 'fVal', '#000000'));
+        var P = { er5h6mz: [72, 132], expaney: [72, 150], e5d8iap: [140, 192], em6n0to: [140, 210] };   // NABIZ at 9 o'clock, PİL at 6
         Object.keys(P).forEach(function (id) { by[id].x = P[id][0]; by[id].y = P[id][1]; els.push(by[id]); });
         b.elements = els; b.name = 'Bosphorus Analog';
         b.fonts = b.fonts.filter(function (f) { return f.id === 'fDate' || f.id === 'fLab' || f.id === 'fVal' || f.id === 'fSun'; });
