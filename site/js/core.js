@@ -226,49 +226,74 @@ window.GW = window.GW || {};
   // Saving under a name that already exists, a built-in preset's name included, updates that layout; a new name adds one.
   // Until the server store is connected (or when the site is opened from a plain file / local server) the library falls back to this browser only.
   var LKEY = 'gw.layouts.v1';
-  var shared = { on: false, list: [], sig: '', why: '' };      // on: the server store answered; list: its layouts
+  var shared = { on: false, list: [], sig: '', why: '' };      // on: the server store answered (or answered once before); list: its layouts
+  var PKEY = 'gw.layouts.pending.v1', CKEY = 'gw.layouts.cache.v1';
   function lkey(n) { return String(n || '').trim().toLowerCase(); }
-  function localAll() { try { return JSON.parse(localStorage.getItem(LKEY) || '[]'); } catch (e) { return []; } }
+  function same(a, b) { return a.kind === b.kind && lkey(a.name) === lkey(b.name); }
+  function readJ(k) { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { return []; } }
+  function writeJ(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  function localAll() { return readJ(LKEY); }
+  function pending() { return readJ(PKEY); }
+  function setPending(list) { writeJ(PKEY, list); }
   function sigOf(list) { return list.map(function (l) { return l.kind + '|' + l.name + '|' + l.ts; }).sort().join('\n'); }
   function call(method, qs, body) {
     return fetch('/api/layouts' + (qs || ''), { method: method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || ('HTTP ' + r.status)); return j; }); });
   }
+  // a save is written to this browser first and stays there until the server has confirmed it: a failed or interrupted upload never loses a layout
+  function upload(entry, done) {
+    call('POST', '', entry).then(function () { setPending(pending().filter(function (p) { return !(same(p, entry) && p.ts <= entry.ts); })); done && done(null); },
+      function (e) { done && done(e); });
+  }
+  function merged() {   // the server's list with any layouts still waiting to be uploaded on top
+    var list = shared.list.slice();
+    pending().forEach(function (p) { var i = -1; list.forEach(function (l, k) { if (same(l, p)) i = k; }); if (i >= 0) { if (p.ts >= list[i].ts) list[i] = p; } else list.push(p); });
+    return list;
+  }
   GW.layouts = {
     shared: function () { return shared.on; },
     why: function () { return shared.why; },
-    all: function () { return shared.on ? shared.list.slice() : localAll(); },
+    unsynced: function () { return pending().length; },
+    all: function () { return shared.on ? merged() : localAll(); },
     find: function (name, kind) { return GW.layouts.all().filter(function (l) { return l.kind === kind && lkey(l.name) === lkey(name); })[0] || null; },
-    // fetch the shared library; done(changed) says whether the list differs from before. Layouts that were only in this browser are moved up to the shared library once.
+    // fetch the shared library; done(changed) says whether the list differs from before. Layouts that were only in this browser, or whose upload failed, are sent up.
     refresh: function (done) {
       call('GET').then(function (j) {
         if (!j.configured) { shared.on = false; shared.why = j.reason || ''; done && done(false); return; }
-        var was = shared.sig; shared.on = true; shared.list = j.layouts || []; shared.sig = sigOf(shared.list);
-        var mine = localAll().filter(function (l) { return !shared.list.some(function (s) { return s.kind === l.kind && lkey(s.name) === lkey(l.name); }); });
-        if (mine.length) {
-          Promise.all(mine.map(function (l) { return call('POST', '', l).then(function () { shared.list.push(l); }); })).then(function () {
-            try { localStorage.removeItem(LKEY); } catch (e) { }
-            shared.sig = sigOf(shared.list); GW.toast && GW.toast(mine.length + ' layout' + (mine.length > 1 ? 's' : '') + ' from this browser moved to the shared library');
-            done && done(true);
-          }, function () { done && done(was !== shared.sig); });
-        } else { if (localAll().length) { try { localStorage.removeItem(LKEY); } catch (e) { } } done && done(was !== shared.sig); }
-      }, function (e) { shared.on = false; shared.why = 'the server did not answer (' + (e && e.message || 'offline') + ')'; done && done(false); });
+        var was = shared.sig; shared.on = true; shared.why = ''; shared.list = j.layouts || []; writeJ(CKEY, shared.list);
+        if (j.errors && j.errors.length && GW.toast) GW.toast(j.errors.length + ' shared layout' + (j.errors.length > 1 ? 's' : '') + ' could not be read from the server: ' + j.errors[0]);
+        var up = pending().concat(localAll()).filter(function (l) { var s = shared.list.filter(function (x) { return same(x, l); })[0]; return !s || l.ts > s.ts; });
+        if (!up.length) { if (localAll().length) { try { localStorage.removeItem(LKEY); } catch (e) { } } shared.sig = sigOf(merged()); done && done(was !== shared.sig); return; }
+        var left = up.length, bad = 0;
+        up.forEach(function (l) { upload(l, function (e) { if (e) bad++; else { var i = -1; shared.list.forEach(function (x, k) { if (same(x, l)) i = k; }); i >= 0 ? shared.list[i] = l : shared.list.push(l); }
+          if (--left === 0) { if (!bad) { try { localStorage.removeItem(LKEY); } catch (e2) { } } writeJ(CKEY, shared.list); shared.sig = sigOf(merged());
+            if (GW.toast) GW.toast(bad ? bad + ' layout' + (bad > 1 ? 's' : '') + ' still not uploaded: kept in this browser and will retry' : up.length + ' layout' + (up.length > 1 ? 's' : '') + ' sent to the shared library');
+            done && done(true); } }); });
+      }, function (e) {
+        // the server did not answer: keep working from the last list this browser saw instead of showing an empty library
+        var cache = readJ(CKEY); if (cache.length || shared.on) { if (!shared.on) { shared.on = true; shared.list = cache; } shared.why = 'offline: ' + (e && e.message || ''); done && done(false); return; }
+        shared.on = false; shared.why = 'the server did not answer (' + (e && e.message || 'offline') + ')'; done && done(false);
+      });
     },
-    save: function () {
+    save: function (cb) {
       var d = GW.design, kind = GW.modeOf(), name = String(d.name || '').trim() || 'Untitled', updated = false;
       var entry = { name: name, kind: kind, ts: Date.now(), data: GW.serialize() };
       if (shared.on) {
-        var list = shared.list;
-        for (var i = 0; i < list.length; i++) if (list[i].kind === kind && lkey(list[i].name) === lkey(name)) { list[i] = entry; updated = true; break; }
-        if (!updated) list.push(entry);
-        shared.sig = sigOf(list);
-        call('POST', '', entry).then(null, function (e) { GW.toast && GW.toast('Could not save to the shared library: ' + e.message + '. Use Download to keep a file.'); });
-        return { ok: true, updated: updated, name: name, shared: true };
+        updated = merged().some(function (l) { return same(l, entry); });
+        var p = pending().filter(function (x) { return !same(x, entry); }); p.push(entry);
+        if (!writeJ(PKEY, p)) return { ok: false, name: name };   // browser storage full
+        shared.sig = sigOf(merged());
+        upload(entry, function (e) {
+          if (!e) { var i = -1; shared.list.forEach(function (x, k) { if (same(x, entry)) i = k; }); i >= 0 ? shared.list[i] = entry : shared.list.push(entry); writeJ(CKEY, shared.list); }
+          cb && cb(e);
+          if (e && GW.toast) GW.toast('NOT saved to the shared library yet (' + e.message + '). It is kept in this browser and will be sent next time the site opens.');
+        });
+        return { ok: true, updated: updated, name: name, shared: true, pending: true };
       }
       var l2 = localAll();
-      for (var k = 0; k < l2.length; k++) if (l2[k].kind === kind && lkey(l2[k].name) === lkey(name)) { l2[k] = entry; updated = true; break; }
+      for (var k = 0; k < l2.length; k++) if (same(l2[k], entry)) { l2[k] = entry; updated = true; break; }
       if (!updated) l2.push(entry);
-      try { localStorage.setItem(LKEY, JSON.stringify(l2)); } catch (e) { return { ok: false, name: name }; }
+      if (!writeJ(LKEY, l2)) return { ok: false, name: name };
       return { ok: true, updated: updated, name: name };
     },
     // built-in layouts you removed from the list (kept in this browser only: it is a view setting; "restore" brings them back)
@@ -283,7 +308,7 @@ window.GW = window.GW || {};
     },
     remove: function (name, kind) {
       if (shared.on) {
-        shared.list = shared.list.filter(function (l) { return !(l.kind === kind && lkey(l.name) === lkey(name)); }); shared.sig = sigOf(shared.list);
+        shared.list = shared.list.filter(function (l) { return !(l.kind === kind && lkey(l.name) === lkey(name)); }); setPending(pending().filter(function (l) { return !(l.kind === kind && lkey(l.name) === lkey(name)); })); writeJ(CKEY, shared.list); shared.sig = sigOf(shared.list);
         call('DELETE', '?kind=' + encodeURIComponent(kind) + '&name=' + encodeURIComponent(name)).then(null, function (e) { GW.toast && GW.toast('Could not delete from the shared library: ' + e.message); });
         return;
       }

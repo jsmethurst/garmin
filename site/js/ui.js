@@ -1187,10 +1187,12 @@
   };
 
   GW.saveLayout = function () {
-    var r = GW.layouts.save();
+    var r = GW.layouts.save(function (err) { if (!err && GW.layouts.shared()) GW.toast('Saved to the shared library ✓ everyone can see it now'); });
     if (!r.ok) { GW.toast('The browser is out of storage. Use Download to keep a file instead.'); return; }
-    GW.toast((r.updated ? 'Updated “' + r.name + '”' : 'Saved “' + r.name + '” as a new layout') + (r.shared ? ' in the shared library' : ' (this browser only: the shared library is not connected' + (GW.layouts.why() ? ' - ' + GW.layouts.why() : ' yet') + ')'));
+    if (r.shared) { GW.toast('Saving “' + r.name + '” to the shared library…'); return; }
+    GW.toast((r.updated ? 'Updated “' + r.name + '”' : 'Saved “' + r.name + '” as a new layout') + ' (this browser only: the shared library is not connected' + (GW.layouts.why() ? ' - ' + GW.layouts.why() : ' yet') + ')');
   };
+
   GW.saveFile = function () {
     var blob = new Blob([JSON.stringify(GW.serialize())], { type: 'application/json' });
     GW.download(blob, GW.slug(GW.design.name) + '.watchface.json');
