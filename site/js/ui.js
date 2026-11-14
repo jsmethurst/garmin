@@ -85,6 +85,7 @@
     var p = $('panel'); p.innerHTML = '';
     if (tab === 'inspect') renderInspector(p);
     else if (tab === 'face') renderFace(p);
+    else if (tab === 'settings') renderSettingsTab(p);
     else if (tab === 'ref') GW.renderRefPanel(p);
     else renderSim(p);
   };
@@ -111,7 +112,7 @@
       fireChange(true);
     });
     var fs = field(f.label, sel);
-    return GW.modeOf() === 'watch' && ['text', 'arc', 'seggauge'].indexOf(el.type) >= 0 ? h('div', {}, [fs, sourceChoice(el, f)]) : fs;
+    return GW.modeOf() === 'watch' && ['text', 'arc', 'seggauge'].indexOf(el.type) >= 0 ? h('div', {}, [fs, slotButton(el)]) : fs;
   }
   function field(label, control) { return h('div', { class: 'f' }, [label ? h('label', { text: label }) : null, control]); }
 
@@ -233,104 +234,177 @@
 
   // ---------------------------------------------------------------- watch settings (the wearer changes these on the phone)
   function settingOpt(v, t, sel) { var o = h('option', { value: v, text: t }); if (sel) o.selected = true; return o; }
-  // Under a color: "Fixed color" or one of the design's color settings (many things can share one, e.g. an accent color)
+  // Under a color: Fixed, or one of the face's color roles (Main, Highlight, ...). Picking Main or Highlight for the first time creates it.
   function withSetting(el, f, node) {
     if (!node || GW.modeOf() !== 'watch') return node;
     var cur = el.set && el.set[f.k], s = cur && GW.settings.find(cur);
-    if (s) {   // mapped: the swatch edits the setting's color, which is what every user of the setting shows (and what the watch starts with)
+    if (s) {   // a role: the swatch edits the role's color, which is what every user of the role shows (and what the watch starts with)
       var sw = h('button', { class: 'swatch', type: 'button' }, [h('i', { style: 'background:' + GW.q(s.def) }), h('span', { text: GW.q(s.def) })]);
       sw.addEventListener('click', function () { GW.pickColor(sw, s.def, function (c) { s.def = GW.q(c); GW.settings.applyDefault(s); fireChange(true); }); });
-      node = field((f.label || 'Color') + ': starting color of “' + s.label + '”', sw);
+      node = field((f.label || 'Color') + ': “' + s.label + '” (shared)', sw);
     }
-    var sel = h('select', { class: 'sel', title: 'Let the wearer change this color in the Garmin Connect app', 'aria-label': 'Watch setting for ' + (f.label || 'color') });
+    var sel = h('select', { class: 'sel', title: 'Link this color to the face’s color scheme', 'aria-label': 'Color role for ' + (f.label || 'color') });
     sel.appendChild(settingOpt('', 'Fixed color', !s));
-    GW.settings.colors().forEach(function (c) { sel.appendChild(settingOpt(c.id, '⚙ ' + c.label, s && s.id === c.id)); });
-    sel.appendChild(settingOpt('__new', '⚙ New watch setting…'));
+    var std = GW.settings.ROLE, have = {};
+    ['main', 'hi'].forEach(function (k) { have[std[k][0]] = 1; sel.appendChild(settingOpt(std[k][0], '◐ ' + std[k][1], s && s.id === std[k][0])); });
+    GW.settings.colors().forEach(function (c) { if (!have[c.id] && c.id !== 'cbg') sel.appendChild(settingOpt(c.id, '◐ ' + c.label, s && s.id === c.id)); });
+    sel.appendChild(settingOpt('__new', '◐ New color role…'));
     sel.addEventListener('change', function () {
       var v = sel.value, was = el.set && el.set[f.k];
-      if (v === '__new') { var ns = GW.settings.addColor(((el.name || '') + ' ' + (f.label || 'color')).trim().slice(0, 28), el[f.k]); v = ns.id; GW.toast('Created “' + ns.label + '”: rename it on the Face tab.'); }
+      if (v === '__new') { var ns = GW.settings.addColor(((el.name || '') + ' ' + (f.label || 'color')).trim().slice(0, 28), el[f.k]); v = ns.id; }
+      else if (v === 'cmain' || v === 'chi') { var ex = GW.settings.find(v); if (!ex) GW.settings.ensureRole(v === 'cmain' ? 'main' : 'hi', el[f.k]); }
       if (v) { el.set = el.set || {}; el.set[f.k] = v; var st = GW.settings.find(v); if (st) el[f.k] = st.def; }
       else if (el.set) { delete el.set[f.k]; if (!Object.keys(el.set).length) delete el.set; }
-      if (was && was !== v && !GW.settings.uses(was) && !(GW.settings.find(was) || {}).keep) GW.settings.remove(was);
+      if (was && was !== v) { var ws = GW.settings.find(was); if (ws && !GW.settings.uses(was) && !ws.keep) GW.settings.remove(was); }
       fireChange(true);
     });
     var kids = [node, h('div', { class: 'f' }, [sel])];
-    if (s) kids.push(h('p', { class: 'muted small', text: 'Everything using “' + s.label + '” shows this one color, and the wearer can change it in the phone app. Use “Fixed color” to give this element its own color again.' }));
+    if (s) kids.push(h('p', { class: 'muted small', text: 'Everything linked to “' + s.label + '” shows one color. Set how the wearer changes it on the Settings tab. “Fixed color” makes this element independent again.' }));
     return h('div', {}, kids);
   }
-  // "Let the wearer choose what this shows": a list of readings the setting offers
-  function sourceChoice(el, f) {
+  // Under a reading: put this layer into a data slot (its icon and label come along)
+  function slotButton(el) {
     var s = el.srcSet && GW.settings.find(el.srcSet);
     if (s && s.kind !== 'source') s = null;
-    var det = h('details', { class: 'f' }), sum = h('summary', { text: s ? '⚙ The wearer chooses what this shows (' + s.choices.length + ' choices)' : '⚙ Let the wearer choose what this shows…' });
-    det.appendChild(sum);
-    if (s && el.srcSet) det.open = true;
-    var kinds = f.kinds;
-    var pool = GW.sourceList.filter(function (x) { return !kinds || kinds.indexOf(x.kind) >= 0; });
-    var chosen = s ? s.choices.slice() : [el.source];
-    function commit() {
-      if (chosen.indexOf(el.source) < 0) chosen.unshift(el.source);
-      if (chosen.length < 2) {
-        if (s) { GW.settings.remove(s.id); }
-      } else {
-        if (!s) { s = { id: GW.settings.nextId('s'), kind: 'source', label: el.name || 'Data', choices: [], owner: el.id }; GW.settings.all().push(s); el.srcSet = s.id; }
-        s.choices = chosen.slice();
-      }
-      fireChange(true);
-    }
-    if (s) {
-      var nm = h('input', { type: 'text', value: s.label, maxlength: 30, 'aria-label': 'Name of this setting in the phone app' });
-      nm.addEventListener('input', function () { s.label = nm.value; GW.touch(false); });
-      nm.addEventListener('change', function () { GW.commit(false); });
-      det.appendChild(field('Setting name (shown in the phone app)', nm));
-    }
-    det.appendChild(h('p', { class: 'muted small', text: 'Tick two or more readings. The wearer picks one in the Garmin Connect app; the current one is the starting choice. Every choice uses this element’s font, color and position.' }));
-    GW.sourceGroups.forEach(function (g) {
-      var list = pool.filter(function (x) { return x.group === g; }); if (!list.length) return;
-      det.appendChild(h('div', { class: 'muted small', style: 'margin-top:6px', text: g }));
-      list.forEach(function (x) {
-        var cb = h('input', { type: 'checkbox' }); cb.checked = chosen.indexOf(x.id) >= 0; cb.disabled = x.id === el.source;
-        cb.addEventListener('change', function () { chosen = chosen.filter(function (c) { return c !== x.id; }); if (cb.checked) chosen.push(x.id); commit(); });
-        det.appendChild(h('label', { class: 'chk' }, [cb, x.label + (x.id === el.source ? ' (shown now)' : '')]));
-      });
-    });
-    return det;
+    if (!GW.settings.roleOf(el)) return null;
+    if (s) return h('div', { class: 'f' }, [h('p', { class: 'muted small', text: '⚙ Part of the data slot “' + s.label + '”: the wearer can switch it between ' + s.choices.length + ' readings.' }),
+      h('button', { class: 'btn sm', text: 'Edit on the Settings tab', onclick: function () { GW.setTab('settings'); } })]);
+    return h('div', { class: 'f' }, [h('button', { class: 'btn sm', title: 'Let the wearer choose which reading this shows. A nearby icon and label switch with it.', text: '⚙ Let the wearer choose what this shows…', onclick: function () {
+      var sl = GW.settings.newSlot(el.name || 'Data'), added = GW.settings.addMember(sl, el);
+      GW.toast(added.length > 1 ? 'Data slot created with: ' + added.join(', ') : 'Data slot created.');
+      GW.commit(true); GW.setTab('settings');
+    } })]);
   }
-  // Face tab: the design's settings, their default colors, and the background
-  function settingsSection(p, d) {
-    if (GW.modeOf() !== 'watch') return;
+
+  var FLEX = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0';
+  // ---------------------------------------------------------------- Settings tab
+  function sw3(hex, title, onPick) {
+    var b = h('button', { class: 'swatch', type: 'button', title: title, style: 'width:auto;flex:0 0 auto' }, [h('i', { style: 'background:' + GW.q(hex) }), h('span', { text: GW.q(hex) })]);
+    b.addEventListener('click', function () { GW.pickColor(b, hex, onPick); });
+    return b;
+  }
+  function renderSettingsTab(p) {
+    var d = GW.design;
+    if (GW.modeOf() !== 'watch') { p.appendChild(h('p', { class: 'muted small', text: 'Settings the wearer can change are available for watch faces.' })); return; }
     GW.settings.prune(d);
-    p.appendChild(h('h4', { text: 'Watch settings' }));
-    var cols = GW.settings.colors();
-    var bgSel = h('select', { class: 'sel', 'aria-label': 'Watch setting for the background' });
-    bgSel.appendChild(settingOpt('', 'Fixed color', !d.bgSet));
-    cols.forEach(function (c) { bgSel.appendChild(settingOpt(c.id, '⚙ ' + c.label, d.bgSet === c.id)); });
-    bgSel.appendChild(settingOpt('__new', '⚙ New watch setting…'));
-    bgSel.addEventListener('change', function () {
-      var v = bgSel.value, was = d.bgSet;
-      if (v === '__new') { v = GW.settings.addColor('Background', d.bg).id; }
-      if (v) { d.bgSet = v; d.bg = GW.settings.find(v).def; } else delete d.bgSet;
-      if (was && was !== v && !GW.settings.uses(was)) GW.settings.remove(was);
+    p.appendChild(h('p', { class: 'muted small', text: 'What the person wearing the face can change in the Garmin phone app, without rebuilding it. Preview shows the starting look.' }));
+
+    // ----- colors -----
+    p.appendChild(h('h4', { text: 'Colors' }));
+    var roles = GW.settings.colors(), mode = GW.settings.mode(d);
+    if (!roles.length) {
+      p.appendChild(h('p', { class: 'muted small', text: 'Give the face a color scheme: a Background, a Main color and a Highlight color. Everything with that color follows it, and the wearer can swap the whole scheme in one tap.' }));
+      p.appendChild(h('button', { class: 'btn primary', text: '✨ Set up colors from this face', onclick: function () {
+        var r = GW.settings.detect(d); GW.toast(r.main ? 'Main color and Highlight color found from what the face uses.' : 'Background added; link other colors from the Inspector.'); GW.commit(true); GW.renderPanel();
+      } }));
+    } else {
+      p.appendChild(field('The wearer can change colors', segCtl([['none', 'Not at all'], ['theme', 'Pick a color theme'], ['each', 'Pick each color']], mode, function (v) { d.colorMode = v; if (v === 'theme') GW.settings.ensureTheme(d); GW.commit(false); GW.renderPanel(); })));
+      roles.forEach(function (r) {
+        var nm = h('input', { type: 'text', value: r.label, maxlength: 24, 'aria-label': 'Color name', style: 'flex:1;min-width:110px' });
+        nm.addEventListener('input', function () { r.label = nm.value; });
+        nm.addEventListener('change', function () { GW.commit(false); });
+        var row = [nm, sw3(r.def, 'Starting color', function (c) { r.def = GW.q(c); GW.settings.applyDefault(r); GW.commit(true); GW.renderPanel(); }),
+          h('span', { class: 'muted small', text: GW.settings.uses(r.id) + ' use' + (GW.settings.uses(r.id) === 1 ? '' : 's') })];
+        if (r.id === 'cbg') { /* the background role stays */ } else row.push(h('button', { class: 'btn sm danger', text: '×', title: 'Remove this color role', onclick: function () { r.keep = false; GW.settings.remove(r.id); GW.commit(true); GW.renderPanel(); } }));
+        p.appendChild(h('div', { style: FLEX }, row));
+      });
+      p.appendChild(h('div', { class: 'row' }, [
+        h('button', { class: 'btn sm', text: '✨ Re-detect from the face', title: 'Find the main and highlight colors again from what the face uses', onclick: function () { GW.settings.detect(d); GW.commit(true); GW.renderPanel(); } }),
+        h('button', { class: 'btn sm', text: '+ Add a color', onclick: function () { GW.settings.addColor(null, '#ffffff'); GW.commit(false); GW.renderPanel(); } })
+      ]));
+      if (mode === 'theme') {
+        var th = GW.settings.ensureTheme(d);
+        p.appendChild(h('h4', { text: 'Color themes the wearer can pick' }));
+        var head = h('div', { style: FLEX }, [h('span', { class: 'muted small', style: 'width:96px', text: 'Original' })]);
+        roles.forEach(function (r) { head.appendChild(h('span', { class: 'swatch', title: r.label + ' (starting color)', style: 'width:36px;flex:0 0 auto' }, [h('i', { style: 'background:' + GW.q(r.def) })])); });
+        head.appendChild(h('span', { class: 'muted small', text: 'as designed' }));
+        p.appendChild(head);
+        th.themes.forEach(function (t, i) {
+          var nm = h('input', { type: 'text', value: t.name, maxlength: 20, style: 'width:96px;flex:0 0 auto', 'aria-label': 'Theme name' });
+          nm.addEventListener('input', function () { t.name = nm.value; }); nm.addEventListener('change', function () { GW.commit(false); });
+          var row = [nm];
+          roles.forEach(function (r) {
+            var cur = GW.settings.themeColor(t, r), b = h('button', { class: 'swatch', type: 'button', title: r.label, style: 'width:36px;flex:0 0 auto' }, [h('i', { style: 'background:' + cur })]);
+            b.addEventListener('click', function () { GW.pickColor(b, cur, function (c) { t.colors[r.id] = GW.q(c); GW.commit(false); GW.renderPanel(); }); });
+            row.push(b);
+          });
+          row.push(h('button', { class: 'btn sm', text: 'Preview', title: 'Show this theme on the face (sets the starting colors)', onclick: function () {
+            roles.forEach(function (r) { r.def = GW.settings.themeColor(t, r); GW.settings.applyDefault(r); }); GW.commit(true); GW.renderPanel(); } }));
+          row.push(h('button', { class: 'btn sm danger', text: '×', onclick: function () { th.themes.splice(i, 1); GW.commit(false); GW.renderPanel(); } }));
+          p.appendChild(h('div', { style: FLEX }, row));
+        });
+        var lib = h('select', { class: 'sel', 'aria-label': 'Add a ready-made theme' });
+        lib.appendChild(settingOpt('', '+ Add a ready-made theme…'));
+        GW.THEME_LIBRARY.forEach(function (t, i) { lib.appendChild(settingOpt(String(i), t[0])); });
+        lib.appendChild(settingOpt('blank', '+ Blank (copy of the starting colors)'));
+        lib.addEventListener('change', function () { if (!lib.value) return; if (lib.value === 'blank') GW.settings.addBlankTheme(d); else GW.settings.addLibraryTheme(GW.THEME_LIBRARY[+lib.value], d); GW.commit(false); GW.renderPanel(); });
+        p.appendChild(h('div', { class: 'f' }, [lib]));
+        if (!th.themes.length) p.appendChild(h('p', { class: 'muted small', text: 'Add at least one theme, otherwise the wearer has nothing to choose.' }));
+      }
+    }
+
+    // ----- data slots -----
+    p.appendChild(h('h4', { text: 'Data the wearer can choose' }));
+    var slots = GW.settings.slots(d);
+    if (!slots.length) p.appendChild(h('p', { class: 'muted small', text: 'Select a reading on the face and press “Let the wearer choose what this shows…” in the Inspector. Its icon and label next to it switch with it.' }));
+    slots.forEach(function (s) { renderSlot(p, s, d); });
+    p.appendChild(h('button', { class: 'btn sm', text: '+ New data slot', onclick: function () { GW.settings.newSlot(null, d); GW.commit(true); GW.renderPanel(); } }));
+  }
+  function renderSlot(p, s, d) {
+    var box = h('div', { class: 'f', style: 'border:1px solid var(--line2);border-radius:8px;padding:8px;margin:8px 0' });
+    var nm = h('input', { type: 'text', value: s.label, maxlength: 30, 'aria-label': 'Name in the phone app', style: 'flex:1' });
+    nm.addEventListener('input', function () { s.label = nm.value; }); nm.addEventListener('change', function () { GW.commit(false); });
+    box.appendChild(h('div', { style: FLEX }, [nm,
+      h('button', { class: 'btn sm danger', text: 'Delete', title: 'Remove this data slot (the layers stay as they are)', onclick: function () { GW.settings.remove(s.id); GW.commit(true); GW.renderPanel(); } })]));
+    // layers that switch together
+    box.appendChild(h('div', { class: 'muted small', style: 'margin-top:6px', text: 'Layers that switch together' }));
+    var ms = GW.settings.members(s.id, d);
+    if (!ms.length) box.appendChild(h('p', { class: 'muted small', text: 'None yet: add the reading, its icon and its label below.' }));
+    var ROLE = { value: 'value', label: 'label', icon: 'icon', gauge: 'gauge' };
+    ms.forEach(function (e) {
+      box.appendChild(h('div', { style: FLEX }, [
+        h('span', { class: 'muted small', style: 'min-width:44px', text: ROLE[GW.settings.roleOf(e)] }), h('span', { text: e.name || e.type, style: 'flex:1' }),
+        h('button', { class: 'btn sm', text: '×', title: 'Take this layer out of the slot', onclick: function () { GW.settings.removeMember(s, e); GW.commit(true); GW.renderPanel(); } })]));
+    });
+    var addSel = h('select', { class: 'sel', 'aria-label': 'Add a layer to this slot' });
+    addSel.appendChild(settingOpt('', '+ Add a layer…'));
+    d.elements.forEach(function (e) { if (!e.srcSet && GW.settings.roleOf(e)) addSel.appendChild(settingOpt(e.id, (e.name || e.type) + ' (' + GW.settings.roleOf(e) + ')')); });
+    addSel.addEventListener('change', function () {
+      var e = GW.findEl(addSel.value); if (!e) return;
+      var added = GW.settings.addMember(s, e); if (added.length > 1) GW.toast('Added: ' + added.join(', '));
       GW.commit(true); GW.renderPanel();
     });
-    p.appendChild(field('Background color setting', bgSel));
-    var all = GW.settings.all();
-    if (!all.length) { p.appendChild(h('p', { class: 'muted small', text: 'Nothing on this face can be changed from the phone yet. Pick “⚙ New watch setting…” under a color, or tick “Let the wearer choose” under a data field, in the Inspector. Settings appear in the Garmin Connect app / Garmin Express once the face is on the watch.' })); return; }
-    all.forEach(function (s) {
-      var nm = h('input', { type: 'text', value: s.label, maxlength: 30, 'aria-label': 'Setting name' });
-      nm.addEventListener('input', function () { s.label = nm.value; });
-      nm.addEventListener('change', function () { GW.commit(false); });
-      var row = [nm];
-      if (s.kind === 'color') {
-        var sw = h('button', { class: 'swatch', type: 'button', title: 'Default color' }, [h('i', { style: 'background:' + GW.q(s.def) }), h('span', { text: GW.q(s.def) })]);
-        sw.addEventListener('click', function () { GW.pickColor(sw, s.def, function (c) { s.def = GW.q(c); GW.settings.applyDefault(s); GW.commit(true); GW.renderPanel(); }); });
-        row.push(sw);
-      } else row.push(h('span', { class: 'muted small', text: s.choices.length + ' choices' }));
-      row.push(h('span', { class: 'muted small', text: GW.settings.uses(s.id) + ' use' + (GW.settings.uses(s.id) === 1 ? '' : 's') }));
-      row.push(h('button', { class: 'btn sm danger', text: 'Remove', title: 'Make everything using it a fixed color / the shown reading again', onclick: function () { GW.settings.remove(s.id); GW.commit(true); GW.renderPanel(); } }));
-      p.appendChild(h('div', { class: 'row', style: 'align-items:center;gap:6px;flex-wrap:wrap' }, row));
+    box.appendChild(addSel);
+    // readings
+    box.appendChild(h('div', { class: 'muted small', style: 'margin-top:8px', text: 'Readings the wearer can pick (' + s.choices.length + ')' }));
+    if (s.choices.length < 2) box.appendChild(h('p', { class: 'muted small', text: 'Pick at least two.' }));
+    var start = s.choices.length ? GW.settings.startChoice(s, d) : null, hasLab = ms.some(function (e) { return GW.settings.roleOf(e) === 'label'; }), hasVal = ms.some(function (e) { return GW.settings.roleOf(e) === 'value'; });
+    s.choices.forEach(function (c) {
+      var row = [h('span', { style: 'flex:1;min-width:80px', text: (GW.sources[c] || { label: c }).label + (c === start ? ' ●' : '') })];
+      if (hasLab) {
+        var li = h('input', { type: 'text', value: GW.settings.labelOf(s, c, d), maxlength: 12, style: 'width:64px', title: 'Label text for this reading', 'aria-label': 'Label for ' + c });
+        li.addEventListener('change', function () { GW.settings.setLabel(s, c, li.value, d); GW.commit(true); });
+        row.push(li);
+      }
+      if (hasVal) {
+        var si = h('input', { type: 'text', value: GW.settings.suffixOf(s, c, d), maxlength: 6, style: 'width:44px', title: 'Text after the value (a unit)', placeholder: 'unit', 'aria-label': 'Unit for ' + c });
+        si.addEventListener('change', function () { GW.settings.setSuffix(s, c, si.value, d); GW.commit(true); });
+        row.push(si);
+      }
+      row.push(h('button', { class: 'btn sm', text: c === start ? 'Showing' : 'Show', disabled: c === start, title: 'Show this reading on the face (it becomes the starting reading)', onclick: function () { GW.settings.applyChoice(s, c, d); GW.commit(true); GW.renderPanel(); } }));
+      row.push(h('button', { class: 'btn sm', text: '×', disabled: c === start, title: c === start ? 'The reading shown now cannot be removed' : 'Remove', onclick: function () { GW.settings.removeChoice(s, c); GW.commit(true); GW.renderPanel(); } }));
+      box.appendChild(h('div', { style: FLEX }, row));
     });
-    p.appendChild(h('p', { class: 'muted small', text: 'On export these become a settings page in the Garmin Connect app and Garmin Express (colors come from the display’s 64 colors). The watch reads them when the face starts and when they change.' }));
+    var pool = h('select', { class: 'sel', 'aria-label': 'Add a reading' });
+    pool.appendChild(settingOpt('', '+ Add a reading…'));
+    GW.sourceGroups.forEach(function (g) {
+      var og = h('optgroup', { label: g }), n = 0;
+      GW.sourceList.filter(function (x) { return x.group === g && s.choices.indexOf(x.id) < 0 && x.id !== 'custom'; }).forEach(function (x) { og.appendChild(h('option', { value: x.id, text: x.label })); n++; });
+      if (n) pool.appendChild(og);
+    });
+    pool.addEventListener('change', function () { if (!pool.value) return; GW.settings.addChoice(s, pool.value); GW.commit(true); GW.renderPanel(); });
+    box.appendChild(pool);
+    p.appendChild(box);
   }
   function fOptColor(el, f) {
     var v = el[f.k], b = h('button', { class: 'swatch', type: 'button' }, [h('i', { style: 'background:' + (v ? GW.q(v) : 'transparent') }), h('span', { text: v ? GW.q(v) : (f.noneLabel || 'none') })]);
@@ -763,7 +837,6 @@
       if (d.s34.set === 'mk2') p.appendChild(field('Clock style', segCtl([['34', '34 segments'], ['17', '17 segments (blockier)']], String(d.s34.clock || 34), function (v) { GW.s34Clock(d, +v); GW.commit(true); GW.fontsReady && GW.fontsReady(); })));
     }
     p.appendChild(field('Background color', bg));
-    settingsSection(p, d);
     p.appendChild(rotationField(d));
     // where sunrise / sunset and the world map put you until the watch has a position of its own
     p.appendChild(h('h4', { text: 'Default location' }));
