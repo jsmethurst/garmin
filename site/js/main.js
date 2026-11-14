@@ -379,6 +379,7 @@
     var saved = GW.loadSaved(mode);
     function done() {
       GW.fontsReady().then(function () { GW.touch(true); GW.emit('history'); document.documentElement.classList.add('ready'); });
+      GW.layouts.refresh();   // the shared library: what everyone saved
     }
     if (saved && saved.design && saved.design.elements && GW.modeOf(saved.design) === mode) GW.loadFrom(saved, done);
     else GW.applyPreset(mode === 'field' ? 'run' : 'orbit', done);

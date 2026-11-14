@@ -222,21 +222,55 @@ window.GW = window.GW || {};
     });
   };
   // ---------- saved layouts (the library behind the Save button) ----------
+  // One shared library for everybody: layouts live on the server (api/layouts.js, Vercel Blob), so whatever one person saves everyone sees.
   // Saving under a name that already exists, a built-in preset's name included, updates that layout; a new name adds one.
+  // Until the server store is connected (or when the site is opened from a plain file / local server) the library falls back to this browser only.
   var LKEY = 'gw.layouts.v1';
+  var shared = { on: false, list: [], sig: '' };      // on: the server store answered; list: its layouts
   function lkey(n) { return String(n || '').trim().toLowerCase(); }
+  function localAll() { try { return JSON.parse(localStorage.getItem(LKEY) || '[]'); } catch (e) { return []; } }
+  function sigOf(list) { return list.map(function (l) { return l.kind + '|' + l.name + '|' + l.ts; }).sort().join('\n'); }
+  function call(method, qs, body) {
+    return fetch('/api/layouts' + (qs || ''), { method: method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || ('HTTP ' + r.status)); return j; }); });
+  }
   GW.layouts = {
-    all: function () { try { return JSON.parse(localStorage.getItem(LKEY) || '[]'); } catch (e) { return []; } },
+    shared: function () { return shared.on; },
+    all: function () { return shared.on ? shared.list.slice() : localAll(); },
     find: function (name, kind) { return GW.layouts.all().filter(function (l) { return l.kind === kind && lkey(l.name) === lkey(name); })[0] || null; },
+    // fetch the shared library; done(changed) says whether the list differs from before. Layouts that were only in this browser are moved up to the shared library once.
+    refresh: function (done) {
+      call('GET').then(function (j) {
+        if (!j.configured) { shared.on = false; done && done(false); return; }
+        var was = shared.sig; shared.on = true; shared.list = j.layouts || []; shared.sig = sigOf(shared.list);
+        var mine = localAll().filter(function (l) { return !shared.list.some(function (s) { return s.kind === l.kind && lkey(s.name) === lkey(l.name); }); });
+        if (mine.length) {
+          Promise.all(mine.map(function (l) { return call('POST', '', l).then(function () { shared.list.push(l); }); })).then(function () {
+            try { localStorage.removeItem(LKEY); } catch (e) { }
+            shared.sig = sigOf(shared.list); GW.toast && GW.toast(mine.length + ' layout' + (mine.length > 1 ? 's' : '') + ' from this browser moved to the shared library');
+            done && done(true);
+          }, function () { done && done(was !== shared.sig); });
+        } else { if (localAll().length) { try { localStorage.removeItem(LKEY); } catch (e) { } } done && done(was !== shared.sig); }
+      }, function () { shared.on = false; done && done(false); });
+    },
     save: function () {
-      var d = GW.design, kind = GW.modeOf(), name = String(d.name || '').trim() || 'Untitled', list = GW.layouts.all(), updated = false;
+      var d = GW.design, kind = GW.modeOf(), name = String(d.name || '').trim() || 'Untitled', updated = false;
       var entry = { name: name, kind: kind, ts: Date.now(), data: GW.serialize() };
-      for (var i = 0; i < list.length; i++) if (list[i].kind === kind && lkey(list[i].name) === lkey(name)) { list[i] = entry; updated = true; break; }
-      if (!updated) list.push(entry);
-      try { localStorage.setItem(LKEY, JSON.stringify(list)); } catch (e) { return { ok: false, name: name }; }
+      if (shared.on) {
+        var list = shared.list;
+        for (var i = 0; i < list.length; i++) if (list[i].kind === kind && lkey(list[i].name) === lkey(name)) { list[i] = entry; updated = true; break; }
+        if (!updated) list.push(entry);
+        shared.sig = sigOf(list);
+        call('POST', '', entry).then(null, function (e) { GW.toast && GW.toast('Could not save to the shared library: ' + e.message + '. Use Download to keep a file.'); });
+        return { ok: true, updated: updated, name: name, shared: true };
+      }
+      var l2 = localAll();
+      for (var k = 0; k < l2.length; k++) if (l2[k].kind === kind && lkey(l2[k].name) === lkey(name)) { l2[k] = entry; updated = true; break; }
+      if (!updated) l2.push(entry);
+      try { localStorage.setItem(LKEY, JSON.stringify(l2)); } catch (e) { return { ok: false, name: name }; }
       return { ok: true, updated: updated, name: name };
     },
-    // built-in layouts you removed from the list (kept in the browser; "restore" brings them back)
+    // built-in layouts you removed from the list (kept in this browser only: it is a view setting; "restore" brings them back)
     hidden: function (kind) { try { return (JSON.parse(localStorage.getItem('gw.hidden.v1') || '[]')).filter(function (h) { return h.kind === kind; }).map(function (h) { return lkey(h.name); }); } catch (e) { return []; } },
     hide: function (name, kind) {
       var all; try { all = JSON.parse(localStorage.getItem('gw.hidden.v1') || '[]'); } catch (e) { all = []; }
@@ -247,7 +281,12 @@ window.GW = window.GW || {};
       try { localStorage.setItem('gw.hidden.v1', JSON.stringify(all.filter(function (h) { return h.kind !== kind; }))); } catch (e) { }
     },
     remove: function (name, kind) {
-      var list = GW.layouts.all().filter(function (l) { return !(l.kind === kind && lkey(l.name) === lkey(name)); });
+      if (shared.on) {
+        shared.list = shared.list.filter(function (l) { return !(l.kind === kind && lkey(l.name) === lkey(name)); }); shared.sig = sigOf(shared.list);
+        call('DELETE', '?kind=' + encodeURIComponent(kind) + '&name=' + encodeURIComponent(name)).then(null, function (e) { GW.toast && GW.toast('Could not delete from the shared library: ' + e.message); });
+        return;
+      }
+      var list = localAll().filter(function (l) { return !(l.kind === kind && lkey(l.name) === lkey(name)); });
       try { localStorage.setItem(LKEY, JSON.stringify(list)); } catch (e) { }
     }
   };

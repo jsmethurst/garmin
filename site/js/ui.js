@@ -780,13 +780,14 @@
       h('ul', { style: 'line-height:1.5' }, li)]));
   }
   GW.openPresets = function () {
+    GW.layouts.refresh(function (changed) { if (changed && $('modalRoot') && $('modalRoot').querySelector('.presets')) GW.openPresets(); });   // someone may have saved since this page opened
     var grid = h('div', { class: 'presets' });
     var kind = GW.modeOf(), fld = kind === 'field', hidden = GW.layouts.hidden(kind);
     function load(fn) { fn(function () { GW.fontsReady().then(function () { GW.touch(true); closeModal(); GW.history.commit(); }); }); }
     // every layout, built-in or saved, can be removed from the list (after a confirmation)
     function card(thumb, name, saved, onload, onremove, removeMsg) {
       var kids = [thumb, h('b', { text: name })];
-      if (saved) kids.push(h('span', { class: 'muted small', text: 'saved' }));
+      if (saved) kids.push(h('span', { class: 'muted small', text: GW.layouts.shared() ? 'shared' : 'saved' }));
       var c = h('button', { class: 'pcard', onclick: function () { load(onload); GW.toast(name + ' loaded. Ctrl+Z undoes it.'); } }, kids);
       return h('div', { class: 'pwrap' }, [c, h('button', { class: 'pdel', title: 'Delete this layout', 'aria-label': 'Delete ' + name, text: '×', onclick: function () {
         if (window.confirm(removeMsg)) { onremove(); GW.openPresets(); }
@@ -803,12 +804,12 @@
       grid.appendChild(card(thumb, p.name, !!saved, function (done) { GW.applyPreset(p.id, done); }, function () {
         if (saved) GW.layouts.remove(p.name, kind); else GW.layouts.hide(p.name, kind);
         if (saved) GW.layouts.hide(p.name, kind);
-      }, 'Delete the layout “' + p.name + '”?' + (saved ? ' Your saved version goes too.' : '')));
+      }, 'Delete the layout “' + p.name + '”?' + (saved ? (GW.layouts.shared() ? ' The shared version goes too, for everyone.' : ' Your saved version goes too.') : '')));
     });
     GW.layouts.all().forEach(function (l) {
       if (l.kind !== kind || shown[l.name.toLowerCase()]) return;
       grid.appendChild(card(GW.thumb(l.data.design, 140), l.name, true, function (done) { GW.loadFrom(GW.clone(l.data), done); },
-        function () { GW.layouts.remove(l.name, kind); }, 'Delete your saved layout “' + l.name + '”?'));
+        function () { GW.layouts.remove(l.name, kind); }, (GW.layouts.shared() ? 'Delete the shared layout “' + l.name + '”? It disappears for everyone.' : 'Delete your saved layout “' + l.name + '”?')));
     });
     var kids = [grid];
     if (hidden.length) kids.push(h('p', {}, [h('button', { class: 'btn sm', text: 'Restore the layouts I deleted', onclick: function () { GW.layouts.restoreHidden(kind); GW.openPresets(); } })]));
@@ -1011,7 +1012,7 @@
   GW.saveLayout = function () {
     var r = GW.layouts.save();
     if (!r.ok) { GW.toast('The browser is out of storage. Use Download to keep a file instead.'); return; }
-    GW.toast(r.updated ? 'Updated “' + r.name + '”' : 'Saved “' + r.name + '” as a new layout');
+    GW.toast((r.updated ? 'Updated “' + r.name + '”' : 'Saved “' + r.name + '” as a new layout') + (r.shared ? ' in the shared library' : ' (this browser only: the shared library is not connected yet)'));
   };
   GW.saveFile = function () {
     var blob = new Blob([JSON.stringify(GW.serialize())], { type: 'application/json' });
