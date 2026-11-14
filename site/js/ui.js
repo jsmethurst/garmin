@@ -1012,7 +1012,7 @@
   GW.saveLayout = function () {
     var r = GW.layouts.save();
     if (!r.ok) { GW.toast('The browser is out of storage. Use Download to keep a file instead.'); return; }
-    GW.toast((r.updated ? 'Updated “' + r.name + '”' : 'Saved “' + r.name + '” as a new layout') + (r.shared ? ' in the shared library' : ' (this browser only: the shared library is not connected yet)'));
+    GW.toast((r.updated ? 'Updated “' + r.name + '”' : 'Saved “' + r.name + '” as a new layout') + (r.shared ? ' in the shared library' : ' (this browser only: the shared library is not connected' + (GW.layouts.why() ? ' - ' + GW.layouts.why() : ' yet') + ')'));
   };
   GW.saveFile = function () {
     var blob = new Blob([JSON.stringify(GW.serialize())], { type: 'application/json' });

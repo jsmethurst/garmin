@@ -226,7 +226,7 @@ window.GW = window.GW || {};
   // Saving under a name that already exists, a built-in preset's name included, updates that layout; a new name adds one.
   // Until the server store is connected (or when the site is opened from a plain file / local server) the library falls back to this browser only.
   var LKEY = 'gw.layouts.v1';
-  var shared = { on: false, list: [], sig: '' };      // on: the server store answered; list: its layouts
+  var shared = { on: false, list: [], sig: '', why: '' };      // on: the server store answered; list: its layouts
   function lkey(n) { return String(n || '').trim().toLowerCase(); }
   function localAll() { try { return JSON.parse(localStorage.getItem(LKEY) || '[]'); } catch (e) { return []; } }
   function sigOf(list) { return list.map(function (l) { return l.kind + '|' + l.name + '|' + l.ts; }).sort().join('\n'); }
@@ -236,12 +236,13 @@ window.GW = window.GW || {};
   }
   GW.layouts = {
     shared: function () { return shared.on; },
+    why: function () { return shared.why; },
     all: function () { return shared.on ? shared.list.slice() : localAll(); },
     find: function (name, kind) { return GW.layouts.all().filter(function (l) { return l.kind === kind && lkey(l.name) === lkey(name); })[0] || null; },
     // fetch the shared library; done(changed) says whether the list differs from before. Layouts that were only in this browser are moved up to the shared library once.
     refresh: function (done) {
       call('GET').then(function (j) {
-        if (!j.configured) { shared.on = false; done && done(false); return; }
+        if (!j.configured) { shared.on = false; shared.why = j.reason || ''; done && done(false); return; }
         var was = shared.sig; shared.on = true; shared.list = j.layouts || []; shared.sig = sigOf(shared.list);
         var mine = localAll().filter(function (l) { return !shared.list.some(function (s) { return s.kind === l.kind && lkey(s.name) === lkey(l.name); }); });
         if (mine.length) {
@@ -251,7 +252,7 @@ window.GW = window.GW || {};
             done && done(true);
           }, function () { done && done(was !== shared.sig); });
         } else { if (localAll().length) { try { localStorage.removeItem(LKEY); } catch (e) { } } done && done(was !== shared.sig); }
-      }, function () { shared.on = false; done && done(false); });
+      }, function (e) { shared.on = false; shared.why = 'the server did not answer (' + (e && e.message || 'offline') + ')'; done && done(false); });
     },
     save: function () {
       var d = GW.design, kind = GW.modeOf(), name = String(d.name || '').trim() || 'Untitled', updated = false;
