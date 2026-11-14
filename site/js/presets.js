@@ -131,11 +131,11 @@
           E('hands', { name: 'Hands', style: 'sword', hLen: 56, hW: 9, mLen: 92, mW: 7, hColor: '#ffffff', mColor: '#ffffff', oColor: '#000022', oW: 1, sShow: true, sLen: 112, sTail: 20, sW: 1, sColor: '#ff5500', hub: 5, hubColor: '#ff5500' }));
         return D('Cockpit', '#000022', [], els);
       } },
-    { id: 'datawall', name: 'Data Wall', blurb: 'Black on white for daylight: time, date and twelve numbers each with its own gauge, plus weather and sun times.',
+    { id: 'datawall', name: 'Data Wall', blurb: 'Black on white for daylight: time (no seconds), date and twelve numbers each with its own gauge, plus weather and sun times.',
       build: function () {
         var X = 'FONT_XTINY', T = 'FONT_TINY', w = '#000000', g = '#555555';   // dark on white: easier to read in daylight on the transflective screen
         var els = [txt(140, 28, 'date', X, '#ff5500', { fmt: 'ddd DD MMM', upper: true }),
-          txt(128, 58, 'time', 'FONT_NUMBER_MEDIUM', w, { secs: false }), txt(190, 64, 'second', T, '#ff5500', { justify: 'L' })];
+          txt(140, 58, 'time', 'FONT_NUMBER_MEDIUM', w, { secs: false })];
         var cells = [['HR', 'hr', '#aa0000'], ['STEPS', 'steps', '#0055aa'], ['CAL', 'calories', '#ff5500'],
           ['FLOORS', 'floors', '#aa5500'], ['INT MIN', 'intMins', '#00aa00'], ['DIST KM', 'distance', '#0055aa'],
           ['BATT %', 'battery', '#00aa00'], ['BODY', 'bodyBat', '#0055aa'], ['STRESS', 'stress', '#ff5500'],
