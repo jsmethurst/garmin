@@ -89,7 +89,7 @@
           E('arc', { name: 'Move ring', cx: 140, cy: 206, r: 31, pen: 8, start: 0, sweep: 360, dir: 'cw', source: 'calories', color: '#ff0055', track: '#550022', round: true }),
           E('arc', { name: 'Exercise ring', cx: 140, cy: 206, r: 22, pen: 8, start: 0, sweep: 360, dir: 'cw', source: 'intMins', color: '#aaff00', track: '#335500', round: true }),
           E('arc', { name: 'Stand ring', cx: 140, cy: 206, r: 13, pen: 8, start: 0, sweep: 360, dir: 'cw', source: 'floors', color: '#00ffff', track: '#005555', round: true }),
-          E('hands', { name: 'Hands', style: 'sword', hLen: 66, hW: 11, mLen: 104, mW: 8, hColor: w, mColor: w, oColor: '#000000', oW: 1, sShow: true, sLen: 118, sTail: 26, sW: 2, sColor: '#ff0000', hub: 5, hubColor: '#ff0000' })];
+          E('hands', { name: 'Hands', style: 'capsule', hLen: 76, hW: 13, mLen: 114, mW: 13, hColor: w, mColor: w, capGap: 0.3, capT: 2, capStem: 3, capFill: '#000000', sShow: true, sLen: 118, sTail: 26, sW: 2, sColor: '#ff0000', hub: 5, hubColor: '#ff0000' })];
         return D('Activity Dial', '#000000', [], els);
       } },
     // ---- three very busy faces: as many data points as fit ----

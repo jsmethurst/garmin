@@ -213,6 +213,8 @@
         if (trk) cap(el.sweep, trk);
         if (fill > 0) cap(0, col); else if (trk) cap(0, trk);
         if (fill > 0) cap(fill, col);
+      } else if (el.round && fill > 0 && fill < 359) {   // a full ring has no ends of its own: only the filled part gets round ends
+        cap(0, col); cap(fill, col);
       }
     },
     box: function (el) { var r = el.r + el.pen / 2; return { x: el.cx - r, y: el.cy - r, w: r * 2, h: r * 2 }; },
@@ -303,6 +305,13 @@
         L.push('    dc.setColor(' + fc + ', Graphics.COLOR_TRANSPARENT);');
         L.push('    cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ang(' + sg + (cw ? ' - ' : ' + ') + 'f), ' + hw + ');');
         L.push('}');
+      } else if (el.round) {   // a full ring: only the filled part gets round ends
+        cg.helper('cap');
+        L.push('if (f > 0 && f < 359) {');
+        L.push('    dc.setColor(' + fc + ', Graphics.COLOR_TRANSPARENT);');
+        L.push('    cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ' + sg + ', ' + hw + ');');
+        L.push('    cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ang(' + sg + (cw ? ' - ' : ' + ') + 'f), ' + hw + ');');
+        L.push('}');
       }
       L.push('dc.setPenWidth(1);');
       return L;
@@ -384,6 +393,18 @@
     if (style === 'sword') return [[-h, -tail], [h, -tail], [h, len * 0.62], [0, len], [-h, len * 0.62]];
     return [[-h, -tail], [h, -tail], [Math.max(0.5, h / 3), len], [-Math.max(0.5, h / 3), len]]; // taper
   }
+  // the "capsule" hand (Apple-style): a thin stem from the pivot, then a rounded outlined bar with a dark inside
+  function capsulePts(w, y0, y1) {
+    var r = w / 2, pts = [], d;
+    for (d = 0; d <= 180; d += 30) pts.push([r * Math.cos(rad(d)), y0 + r - r * Math.sin(rad(d))]);
+    for (d = 0; d <= 180; d += 30) pts.push([-r * Math.cos(rad(d)), y1 - r + r * Math.sin(rad(d))]);
+    return pts;
+  }
+  function capsuleLayers(el, w, len, line) {
+    var y0 = Math.round(len * (el.capGap == null ? 0.3 : el.capGap)), t = el.capT == null ? 2 : el.capT, st = el.capStem == null ? 3 : el.capStem, fill = el.capFill || '#000000';
+    return [{ pts: [[-st / 2, -4], [st / 2, -4], [st / 2, y0 + w / 2], [-st / 2, y0 + w / 2]], c: line }, { pts: capsulePts(w, y0, len), c: line, outer: true },
+      { pts: capsulePts(Math.max(2, w - 2 * t), y0 + t, len - t), c: fill }];
+  }
   function rotPts(pts, cx, cy, ang) {
     var s = Math.sin(ang), c = Math.cos(ang);
     return pts.map(function (p) { return [cx + p[0] * c + p[1] * s, cy + p[0] * s - p[1] * c]; });
@@ -393,6 +414,7 @@
     var h = (design.elements || []).filter(function (e) { return e.type === 'hands' && !e.hidden && e.only !== 'top'; })[0];
     if (!h) return [];
     var hA = ((env.h % 12) * 60 + env.m) * Math.PI / 360, mA = env.m * Math.PI / 30;
+    if (h.style === 'capsule') return [rotPts(capsuleLayers(h, h.hW, h.hLen, h.hColor)[1].pts, h.cx, h.cy, hA), rotPts(capsuleLayers(h, h.mW, h.mLen, h.mColor)[1].pts, h.cx, h.cy, mA)];
     return [rotPts(handPoly(h.style, h.hW, h.hLen, h.hLen * 0.12), h.cx, h.cy, hA), rotPts(handPoly(h.style, h.mW, h.mLen, h.mLen * 0.1), h.cx, h.cy, mA)];
   };
   function haloOffsets(w) { var o = []; for (var dx = -w; dx <= w; dx++) for (var dy = -w; dy <= w; dy++) if ((dx || dy) && dx * dx + dy * dy <= w * w + 1) o.push([dx, dy]); return o; }
@@ -411,11 +433,15 @@
         pts.forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); });
         ctx.closePath(); ctx.fill();
       }
-      var o = el.oW || 0, hm = el.only !== 'top', top = el.only !== 'hm';   // 'hm': hour and minute hands only, 'top': second hand and cap only (so they can be layered apart)
-      if (hm && o > 0) poly(rotPts(handPoly(el.style, el.hW + 2 * o, el.hLen + o, el.hLen * 0.12 + o), el.cx, el.cy, hA), q(el.oColor));
-      if (hm) poly(rotPts(handPoly(el.style, el.hW, el.hLen, el.hLen * 0.12), el.cx, el.cy, hA), q(el.hColor));
-      if (hm && o > 0) poly(rotPts(handPoly(el.style, el.mW + 2 * o, el.mLen + o, el.mLen * 0.1 + o), el.cx, el.cy, mA), q(el.oColor));
-      if (hm) poly(rotPts(handPoly(el.style, el.mW, el.mLen, el.mLen * 0.1), el.cx, el.cy, mA), q(el.mColor));
+      var o = el.oW || 0, hm = el.only !== 'top', top = el.only !== 'hm', cap = el.style === 'capsule';   // 'hm': hour and minute hands only, 'top': second hand and cap only (so they can be layered apart)
+      if (hm && cap) {
+        capsuleLayers(el, el.hW, el.hLen, el.hColor).forEach(function (l) { poly(rotPts(l.pts, el.cx, el.cy, hA), q(l.c)); });
+        capsuleLayers(el, el.mW, el.mLen, el.mColor).forEach(function (l) { poly(rotPts(l.pts, el.cx, el.cy, mA), q(l.c)); });
+      }
+      if (hm && !cap && o > 0) poly(rotPts(handPoly(el.style, el.hW + 2 * o, el.hLen + o, el.hLen * 0.12 + o), el.cx, el.cy, hA), q(el.oColor));
+      if (hm && !cap) poly(rotPts(handPoly(el.style, el.hW, el.hLen, el.hLen * 0.12), el.cx, el.cy, hA), q(el.hColor));
+      if (hm && !cap && o > 0) poly(rotPts(handPoly(el.style, el.mW + 2 * o, el.mLen + o, el.mLen * 0.1 + o), el.cx, el.cy, mA), q(el.oColor));
+      if (hm && !cap) poly(rotPts(handPoly(el.style, el.mW, el.mLen, el.mLen * 0.1), el.cx, el.cy, mA), q(el.mColor));
       if (top && el.sShow) {
         ctx.strokeStyle = q(el.sColor); ctx.lineWidth = el.sW; ctx.lineCap = 'butt';
         ctx.beginPath();
@@ -438,7 +464,9 @@
     },
     fields: function (el) {
       return [
-        { k: 'style', t: 'seg', label: 'Hand style', opts: [['bar', 'Bar'], ['taper', 'Taper'], ['sword', 'Sword']] },
+        { k: 'style', t: 'seg', label: 'Hand style', opts: [['bar', 'Bar'], ['taper', 'Taper'], ['sword', 'Sword'], ['capsule', 'Capsule']] },
+        el.style === 'capsule' ? { t: 'row', fields: [{ k: 'capGap', t: 'num', label: 'Stem part (0–1)', min: 0, max: 0.8, step: 0.05 }, { k: 'capT', t: 'num', label: 'Outline px', min: 1, max: 6 }, { k: 'capStem', t: 'num', label: 'Stem px', min: 1, max: 8 }] } : null,
+        el.style === 'capsule' ? { k: 'capFill', t: 'color', label: 'Inside color' } : null,
         { k: 'only', t: 'seg', label: 'Draws', opts: [['', 'All'], ['hm', 'Hour + minute'], ['top', 'Second + cap']] },
         { t: 'h', label: 'Hour hand' },
         { k: 'hColor', t: 'color', label: 'Color' },
@@ -467,18 +495,27 @@
       if (hm) { L.push('var hA = ((_clk.hour % 12) * 60 + _clk.min) * Math.PI / 360.0;'); L.push('var mA = _clk.min * Math.PI / 30.0;'); }
       cg.member('    var _hpH = null;'); cg.member('    var _hpM = null;');
       var o = el.oW || 0;
-      if (hm && o > 0) {
+      var cap = el.style === 'capsule';
+      if (hm && cap) {
+        [['hA', el.hW, el.hLen, el.hColor, '_hpH'], ['mA', el.mW, el.mLen, el.mColor, '_hpM']].forEach(function (hd) {
+          capsuleLayers(el, hd[1], hd[2], hd[3]).forEach(function (l) {
+            L.push('dc.setColor(' + GW.mcColor(l.c) + ', Graphics.COLOR_TRANSPARENT);');
+            L.push((l.outer ? hd[4] + ' = ' : '') + 'drawHand(dc, ' + cx + ', ' + cy + ', ' + hd[0] + ', ' + ptsToMc(l.pts) + ');');
+          });
+        });
+      }
+      if (hm && !cap && o > 0) {
         L.push('dc.setColor(' + GW.mcColor(el.oColor) + ', Graphics.COLOR_TRANSPARENT);');
         L.push('drawHand(dc, ' + cx + ', ' + cy + ', hA, ' + ptsToMc(handPoly(el.style, el.hW + 2 * o, el.hLen + o, el.hLen * 0.12 + o)) + ');');
       }
-      if (hm) L.push('dc.setColor(' + GW.mcColor(el.hColor) + ', Graphics.COLOR_TRANSPARENT);');
-      if (hm) L.push('_hpH = drawHand(dc, ' + cx + ', ' + cy + ', hA, ' + ptsToMc(handPoly(el.style, el.hW, el.hLen, el.hLen * 0.12)) + ');');
-      if (hm && o > 0) {
+      if (hm && !cap) L.push('dc.setColor(' + GW.mcColor(el.hColor) + ', Graphics.COLOR_TRANSPARENT);');
+      if (hm && !cap) L.push('_hpH = drawHand(dc, ' + cx + ', ' + cy + ', hA, ' + ptsToMc(handPoly(el.style, el.hW, el.hLen, el.hLen * 0.12)) + ');');
+      if (hm && !cap && o > 0) {
         L.push('dc.setColor(' + GW.mcColor(el.oColor) + ', Graphics.COLOR_TRANSPARENT);');
         L.push('drawHand(dc, ' + cx + ', ' + cy + ', mA, ' + ptsToMc(handPoly(el.style, el.mW + 2 * o, el.mLen + o, el.mLen * 0.1 + o)) + ');');
       }
-      if (hm) L.push('dc.setColor(' + GW.mcColor(el.mColor) + ', Graphics.COLOR_TRANSPARENT);');
-      if (hm) L.push('_hpM = drawHand(dc, ' + cx + ', ' + cy + ', mA, ' + ptsToMc(handPoly(el.style, el.mW, el.mLen, el.mLen * 0.1)) + ');');
+      if (hm && !cap) L.push('dc.setColor(' + GW.mcColor(el.mColor) + ', Graphics.COLOR_TRANSPARENT);');
+      if (hm && !cap) L.push('_hpM = drawHand(dc, ' + cx + ', ' + cy + ', mA, ' + ptsToMc(handPoly(el.style, el.mW, el.mLen, el.mLen * 0.1)) + ');');
       if (top && el.sShow) {
         L.push('if (!_isSleeping) {');
         L.push('    var sA = _clk.sec * Math.PI / 30.0;');
