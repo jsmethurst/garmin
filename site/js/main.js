@@ -20,10 +20,9 @@
   // Exact pixels: the preview is the watch's own pixel grid, enlarged by a whole number so every watch pixel is the same size on screen.
   var exact = true; try { exact = localStorage.getItem('gw.exact') !== '0'; } catch (e) { }
   var pxCv = document.createElement('canvas'), pxCtx = pxCv.getContext('2d', { willReadFrequently: true });
-  function exactScale() {
-    var d = window.devicePixelRatio || 1, glass = cv.parentNode, avail = Math.min(glass.clientWidth, glass.clientHeight) * d;
-    return Math.max(1, Math.floor(avail / GW.SIZE + 0.02));
-  }
+  // 1× means one watch pixel is one pixel of this display (so the face is 280 or 260 display pixels across, like the real screen); 2×, 3×, 4× enlarge it by whole numbers
+  var zoom = 1; try { zoom = Math.max(1, Math.min(8, +localStorage.getItem('gw.zoom') || 1)); } catch (e) { }
+  function exactScale() { return zoom; }
   function fit() {
     var d = window.devicePixelRatio || 1;
     if (exact && GW.design.kind !== 'datafield') {
@@ -326,6 +325,7 @@
   });
   $('optSnap').addEventListener('change', function () { opts.snap = this.checked; });
   $('optGrid').addEventListener('change', function () { opts.grid = this.checked; schedule(); });
+  (function () { var z = $('optZoom'); if (!z) return; z.value = String(zoom); z.addEventListener('change', function () { zoom = +this.value || 1; try { localStorage.setItem('gw.zoom', String(zoom)); } catch (e) { } schedule(); }); })();
   (function () { var o = $('optExact'); if (!o) return; o.checked = exact; o.addEventListener('change', function () { exact = this.checked; try { localStorage.setItem('gw.exact', exact ? '1' : '0'); } catch (e) { } schedule(); }); })();
   window.addEventListener('resize', schedule);
   $('optLive').addEventListener('change', function () { GW.sim.live = this.checked; schedule(); if (document.querySelector('#tabs button.on').dataset.tab === 'sim') GW.renderPanel(); });
