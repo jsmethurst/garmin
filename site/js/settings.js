@@ -81,7 +81,7 @@
       return n;
     },
     // the three standard roles are created on first use
-    ROLE: { bg: ['cbg', 'Background'], main: ['cmain', 'Main color'], hi: ['chi', 'Highlight color'] },
+    ROLE: { bg: ['cbg', 'Background'], main: ['cmain', 'Main color'], hi: ['chi', 'Highlight color'], text: ['ctext', 'Main text'] },
     ensureRole: function (key, def, d) {
       d = d || GW.design; var r = S.ROLE[key], s = S.find(r[0], d);
       if (!s) { s = { id: r[0], kind: 'color', label: r[1], def: GW.q(def || '#ffffff'), keep: true }; S.all(d).push(s); }
@@ -133,7 +133,9 @@
     addLibraryTheme: function (lib, d) {
       d = d || GW.design; var t = S.ensureTheme(d), c = {};
       var bg = S.find('cbg', d), mn = S.find('cmain', d), hi = S.find('chi', d);
+      var tx = S.find('ctext', d);
       if (bg) c.cbg = GW.q(lib[1]); if (mn) c.cmain = GW.q(lib[2]); if (hi) c.chi = GW.q(lib[3]);
+      if (tx) { var b = GW.q(lib[1]), lum = [1, 3, 5].reduce(function (a, i) { return a + parseInt(b.substr(i, 2), 16); }, 0); c.ctext = lum > 380 ? '#000000' : '#ffffff'; }   // readable on the theme's background
       t.themes.push({ name: lib[0], colors: c }); return t;
     },
     addBlankTheme: function (d) {
@@ -142,6 +144,17 @@
       t.themes.push({ name: 'Theme ' + (t.themes.length + 1), colors: c }); return t;
     },
     themeColor: function (th, role) { return GW.q((th.colors && th.colors[role.id]) || role.def); },
+
+    // "Main text": the color of the face's ordinary text; every text layer that uses it follows the role
+    addTextRole: function (d) {
+      d = d || GW.design; var ex = S.find('ctext', d); if (ex) return ex;
+      var hist = {}; d.elements.forEach(function (e) { if (e.type === 'text' && typeof e.color === 'string' && e.color[0] === '#' && !(e.set && e.set.color)) { var v = GW.q(e.color); hist[v] = (hist[v] || 0) + 1; } });
+      var top = Object.keys(hist).sort(function (a, b) { return hist[b] - hist[a]; })[0] || '#ffffff';
+      var r = S.ensureRole('text', top, d); r.def = top;
+      d.elements.forEach(function (e) { if (e.type === 'text' && typeof e.color === 'string' && GW.q(e.color) === top && !(e.set && e.set.color)) { e.set = e.set || {}; e.set.color = 'ctext'; } });
+      var th = S.theme(d); if (th) th.themes.forEach(function (t) { if (!t.colors.ctext) { var b = GW.q(t.colors.cbg || d.bg), lum = [1, 3, 5].reduce(function (x, i) { return x + parseInt(b.substr(i, 2), 16); }, 0); t.colors.ctext = lum > 380 ? '#000000' : '#ffffff'; } });
+      return r;
+    },
 
     // ----- choosing the main and highlight colors from what the face already uses -----
     COLOR_KEYS: ['color', 'hColor', 'mColor', 'majorColor', 'todayColor', 'lit', 'on'],

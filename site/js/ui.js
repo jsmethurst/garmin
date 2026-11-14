@@ -246,13 +246,13 @@
     var sel = h('select', { class: 'sel', title: 'Link this color to the face’s color scheme', 'aria-label': 'Color role for ' + (f.label || 'color') });
     sel.appendChild(settingOpt('', 'Fixed color', !s));
     var std = GW.settings.ROLE, have = {};
-    ['main', 'hi'].forEach(function (k) { have[std[k][0]] = 1; sel.appendChild(settingOpt(std[k][0], '◐ ' + std[k][1], s && s.id === std[k][0])); });
+    ['main', 'hi', 'text'].forEach(function (k) { have[std[k][0]] = 1; sel.appendChild(settingOpt(std[k][0], '◐ ' + std[k][1], s && s.id === std[k][0])); });
     GW.settings.colors().forEach(function (c) { if (!have[c.id] && c.id !== 'cbg') sel.appendChild(settingOpt(c.id, '◐ ' + c.label, s && s.id === c.id)); });
     sel.appendChild(settingOpt('__new', '◐ New color role…'));
     sel.addEventListener('change', function () {
       var v = sel.value, was = el.set && el.set[f.k];
       if (v === '__new') { var ns = GW.settings.addColor(((el.name || '') + ' ' + (f.label || 'color')).trim().slice(0, 28), el[f.k]); v = ns.id; }
-      else if (v === 'cmain' || v === 'chi') { var ex = GW.settings.find(v); if (!ex) GW.settings.ensureRole(v === 'cmain' ? 'main' : 'hi', el[f.k]); }
+      else if (v === 'cmain' || v === 'chi' || v === 'ctext') { var ex = GW.settings.find(v); if (!ex) GW.settings.ensureRole(v === 'cmain' ? 'main' : (v === 'chi' ? 'hi' : 'text'), el[f.k]); }
       if (v) { el.set = el.set || {}; el.set[f.k] = v; var st = GW.settings.find(v); if (st) el[f.k] = st.def; }
       else if (el.set) { delete el.set[f.k]; if (!Object.keys(el.set).length) delete el.set; }
       if (was && was !== v) { var ws = GW.settings.find(was); if (ws && !GW.settings.uses(was) && !ws.keep) GW.settings.remove(was); }
@@ -310,6 +310,7 @@
       });
       p.appendChild(h('div', { class: 'row' }, [
         h('button', { class: 'btn sm', text: '✨ Re-detect from the face', title: 'Find the main and highlight colors again from what the face uses', onclick: function () { GW.settings.detect(d); GW.commit(true); GW.renderPanel(); } }),
+        GW.settings.find('ctext') ? null : h('button', { class: 'btn sm', text: '+ Add Main text', title: 'A color for the face’s ordinary text, separate from the main and highlight colors', onclick: function () { GW.settings.addTextRole(d); GW.commit(true); GW.renderPanel(); } }),
         h('button', { class: 'btn sm', text: '+ Add a color', onclick: function () { GW.settings.addColor(null, '#ffffff'); GW.commit(false); GW.renderPanel(); } })
       ]));
       if (mode === 'theme') {
