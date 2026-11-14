@@ -539,42 +539,62 @@
 
 
   // ================= HONEYCOMB GRID (lines only) =================
-  // The lines of a honeycomb that run on past the edge of the screen. Cells nearer the centre than `skip` rings are left out (they hold other things).
-  function hexCentre(el, q, r) { return [Math.round(el.cx) + Math.trunc(Math.sqrt(3) * el.r * (q + r / 2)), Math.round(el.cy) + Math.trunc(1.5 * el.r * r)]; }
+  // A honeycomb drawn as one set of lines: every edge once, running on past the screen edge. Cells up to ring `skip` count as one merged shape,
+  // so no lines are drawn between them. Corners are worked out from one global lattice and rounded once, so neighbouring cells share exact corners.
+  var HEXN = [[0, 1], [-1, 1], [-1, 0]];   // the neighbour across edge 0, 1 and 2 (the other three edges belong to the neighbours)
+  function hexDist(q, r) { return Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)); }
+  function hexCorner(el, q, r, k) {
+    var a = rad(30 + 60 * k);
+    return [Math.floor(el.cx + Math.sqrt(3) * el.r * (q + r / 2) + el.r * Math.cos(a) + 0.5001), Math.floor(el.cy + 1.5 * el.r * r + el.r * Math.sin(a) + 0.5001)];
+  }
   T.hexgrid = {
     label: 'Honeycomb lines', icon: '⬡',
-    defaults: function () { return { type: 'hexgrid', name: 'Honeycomb', cx: 140, cy: 140, r: 30, gap: 1, skip: 2, pen: 1, color: '#555555' }; },
+    defaults: function () { return { type: 'hexgrid', name: 'Honeycomb', cx: 140, cy: 140, r: 31, skip: 1, pen: 2, color: '#ffffff' }; },
     pos: [['cx', 'cy']],
     draw: function (ctx, el) {
-      ctx.strokeStyle = q(el.color); ctx.lineWidth = el.pen; ctx.lineCap = 'butt';
+      ctx.strokeStyle = q(el.color); ctx.lineWidth = el.pen; ctx.lineCap = 'round';
       for (var qq = -7; qq <= 7; qq++) for (var rr = -7; rr <= 7; rr++) {
-        var s = -qq - rr; if (Math.abs(s) > 7 || Math.max(Math.abs(qq), Math.abs(rr), Math.abs(s)) <= el.skip) continue;
-        var c = hexCentre(el, qq, rr); if (c[0] < -el.r || c[0] > GW.SIZE + el.r || c[1] < -el.r || c[1] > GW.SIZE + el.r) continue;
-        ctx.beginPath(); hexPts(c[0], c[1], el.r - (el.gap || 0)).forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); ctx.stroke();   // the lattice uses the full cell size, the drawn hexagon is a little smaller (the gap)
+        if (Math.abs(qq + rr) > 7) continue;
+        var bx = el.cx + Math.sqrt(3) * el.r * (qq + rr / 2), by = el.cy + 1.5 * el.r * rr;
+        if (bx < -el.r * 2 || bx > GW.SIZE + el.r * 2 || by < -el.r * 2 || by > GW.SIZE + el.r * 2) continue;
+        var d = hexDist(qq, rr);
+        for (var k = 0; k < 3; k++) {
+          if (d <= el.skip && hexDist(qq + HEXN[k][0], rr + HEXN[k][1]) <= el.skip) continue;
+          var a = hexCorner(el, qq, rr, k), b = hexCorner(el, qq, rr, (k + 1) % 6);
+          ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+        }
       }
     },
     box: function (el) { return { x: el.cx - 7 * el.r, y: el.cy - 7 * el.r, w: 14 * el.r, h: 14 * el.r }; },
     fields: function () {
       return [
         { k: 'color', t: 'color', label: 'Line color' },
-        { t: 'row', fields: [{ k: 'r', t: 'num', label: 'Cell size', min: 8, max: 80 }, { k: 'gap', t: 'num', label: 'Gap', min: 0, max: 6 }, { k: 'pen', t: 'num', label: 'Line width', min: 1, max: 6 }] },
-        { k: 'skip', t: 'num', label: 'Rings left empty in the middle', min: 0, max: 6 },
+        { t: 'row', fields: [{ k: 'r', t: 'num', label: 'Cell size', min: 8, max: 80 }, { k: 'pen', t: 'num', label: 'Line width', min: 1, max: 6 }] },
+        { k: 'skip', t: 'num', label: 'Rings in the middle drawn as one shape', min: 0, max: 6 },
         { t: 'row', fields: [{ k: 'cx', t: 'num', label: 'Centre X', min: -50, max: 330 }, { k: 'cy', t: 'num', label: 'Centre Y', min: -50, max: 330 }] }
       ];
     },
     gen: function (el, cg) {
-      var P = hexPts(0, 0, el.r - (el.gap || 0)), size = GW.SIZE, id = String(el.id).replace(/[^A-Za-z0-9]/g, '');
-      cg.member('    const HEX_' + id + '_X = [' + P.map(function (p) { return p[0]; }).join(', ') + '];');
-      cg.member('    const HEX_' + id + '_Y = [' + P.map(function (p) { return p[1]; }).join(', ') + '];');
-      return ['dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);', 'dc.setPenWidth(' + N(el.pen) + ');',
-        'for (var q = -7; q <= 7; q++) {', '    for (var r = -7; r <= 7; r++) {', '        var s = -q - r;',
+      var id = String(el.id).replace(/[^A-Za-z0-9]/g, ''), size = GW.SIZE, R = el.r, hw = Math.floor(el.pen / 2);
+      var vx = [], vy = []; for (var k = 0; k < 6; k++) { vx.push((R * Math.cos(rad(30 + 60 * k))).toFixed(4)); vy.push((R * Math.sin(rad(30 + 60 * k))).toFixed(4)); }
+      cg.member('    const HEX_' + id + '_X = [' + vx.join(', ') + '];'); cg.member('    const HEX_' + id + '_Y = [' + vy.join(', ') + '];');
+      var L = ['dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);', 'dc.setPenWidth(' + N(el.pen) + ');',
+        'for (var q = -7; q <= 7; q++) {', '    for (var r = -7; r <= 7; r++) {', '        var s = -q - r;', '        if (s.abs() > 7) { continue; }',
+        '        var bx = ' + N(el.cx) + ' + (' + (Math.sqrt(3) * R).toFixed(4) + ' * (q + r / 2.0));',
+        '        var by = ' + N(el.cy) + ' + (' + (1.5 * R).toFixed(4) + ' * r);',
+        '        if (bx < -' + (2 * R) + ' || bx > ' + (size + 2 * R) + ' || by < -' + (2 * R) + ' || by > ' + (size + 2 * R) + ') { continue; }',
         '        var d = q.abs();', '        if (r.abs() > d) { d = r.abs(); }', '        if (s.abs() > d) { d = s.abs(); }',
-        '        if (s.abs() > 7 || d <= ' + N(el.skip) + ') { continue; }',
-        '        var x = ' + N(el.cx) + ' + (' + (Math.sqrt(3) * el.r).toFixed(4) + ' * (q + r / 2.0)).toNumber();',
-        '        var y = ' + N(el.cy) + ' + (' + (1.5 * el.r).toFixed(4) + ' * r).toNumber();',
-        '        if (x < -' + N(el.r) + ' || x > ' + (size + N(el.r)) + ' || y < -' + N(el.r) + ' || y > ' + (size + N(el.r)) + ') { continue; }',
-        '        for (var k = 0; k < 6; k++) {', '            var k2 = (k + 1) % 6;',
-        '            dc.drawLine(x + HEX_' + id + '_X[k], y + HEX_' + id + '_Y[k], x + HEX_' + id + '_X[k2], y + HEX_' + id + '_Y[k2]);', '        }', '    }', '}', 'dc.setPenWidth(1);'];
+        '        for (var k = 0; k < 3; k++) {',
+        '            var nq = q + HEX_NQ[k];', '            var nr = r + HEX_NR[k];', '            var dn = nq.abs();', '            if (nr.abs() > dn) { dn = nr.abs(); }', '            if ((nq + nr).abs() > dn) { dn = (nq + nr).abs(); }',
+        '            if (d <= ' + N(el.skip) + ' && dn <= ' + N(el.skip) + ') { continue; }',
+        '            var k2 = (k + 1) % 6;',
+        '            var x1 = (bx + HEX_' + id + '_X[k] + 0.5001).toNumber();', '            var y1 = (by + HEX_' + id + '_Y[k] + 0.5001).toNumber();',
+        '            var x2 = (bx + HEX_' + id + '_X[k2] + 0.5001).toNumber();', '            var y2 = (by + HEX_' + id + '_Y[k2] + 0.5001).toNumber();',
+        '            dc.drawLine(x1, y1, x2, y2);'];
+      if (hw > 0) L.push('            dc.fillCircle(x1, y1, ' + hw + ');', '            dc.fillCircle(x2, y2, ' + hw + ');');   // round joins at the corners
+      L.push('        }', '    }', '}', 'dc.setPenWidth(1);');
+      cg.member('    const HEX_NQ = [0, -1, -1];'); cg.member('    const HEX_NR = [1, 1, 0];');
+      return L;
     }
   };
 
