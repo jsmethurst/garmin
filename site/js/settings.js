@@ -175,7 +175,7 @@
     members: function (id, d) { d = d || GW.design; return d.elements.filter(function (e) { return e.srcSet === id; }); },
     roleOf: function (e) {          // what a layer does in a data slot
       if (e.type === 'icon') return 'icon';
-      if (e.type === 'text') return e.source === 'custom' ? 'label' : 'value';
+      if (e.type === 'text') return e.source === 'custom' ? (e.srcRole === 'unit' ? 'unit' : 'label') : 'value';
       if (e.type === 'arc' || e.type === 'seggauge') return 'gauge';
       return null;
     },
@@ -212,6 +212,15 @@
             var gx = Math.max(0, Math.max(ob.x - (b.x + b.w), b.x - (ob.x + ob.w))), gy = Math.max(0, Math.max(ob.y - (b.y + b.h), b.y - (ob.y + ob.h))), g = gx + gy;
             if (gx <= lim[r] && gy <= lim[r] && (!best[r] || g < best[r].g)) best[r] = { e: o, g: g };
           });
+          if (!best.icon) {                                                       // none right beside it: the nearest icon on the same line
+            var cy = b.y + b.h / 2;
+            d.elements.forEach(function (o) {
+              if (o === el || o.srcSet || o.hidden || S.roleOf(o) !== 'icon') return;
+              var ob; try { ob = box(o); } catch (x) { return; }
+              var gx = Math.max(0, Math.max(ob.x - (b.x + b.w), b.x - (ob.x + ob.w)));
+              if (gx <= 34 && Math.abs(ob.y + ob.h / 2 - cy) <= Math.max(10, b.h) && (!best.icon || gx < best.icon.g)) best.icon = { e: o, g: gx };
+            });
+          }
           if (best.icon) put(best.icon.e); if (best.label) put(best.label.e);
         }
       }
@@ -221,8 +230,8 @@
     // the text that names a reading, and what goes before / after its value: for the reading shown now they are the layers' own text
     labelOf: function (s, c, d) { var st = S.startChoice(s, d); if (c === st) { var m = S.members(s.id, d).filter(function (e) { return S.roleOf(e) === 'label'; })[0]; return m ? m.text || '' : ''; } return s.labels[c] != null ? s.labels[c] : GW.sourceShort(c); },
     setLabel: function (s, c, txt, d) { s.labels[c] = txt; if (c === S.startChoice(s, d)) S.members(s.id, d).forEach(function (e) { if (S.roleOf(e) === 'label') e.text = txt; }); },
-    suffixOf: function (s, c, d) { if (c === S.startChoice(s, d)) { var m = S.members(s.id, d).filter(function (e) { return S.roleOf(e) === 'value'; })[0]; return m ? m.suffix || '' : ''; } return (s.affix[c] || {}).suffix || ''; },
-    setSuffix: function (s, c, txt, d) { s.affix[c] = Object.assign({}, s.affix[c], { suffix: txt }); if (c === S.startChoice(s, d)) S.members(s.id, d).forEach(function (e) { if (S.roleOf(e) === 'value') e.suffix = txt; }); },
+    suffixOf: function (s, c, d) { if (c === S.startChoice(s, d)) { var ms = S.members(s.id, d), m = ms.filter(function (e) { return S.roleOf(e) === 'value'; })[0], u = ms.filter(function (e) { return S.roleOf(e) === 'unit'; })[0]; return m ? m.suffix || '' : (u ? u.text || '' : ''); } return (s.affix[c] || {}).suffix || ''; },
+    setSuffix: function (s, c, txt, d) { s.affix[c] = Object.assign({}, s.affix[c], { suffix: txt }); if (c === S.startChoice(s, d)) S.members(s.id, d).forEach(function (e) { if (S.roleOf(e) === 'value') e.suffix = txt; else if (S.roleOf(e) === 'unit') e.text = txt; }); },
     addChoice: function (s, c) {
       if (s.choices.indexOf(c) >= 0) return;
       s.choices.push(c); if (!s.affix[c]) s.affix[c] = { prefix: '', suffix: AFFIX[c] || '' };
@@ -234,6 +243,7 @@
       if (r === 'value') { v.source = c; v.prefix = a.prefix || ''; v.suffix = a.suffix || ''; }
       else if (r === 'gauge') { v.source = c; if (el.type === 'arc') { v.min = null; v.max = null; } }
       else if (r === 'icon') { var ic = GW.ICON_FOR && GW.ICON_FOR[c]; if (ic && GW.ICONS && GW.ICONS[ic]) v.kind = ic; }
+      else if (r === 'unit') { v.text = c === start ? el.text : (((s.affix && s.affix[c]) || {}).suffix || ''); }
       else if (r === 'label') { v.text = c === start ? el.text : ((s.labels && s.labels[c] != null) ? s.labels[c] : GW.sourceShort(c)); }
       return v;
     },
@@ -244,6 +254,7 @@
         var r = S.roleOf(e);
         if (r === 'value') s.affix[start] = { prefix: e.prefix || '', suffix: e.suffix || '' };
         if (r === 'label') s.labels[start] = e.text || '';
+        if (r === 'unit') s.affix[start] = Object.assign({}, s.affix[start], { suffix: e.text || '' });
       });
       ms.forEach(function (e) { var v = S.variant(e, s, c, start); ['source', 'prefix', 'suffix', 'kind', 'text', 'min', 'max'].forEach(function (k) { if (k in v) e[k] = v[k]; }); });
     }

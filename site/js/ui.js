@@ -360,25 +360,41 @@
     box.appendChild(h('div', { class: 'muted small', style: 'margin-top:6px', text: 'Layers that switch together' }));
     var ms = GW.settings.members(s.id, d);
     if (!ms.length) box.appendChild(h('p', { class: 'muted small', text: 'None yet: add the reading, its icon and its label below.' }));
-    var ROLE = { value: 'value', label: 'label', icon: 'icon', gauge: 'gauge' };
+    var ROLE = { value: 'value', label: 'label', unit: 'unit', icon: 'icon', gauge: 'gauge' };
     ms.forEach(function (e) {
       box.appendChild(h('div', { style: FLEX }, [
-        h('span', { class: 'muted small', style: 'min-width:44px', text: ROLE[GW.settings.roleOf(e)] }), h('span', { text: e.name || e.type, style: 'flex:1' }),
+        (function () {
+          var r = GW.settings.roleOf(e);
+          if (r !== 'label' && r !== 'unit') return h('span', { class: 'muted small', style: 'min-width:44px', text: r === 'icon' ? 'icon (picked for you)' : ROLE[r] });
+          var rs = h('select', { class: 'sel', 'aria-label': 'What this text is', title: 'A name (Heart) or a unit (BPM)', style: 'width:auto' });
+          [['label', 'name'], ['unit', 'unit']].forEach(function (o) { var op = settingOpt(o[0], o[1]); if (o[0] === r) op.selected = true; rs.appendChild(op); });
+          rs.addEventListener('change', function () { if (rs.value === 'unit') e.srcRole = 'unit'; else delete e.srcRole; GW.commit(true); GW.renderPanel(); });
+          return rs;
+        })(), h('span', { text: e.name || e.type, style: 'flex:1' }),
         h('button', { class: 'btn sm', text: '×', title: 'Take this layer out of the slot', onclick: function () { GW.settings.removeMember(s, e); GW.commit(true); GW.renderPanel(); } })]));
     });
     var addSel = h('select', { class: 'sel', 'aria-label': 'Add a layer to this slot' });
     addSel.appendChild(settingOpt('', '+ Add a layer…'));
-    d.elements.forEach(function (e) { if (!e.srcSet && GW.settings.roleOf(e)) addSel.appendChild(settingOpt(e.id, (e.name || e.type) + ' (' + GW.settings.roleOf(e) + ')')); });
+    d.elements.forEach(function (e) { if (e.srcSet !== s.id && GW.settings.roleOf(e)) addSel.appendChild(settingOpt(e.id, (e.name || e.type) + ' (' + GW.settings.roleOf(e) + (e.srcSet ? ', now in another slot' : '') + ')')); });
     addSel.addEventListener('change', function () {
       var e = GW.findEl(addSel.value); if (!e) return;
       var added = GW.settings.addMember(s, e); if (added.length > 1) GW.toast('Added: ' + added.join(', '));
       GW.commit(true); GW.renderPanel();
     });
     box.appendChild(addSel);
+    var vm = ms.filter(function (e) { return GW.settings.roleOf(e) === 'value'; })[0];
+    if (vm && !ms.some(function (e) { return GW.settings.roleOf(e) === 'icon'; })) {
+      box.appendChild(h('button', { class: 'btn sm', text: '+ Add an icon that follows the reading', title: 'Adds the icon matching the reading to the left of it; it changes by itself when the wearer picks another reading', onclick: function () {
+        var src = GW.settings.startChoice(s, d), nm = GW.ICON_FOR[src]; if (!nm || !GW.ICONS[nm]) { GW.toast('No matching icon for this reading'); return; }
+        var b = GW.elBox(vm), sz = 16; GW.ICON_SIZES.forEach(function (v) { if (v <= b.h + 4) sz = v; });
+        var ne = GW.addElement('icon', { name: GW.ICONS[nm].label + ' icon', kind: nm, size: sz, x: Math.round(b.x - 4 - sz / 2), y: Math.round(b.y + b.h / 2), color: vm.color });
+        if (ne && ne.id) { var el2 = GW.findEl(ne.id) || ne; el2.srcSet = s.id; } GW.commit(true); GW.renderPanel();
+      } }));
+    }
     // readings
     box.appendChild(h('div', { class: 'muted small', style: 'margin-top:8px', text: 'Readings the wearer can pick (' + s.choices.length + ')' }));
     if (s.choices.length < 2) box.appendChild(h('p', { class: 'muted small', text: 'Pick at least two.' }));
-    var start = s.choices.length ? GW.settings.startChoice(s, d) : null, hasLab = ms.some(function (e) { return GW.settings.roleOf(e) === 'label'; }), hasVal = ms.some(function (e) { return GW.settings.roleOf(e) === 'value'; });
+    var start = s.choices.length ? GW.settings.startChoice(s, d) : null, hasLab = ms.some(function (e) { return GW.settings.roleOf(e) === 'label'; }), hasVal = ms.some(function (e) { var r = GW.settings.roleOf(e); return r === 'value' || r === 'unit'; });
     s.choices.forEach(function (c) {
       var row = [h('span', { style: 'flex:1;min-width:80px', text: (GW.sources[c] || { label: c }).label + (c === start ? ' ●' : '') })];
       if (hasLab) {
