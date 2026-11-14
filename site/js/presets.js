@@ -153,7 +153,7 @@
       } },
     { id: 'honeycomb', name: 'Honeycomb', blurb: 'A big navy hexagon holds the time and date; twelve coloured cells round it carry data; plain honeycomb lines run off the screen.',
       build: function () {
-        var R = 30, W = Math.sqrt(3) * R, w = '#ffffff', X = 'FONT_XTINY', T = 'FONT_TINY';
+        var R = 32, W = Math.sqrt(3) * R, w = '#ffffff', X = 'FONT_XTINY';
         function pos(q, r) { return [140 + Math.trunc(W * (q + r / 2)), 140 + Math.trunc(1.5 * R * r)]; }
         var cells = []; for (var q = -2; q <= 2; q++) for (var r = -2; r <= 2; r++) { var s = -q - r; if (Math.abs(s) > 2) continue; cells.push({ q: q, r: r, d: Math.max(Math.abs(q), Math.abs(r), Math.abs(s)), p: pos(q, r) }); }
         var els = [E('hexgrid', { name: 'Honeycomb lines', cx: 140, cy: 140, r: R - 1, skip: 2, pen: 1, color: '#555555' })];
@@ -166,7 +166,8 @@
           var a = (30 + 60 * e) * Math.PI / 180, b = (90 + 60 * e) * Math.PI / 180;
           els.push(E('shape', { name: 'Time outline', kind: 'line', x: c.p[0] + Math.round(R * Math.cos(a)), y: c.p[1] + Math.round(R * Math.sin(a)), x2: c.p[0] + Math.round(R * Math.cos(b)), y2: c.p[1] + Math.round(R * Math.sin(b)), pen: 2, color: w }));
         } });
-        els.push(txt(140, 129, 'time', 'FONT_NUMBER_MEDIUM', w, { secs: false }), txt(140, 161, 'date', X, '#aaddff', { fmt: 'DDDD', upper: true }), txt(140, 175, 'date', X, '#aaddff', { fmt: 'D MMMM', upper: true }));
+        // time exactly in the middle, weekday above and day + month below (Turkish abbreviations)
+        els.push(txt(140, 140, 'time', 'FONT_NUMBER_MEDIUM', w, { secs: false }), txt(140, 107, 'date', X, '#aaddff', { fmt: 'ddd', tr: true, upper: true }), txt(140, 173, 'date', X, '#aaddff', { fmt: 'D MMM', tr: true, upper: true }));
         // twelve data cells, clockwise from the top
         var ring = cells.filter(function (c) { return c.d === 2; }).sort(function (a, b) { return Math.atan2(a.p[0] - 140, -(a.p[1] - 140)) - Math.atan2(b.p[0] - 140, -(b.p[1] - 140)); });
         var CELLS = [['steps', 'steps', '', '#0055aa'], ['heart-pulse', 'hr', '', '#aa0000'], ['battery', 'battery', '%', '#00aa55'], ['wx', 'temp', '°', '#ff5500'], ['sunnext', 'sunNext', '', '#aa5500'], ['fire', 'calories', '', '#aa0055'],
@@ -174,10 +175,11 @@
         ring.forEach(function (c, i) {
           var d = CELLS[i], x = c.p[0], y = c.p[1];
           els.push(E('shape', { name: 'Cell ' + d[1], kind: 'hex', x: x, y: y, r: R - 2, fill: true, color: d[3] }));
-          if (d[0] === 'wx') els.push(E('wxicon', { name: 'Weather icon', x: x, y: y - 8, size: 20, mono: w }));
-          else if (d[0] === 'sunnext') els.push(txt(x, y - 9, 'sunNextName', X, w, { justify: 'C' }));
-          else els.push(E('icon', { name: 'Icon ' + d[1], x: x, y: y - 9, kind: d[0], size: 16, color: w }));
-          els.push(txt(x, y + 9, d[1], (d[2].length > 3 || d[1] === 'distance') ? X : T, w, { justify: 'C', suffix: d[2] }));
+          // a small symbol near the top of the cell, the value in the extra-small font below it
+          if (d[0] === 'wx') els.push(E('wxicon', { name: 'Weather icon', x: x, y: y - 12, size: 16, mono: w }));
+          else if (d[0] === 'sunnext') els.push(E('sunmark', { name: 'Next sunrise / sunset symbol', cx: x, cy: y - 12, rr: 0, r: 5, color: w, halo: '' }));
+          else els.push(E('icon', { name: 'Icon ' + d[1], x: x, y: y - 12, kind: d[0], size: 13, color: w }));
+          els.push(txt(x, y + 8, d[1], X, w, { justify: 'C', suffix: d[2] }));
         });
         return D('Honeycomb', '#000000', [], els);
       } },
