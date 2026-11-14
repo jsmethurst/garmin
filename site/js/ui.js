@@ -237,20 +237,25 @@
   function withSetting(el, f, node) {
     if (!node || GW.modeOf() !== 'watch') return node;
     var cur = el.set && el.set[f.k], s = cur && GW.settings.find(cur);
+    if (s) {   // mapped: the swatch edits the setting's color, which is what every user of the setting shows (and what the watch starts with)
+      var sw = h('button', { class: 'swatch', type: 'button' }, [h('i', { style: 'background:' + GW.q(s.def) }), h('span', { text: GW.q(s.def) })]);
+      sw.addEventListener('click', function () { GW.pickColor(sw, s.def, function (c) { s.def = GW.q(c); GW.settings.applyDefault(s); fireChange(true); }); });
+      node = field((f.label || 'Color') + ': starting color of “' + s.label + '”', sw);
+    }
     var sel = h('select', { class: 'sel', title: 'Let the wearer change this color in the Garmin Connect app', 'aria-label': 'Watch setting for ' + (f.label || 'color') });
     sel.appendChild(settingOpt('', 'Fixed color', !s));
     GW.settings.colors().forEach(function (c) { sel.appendChild(settingOpt(c.id, '⚙ ' + c.label, s && s.id === c.id)); });
     sel.appendChild(settingOpt('__new', '⚙ New watch setting…'));
     sel.addEventListener('change', function () {
       var v = sel.value, was = el.set && el.set[f.k];
-      if (v === '__new') { var ns = GW.settings.addColor(null, el[f.k]); v = ns.id; GW.toast('Created “' + ns.label + '”: rename it on the Face tab.'); }
+      if (v === '__new') { var ns = GW.settings.addColor(((el.name || '') + ' ' + (f.label || 'color')).trim().slice(0, 28), el[f.k]); v = ns.id; GW.toast('Created “' + ns.label + '”: rename it on the Face tab.'); }
       if (v) { el.set = el.set || {}; el.set[f.k] = v; var st = GW.settings.find(v); if (st) el[f.k] = st.def; }
       else if (el.set) { delete el.set[f.k]; if (!Object.keys(el.set).length) delete el.set; }
       if (was && was !== v && !GW.settings.uses(was) && !(GW.settings.find(was) || {}).keep) GW.settings.remove(was);
       fireChange(true);
     });
     var kids = [node, h('div', { class: 'f' }, [sel])];
-    if (s) kids.push(h('p', { class: 'muted small', text: 'The wearer can change this in the phone app. Everything using “' + s.label + '” shares one color.' }));
+    if (s) kids.push(h('p', { class: 'muted small', text: 'Everything using “' + s.label + '” shows this one color, and the wearer can change it in the phone app. Use “Fixed color” to give this element its own color again.' }));
     return h('div', {}, kids);
   }
   // "Let the wearer choose what this shows": a list of readings the setting offers
