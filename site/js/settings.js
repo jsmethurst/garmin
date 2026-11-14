@@ -60,7 +60,11 @@
   var scratchCtx = null;
   function box(el) { if (!scratchCtx) scratchCtx = document.createElement('canvas').getContext('2d'); return GW.elBox(el, scratchCtx); }
   var S = GW.settings = {
-    all: function (d) { d = d || GW.design; return d.settings || (d.settings = []); },
+    all: function (d) {
+      d = d || GW.design; var l = d.settings || (d.settings = []);
+      l.forEach(function (s) { if (s.kind === 'source') { s.choices = s.choices || []; s.labels = s.labels || {}; s.affix = s.affix || {}; } });   // slots saved by earlier versions have no label / unit tables
+      return l;
+    },
     find: function (id, d) { var l = S.all(d); for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return null; },
     colors: function (d) { return S.all(d).filter(function (s) { return s.kind === 'color'; }); },
     slots: function (d) { return S.all(d).filter(function (s) { return s.kind === 'source'; }); },
