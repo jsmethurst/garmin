@@ -84,7 +84,7 @@
   }
   // the preview's number fonts are drawn a little larger than Garmin's, so nudge them apart (preview only)
   function nudge(el, L) {
-    var n = (GW.SYS_FONTS.filter(function (f) { return f[0] === el.vfont; })[0] || [])[2] === 'n';
+    var n = (GW.SYS_FONTS.filter(function (f) { return f[0] === el.vfont; })[0] || [])[3] === 'n';
     if (n && L.hasV) { L.vy += fh(el.vfont) * 0.09; if (L.hasL) L.ly += el.labelPos === 'below' ? 3 : -3; }
     return L;
   }

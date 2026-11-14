@@ -2,18 +2,21 @@
    Preview and export share the exact same glyph metrics, so what you see is what the .fnt contains. */
 (function (GW) {
   'use strict';
-  var K = GW.SIZE / 260; // system-font boxes were measured on a 260px fenix 6; scaled to the screen of the selected watch
 
   // [constant, box height @260, kind]   kind: 't' text face, 'n' number face
+  // The watch's built-in fonts. The sizes are the ones in Garmin's own device files (simulator.json): the text fonts are Roboto Bold at 13 / 19 / 22 / 25 / 27 px
+  // on the fenix 6X and 13 / 18 / 20 / 24 / 25 px on the fenix 6; the number fonts are 32 / 39 / 54 / 62 and 30 / 36 / 50 / 57. [id, fenix 6X size, fenix 6 size, kind]
   GW.SYS_FONTS = [
-    ['FONT_XTINY', 12, 't'], ['FONT_TINY', 15, 't'], ['FONT_SMALL', 18, 't'], ['FONT_MEDIUM', 21, 't'], ['FONT_LARGE', 23, 't'],
-    ['FONT_NUMBER_MILD', 30, 'n'], ['FONT_NUMBER_MEDIUM', 36, 'n'], ['FONT_NUMBER_HOT', 49, 'n'], ['FONT_NUMBER_THAI_HOT', 57, 'n']
+    ['FONT_XTINY', 13, 13, 't'], ['FONT_TINY', 19, 18, 't'], ['FONT_SMALL', 22, 20, 't'], ['FONT_MEDIUM', 25, 24, 't'], ['FONT_LARGE', 27, 25, 't'],
+    ['FONT_NUMBER_MILD', 32, 30, 'n'], ['FONT_NUMBER_MEDIUM', 39, 36, 'n'], ['FONT_NUMBER_HOT', 54, 50, 'n'], ['FONT_NUMBER_THAI_HOT', 62, 57, 'n']
   ];
   var SYS = {};
   GW.rebuildSysFonts = function () {
-    K = GW.SIZE / 260;
+    var big = GW.SIZE >= 280;
     GW.SYS_FONTS.forEach(function (f) {
-      SYS[f[0]] = { box: f[1] * K, px: Math.round(f[1] * K * (f[2] === 'n' ? 1.47 : 1.25)), weight: f[2] === 'n' ? 700 : 500, family: 'Rajdhani' };
+      var n = big ? f[1] : f[2];
+      // text: Roboto Bold at the stated size; numbers: a condensed bold stand-in whose digits are as tall as the stated size
+      SYS[f[0]] = f[3] === 'n' ? { box: n, px: Math.round(n * 1.4), weight: 700, family: 'Rajdhani' } : { box: Math.round(n * 1.17), px: n, weight: 700, family: 'Roboto' };
     });
   };
   GW.rebuildSysFonts();

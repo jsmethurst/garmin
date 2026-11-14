@@ -48,6 +48,45 @@
     ctx.restore();
   };
 
+  // ---------- the preview as the watch really shows it ----------
+  // The watch draws on a grid of whole pixels, with no smoothing, in 64 colours (0, 85, 170 or 255 for red, green and blue). So: draw at 1:1,
+  // make every shape edge hard (a pixel is either on or off), let letters keep only a few steps of edge blending (the screen can show 4),
+  // snap every colour to the 64 the screen has, cut the circle with hard edges, and let the caller enlarge it with no smoothing.
+  var scratch = null, scratchCtx = null;
+  var SOFT = { text: 1, icon: 1, image: 1, worldmap: 1, dfcell: 1 };   // keep the edge steps (letters, pictures); everything else gets hard edges
+  GW.renderExact = function (ctx, design, env, withRef) {
+    var S = GW.SIZE;
+    if (design.kind === 'datafield') { GW.renderDesign(ctx, design, env, withRef); return; }   // data fields are drawn in boxes: no difference worth the cost
+    (design.fonts || []).forEach(function (f) { GW.previewFonts[f.id] = f; });
+    if (!scratch || scratch.width !== S) { scratch = document.createElement('canvas'); scratch.width = scratch.height = S; scratchCtx = scratch.getContext('2d', { willReadFrequently: true }); }
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = GW.q(design.bg); ctx.fillRect(0, 0, S, S);
+    if (design.bgImage && GW.assets[design.bgImage]) ctx.drawImage(GW.assets[design.bgImage].img, 0, 0, S, S);
+    if (withRef && GW.refDraw) GW.refDraw(ctx);
+    design.elements.forEach(function (el) {
+      if (el.hidden) return;
+      var t = GW.types[el.type]; if (!t) return;
+      scratchCtx.setTransform(1, 0, 0, 1, 0, 0); scratchCtx.clearRect(0, 0, S, S); scratchCtx.save(); scratchCtx.imageSmoothingEnabled = false;
+      try { t.draw(scratchCtx, el, env); } catch (e) { if (window.console) console.error('draw failed', el.type, e); }
+      scratchCtx.restore();
+      var im = scratchCtx.getImageData(0, 0, S, S), d = im.data, soft = SOFT[el.type];
+      for (var i = 3; i < d.length; i += 4) {
+        var a = d[i]; if (!a) continue;
+        d[i] = soft ? Math.round(Math.round(a / 255 * 3) / 3 * 255) : (a >= 128 ? 255 : 0);
+      }
+      scratchCtx.putImageData(im, 0, 0);
+      ctx.drawImage(scratch, 0, 0);
+    });
+    var out = ctx.getImageData(0, 0, S, S), o = out.data, r2 = S * S / 4, c0 = S / 2;
+    for (var y = 0; y < S; y++) for (var x = 0; x < S; x++) {
+      var p = (y * S + x) * 4;
+      if ((x + .5 - c0) * (x + .5 - c0) + (y + .5 - c0) * (y + .5 - c0) > r2) { o[p + 3] = 0; continue; }   // outside the round screen
+      o[p] = Math.round(o[p] / 85) * 85; o[p + 1] = Math.round(o[p + 1] / 85) * 85; o[p + 2] = Math.round(o[p + 2] / 85) * 85; o[p + 3] = 255;
+    }
+    ctx.putImageData(out, 0, 0);
+    ctx.restore();
+  };
+
   // Round thumbnail on a fresh canvas. `env` defaults to a calm fixed 10:09:36 so presets look their best.
   GW.thumb = function (design, px, env) {
     var c = document.createElement('canvas'), d = window.devicePixelRatio || 1;

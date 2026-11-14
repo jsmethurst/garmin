@@ -17,17 +17,40 @@
   // ---------- drawing ----------
   var drawQ = false;
   function schedule() { if (drawQ) return; drawQ = true; requestAnimationFrame(draw); }
+  // Exact pixels: the preview is the watch's own pixel grid, enlarged by a whole number so every watch pixel is the same size on screen.
+  var exact = true; try { exact = localStorage.getItem('gw.exact') !== '0'; } catch (e) { }
+  var pxCv = document.createElement('canvas'), pxCtx = pxCv.getContext('2d', { willReadFrequently: true });
+  function exactScale() {
+    var d = window.devicePixelRatio || 1, glass = cv.parentNode, avail = Math.min(glass.clientWidth, glass.clientHeight) * d;
+    return Math.max(1, Math.floor(avail / GW.SIZE + 0.02));
+  }
   function fit() {
-    var d = window.devicePixelRatio || 1, px = Math.max(100, Math.round(cv.clientWidth * d));
-    if (cv.width !== px) { cv.width = cv.height = px; }
+    var d = window.devicePixelRatio || 1;
+    if (exact && GW.design.kind !== 'datafield') {
+      var k = exactScale(), px = GW.SIZE * k;
+      if (cv.width !== px) { cv.width = cv.height = px; }
+      cv.style.width = cv.style.height = (px / d) + 'px'; cv.classList.add('exact');
+      return;
+    }
+    cv.style.width = cv.style.height = ''; cv.classList.remove('exact');
+    var px2 = Math.max(100, Math.round(cv.clientWidth * d));
+    if (cv.width !== px2) { cv.width = cv.height = px2; }
   }
   function draw() {
     drawQ = false; fit();
     cv.style.transform = GW.design.rotate === 'r30' ? 'rotate(30deg)' : '';   // rotation is a setting of the whole screen: the preview turns with it
     var k = cv.width / GW.SIZE, env = GW.env();
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
-    ctx.scale(k, k);
-    GW.renderDesign(ctx, GW.design, env, true);
+    if (cv.classList.contains('exact')) {
+      var N = GW.SIZE; if (pxCv.width !== N) { pxCv.width = pxCv.height = N; }
+      pxCtx.setTransform(1, 0, 0, 1, 0, 0); pxCtx.clearRect(0, 0, N, N);
+      GW.renderExact(pxCtx, GW.design, env, true);
+      ctx.imageSmoothingEnabled = false; ctx.drawImage(pxCv, 0, 0, cv.width, cv.height);   // enlarged with no smoothing
+      ctx.scale(k, k);
+    } else {
+      ctx.scale(k, k);
+      GW.renderDesign(ctx, GW.design, env, true);
+    }
     overlay(env, k);
   }
   function overlay(env, k) {
@@ -303,6 +326,8 @@
   });
   $('optSnap').addEventListener('change', function () { opts.snap = this.checked; });
   $('optGrid').addEventListener('change', function () { opts.grid = this.checked; schedule(); });
+  (function () { var o = $('optExact'); if (!o) return; o.checked = exact; o.addEventListener('change', function () { exact = this.checked; try { localStorage.setItem('gw.exact', exact ? '1' : '0'); } catch (e) { } schedule(); }); })();
+  window.addEventListener('resize', schedule);
   $('optLive').addEventListener('change', function () { GW.sim.live = this.checked; schedule(); if (document.querySelector('#tabs button.on').dataset.tab === 'sim') GW.renderPanel(); });
   document.getElementById('tabs').addEventListener('click', function (e) { var b = e.target.closest('button[data-tab]'); if (b) GW.setTab(b.dataset.tab); });
   if (window.ResizeObserver) new ResizeObserver(schedule).observe(cv); else window.addEventListener('resize', schedule);

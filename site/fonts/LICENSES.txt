@@ -23,4 +23,6 @@ Added later (also SIL Open Font License 1.1, files from Fontsource):
   and more weights of Rajdhani, Orbitron, Oxanium, Chakra Petch and DM Sans.
 
 
+Roboto Bold (c) 2011 The Roboto Project Authors, Apache License 2.0 / OFL, files from Fontsource: stands in for the watch's own text font in the preview only.
+
 Icons: Material Design Icons @mdi/font 4.9.95 by Pictogrammers, Apache License 2.0, https://pictogrammers.com/docs/general/license (subset in mdi-icons-subset.ttf).

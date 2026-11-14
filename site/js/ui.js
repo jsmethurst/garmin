@@ -122,7 +122,7 @@
   function fFont(el, f) {
     var sel = h('select', { 'data-k': f.k });
     var g1 = h('optgroup', { label: 'Garmin built-in (fixed sizes)' });
-    GW.SYS_FONTS.forEach(function (s) { g1.appendChild(h('option', { value: s[0], text: s[0].replace('FONT_', '').replace(/_/g, ' ').toLowerCase() + ' · ~' + Math.round(s[1] * GW.SIZE / 260) + 'px' })); });
+    GW.SYS_FONTS.forEach(function (s) { g1.appendChild(h('option', { value: s[0], text: s[0].replace('FONT_', '').replace(/_/g, ' ').toLowerCase() + ' · ' + (GW.SIZE >= 280 ? s[1] : s[2]) + 'px' })); });
     sel.appendChild(g1);
     function inDesign(fam, w) { return GW.design.fonts.filter(function (c) { return c.family === fam && Number(c.weight) === Number(w); })[0]; }
     var g2 = h('optgroup', { label: 'Typefaces' });
@@ -447,8 +447,8 @@
   function fSysFont(el, f) {
     var sel = h('select', { 'data-k': f.k });
     GW.SYS_FONTS.forEach(function (s) {
-      if (f.only && s[2] !== f.only) return;
-      sel.appendChild(h('option', { value: s[0], text: s[0].replace('FONT_', '').replace(/_/g, ' ').toLowerCase() + (s[2] === 'n' ? ' (digits only)' : '') + ' · ~' + Math.round(s[1] * GW.SIZE / 260) + 'px' }));
+      if (f.only && s[3] !== f.only) return;
+      sel.appendChild(h('option', { value: s[0], text: s[0].replace('FONT_', '').replace(/_/g, ' ').toLowerCase() + (s[3] === 'n' ? ' (digits only)' : '') + ' · ' + (GW.SIZE >= 280 ? s[1] : s[2]) + 'px' }));
     });
     sel.value = el[f.k];
     sel.addEventListener('change', function () { el[f.k] = sel.value; fireChange(false); GW.touch(false); });
@@ -817,7 +817,7 @@
     return Object.assign({}, ft, { e: GW.dfEdges(GW.design, GW.design.dfSlot || 0) });   // the layout's dividing lines for this field
   }
   function fitFonts0(w, h) {
-    var sl = GW.dfSlot(GW.design), R = GW.SIZE * 0.45, nums = GW.SYS_FONTS.filter(function (f) { return f[2] === 'n'; }).map(function (f) { return f[0]; });
+    var sl = GW.dfSlot(GW.design), R = GW.SIZE * 0.45, nums = GW.SYS_FONTS.filter(function (f) { return f[3] === 'n'; }).map(function (f) { return f[0]; });
     var labs = h >= 100 ? ['FONT_TINY', 'FONT_XTINY'] : ['FONT_XTINY'];
     function visible(y) {   // visible x-range of the slot on row y (design coordinates are slot-relative)
       var dy = sl.y + y - GW.SIZE / 2, half = Math.sqrt(Math.max(0, R * R - dy * dy));
