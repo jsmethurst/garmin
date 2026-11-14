@@ -5,7 +5,7 @@ const vm = require('vm'), fs = require('fs'), path = require('path');
 const out = process.argv[2] || 'out';
 const site = path.join(__dirname, '..', 'site', 'js');
 
-const ctx2d = new Proxy({}, { get: (t, k) => k === 'measureText' ? () => ({ width: 8, actualBoundingBoxLeft: 0, actualBoundingBoxRight: 8, actualBoundingBoxAscent: 10, actualBoundingBoxDescent: 0 }) : () => { } });
+const ctx2d = new Proxy({}, { get: (t, k) => k === 'measureText' ? () => ({ width: 8, actualBoundingBoxLeft: 0, actualBoundingBoxRight: 8, actualBoundingBoxAscent: 10, actualBoundingBoxDescent: 0 }) : k === 'getImageData' ? (x, y, w, h) => ({ data: new Uint8ClampedArray(Math.max(1, w * h * 4)), width: w, height: h }) : () => { } });
 const stubCanvas = () => ({ getContext: () => ctx2d, style: {}, width: 0, height: 0 });
 const sandbox = {
   console, Math, JSON, Date, Intl, Object, Array, String, Number, Promise, Error, RegExp, Uint8Array, Uint32Array, TextEncoder, Blob: class { },
@@ -15,7 +15,7 @@ const sandbox = {
 };
 sandbox.window = sandbox; sandbox.devicePixelRatio = 1;
 vm.createContext(sandbox);
-['core', 'sources', 'fonts', 'worldmap', 'elements', 'slots', 'datafield', 'render', 'codegen', 'presets'].forEach((f) => {
+['core', 'sources', 'mdidata', 'fonts', 'worldmap', 'elements', 'icons', 'slots', 'datafield', 'render', 'codegen', 'presets'].forEach((f) => {
   vm.runInContext(fs.readFileSync(path.join(site, f + '.js'), 'utf8'), sandbox, { filename: f + '.js' });
 });
 const GW = sandbox.GW;
