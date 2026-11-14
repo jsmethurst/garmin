@@ -326,11 +326,10 @@
     },
     pos: [['cx', 'cy']],
     draw: function (ctx, el) {
-      ctx.lineCap = 'butt';
       for (var i = 0; i < el.count; i++) {
         var maj = el.major > 0 && i % el.major === 0, a = rad(i * 360 / el.count - 90);
         var len = maj ? el.majorLen : el.len, c = Math.cos(a), s = Math.sin(a);
-        ctx.strokeStyle = q(maj ? el.majorColor : el.color); ctx.lineWidth = maj ? el.majorWidth : el.width;
+        ctx.strokeStyle = q(maj ? el.majorColor : el.color); ctx.lineWidth = maj ? el.majorWidth : el.width; ctx.lineCap = el.round && ctx.lineWidth >= 3 ? 'round' : 'butt';
         ctx.beginPath(); ctx.moveTo(el.cx + el.r * c, el.cy + el.r * s); ctx.lineTo(el.cx + (el.r - len) * c, el.cy + (el.r - len) * s); ctx.stroke();
       }
     },
@@ -343,6 +342,7 @@
       return [
         { k: 'count', t: 'seg', label: 'Marks', opts: [[12, '12'], [24, '24'], [48, '48'], [60, '60'], [120, '120']], num: true },
         { k: 'major', t: 'num', label: 'Big mark every', min: 0, max: 60 },
+        { k: 'round', t: 'check', label: 'Rounded ends (marks 3 px or wider)' },
         { t: 'h', label: 'Small marks' },
         { k: 'color', t: 'color', label: 'Color' },
         { t: 'row', fields: [{ k: 'len', t: 'num', label: 'Length', min: 1, max: 40 }, { k: 'width', t: 'num', label: 'Width', min: 1, max: 8 }] },
@@ -361,24 +361,26 @@
       L.push('    var s = Math.sin(a);');
       L.push('    var c = Math.cos(a);');
       var cx = N(el.cx), cy = N(el.cy), r = N(el.r);
-      function seg(len) {
-        return '    dc.drawLine(' + cx + ' + ((' + r + ') * s).toNumber(), ' + cy + ' - ((' + r + ') * c).toNumber(), ' +
-          cx + ' + ((' + (r - len) + ') * s).toNumber(), ' + cy + ' - ((' + (r - len) + ') * c).toNumber());';
+      function seg(len, w) {
+        var x1 = cx + ' + ((' + r + ') * s).toNumber()', y1 = cy + ' - ((' + r + ') * c).toNumber()', x2 = cx + ' + ((' + (r - len) + ') * s).toNumber()', y2 = cy + ' - ((' + (r - len) + ') * c).toNumber()';
+        if (!(el.round && w >= 3)) return '    dc.drawLine(' + x1 + ', ' + y1 + ', ' + x2 + ', ' + y2 + ');';
+        var hw = Math.round(w / 2);   // round ends: a filled circle at each end of the line
+        return '    var xa = ' + x1 + ';\n    var ya = ' + y1 + ';\n    var xb = ' + x2 + ';\n    var yb = ' + y2 + ';\n    dc.drawLine(xa, ya, xb, yb);\n    dc.fillCircle(xa, ya, ' + hw + ');\n    dc.fillCircle(xb, yb, ' + hw + ');';
       }
       if (el.major > 0) {
         L.push('    if (i % ' + N(el.major) + ' == 0) {');
         L.push('        dc.setPenWidth(' + N(el.majorWidth) + ');');
         L.push('        dc.setColor(' + GW.mcColor(el.majorColor) + ', Graphics.COLOR_TRANSPARENT);');
-        L.push('    ' + seg(N(el.majorLen)));
+        L.push('    ' + seg(N(el.majorLen), N(el.majorWidth)));
         L.push('    } else {');
         L.push('        dc.setPenWidth(' + N(el.width) + ');');
         L.push('        dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);');
-        L.push('    ' + seg(N(el.len)));
+        L.push('    ' + seg(N(el.len), N(el.width)));
         L.push('    }');
       } else {
         L.push('    dc.setPenWidth(' + N(el.width) + ');');
         L.push('    dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);');
-        L.push(seg(N(el.len)));
+        L.push(seg(N(el.len), N(el.width)));
       }
       L.push('}');
       L.push('dc.setPenWidth(1);');

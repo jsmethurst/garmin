@@ -74,8 +74,8 @@
         function disc(x, y, r, c, n) { return E('shape', { name: n || 'Plate', kind: 'circle', x: x, y: y, r: r, fill: true, color: c }); }
         var els = [
           E('ticks', { name: 'Bezel ticks', r: 139, len: 4, count: 120, major: 0, width: 1, color: '#777777' }),
-          E('ticks', { name: 'Hour batons', r: 128, len: 17, count: 12, major: 1, majorLen: 17, width: 5, majorWidth: 5, color: w, majorColor: w }),
-          disc(140, 12, 18, '#000000', 'Hide 12 baton'), disc(140, 268, 18, '#000000', 'Hide 6 baton'),
+          E('ticks', { name: 'Hour batons', r: 128, len: 17, count: 12, major: 1, majorLen: 17, width: 5, majorWidth: 5, color: w, majorColor: w, round: true }),
+          disc(140, 12, 18, '#000000', 'Hide 12 baton'), disc(140, 266, 22, '#000000', 'Hide 6 baton'),
           // date plate at the top
           disc(140, 52, 33, '#000000'), E('shape', { name: 'Date plate outline', kind: 'circle', x: 140, y: 52, r: 33, fill: false, pen: 1, color: '#555555' }),
           txt(140, 38, 'date', X, '#ff5555', { fmt: 'ddd', upper: true }), txt(140, 58, 'date', 'FONT_MEDIUM', w, { fmt: 'DD' }),
