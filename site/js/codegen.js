@@ -289,7 +289,7 @@
 
   // ---------- main generator ----------
   GW.generateSource = function (design) {
-    var st = { needs: {}, helpers: [], hseen: {}, imports: {}, perms: {}, fonts: [], fseen: {}, fchars: {}, images: [], iseen: {}, files: {}, minApi: '3.2.0', hooks: { begin: [], init: [], compute: [], lap: [], reset: [] }, extraMembers: [] };
+    var st = { needs: {}, helpers: [], hseen: {}, imports: {}, perms: {}, fonts: [], fseen: {}, fchars: {}, images: [], iseen: {}, files: {}, strings: {}, sets: {}, setNeed: {}, minApi: '3.2.0', hooks: { begin: [], init: [], compute: [], lap: [], reset: [] }, extraMembers: [] };
     var warnings = [];
     var cg = {
       design: design,
@@ -298,6 +298,8 @@
       perm: function (s) { st.perms[s] = 1; },
       hook: function (name, line) { if (st.hooks[name].indexOf(line) < 0) st.hooks[name].push(line); },   // data-field callbacks
       member: function (line) { if (st.extraMembers.indexOf(line) < 0) st.extraMembers.push(line); },
+      setUse: function (id) { st.sets[id] = 1; },                              // a watch setting (see settings.js) this face reads
+      setNeed: function (n) { st.setNeed[n] = 1; },
       file: function (path, text) { st.files[path] = text; },                 // extra source files (e.g. data modules)
       minApi: function (v) {                                                  // raise manifest minApiLevel if needed
         var a = v.split('.').map(Number), b = st.minApi.split('.').map(Number);
@@ -351,7 +353,7 @@
     var methods = [], calls = [];
     els.forEach(function (e, i) {
       var t = GW.types[e.type]; if (!t) return;
-      var lines = t.gen(e, cg);
+      var lines = GW.genWithSettings ? GW.genWithSettings(e, t, cg, design) : t.gen(e, cg);
       if (!lines || !lines.length) return;
       var n = 'drawEl' + i;
       methods.push('    // ' + (e.name || e.type).replace(/[\r\n]/g, ' ') + '\n    function ' + n + '(dc as Dc) as Void {\n' +
@@ -359,6 +361,14 @@
       // one element failing (a missing reading, an API the watch lacks) must not take the whole face down with the "IQ!" screen
       calls.push('        try {\n            ' + n + '(dc);\n        } catch (ex) {\n        }');
     });
+    var bgExpr = GW.bgExpr ? GW.bgExpr(design, cg) : GW.mcColor(design.bg);
+    var setOut = GW.settingsOutput ? GW.settingsOutput(design, st.sets, st.setNeed.dim) : null;
+    if (setOut) {
+      st.extraMembers.push.apply(st.extraMembers, setOut.members);
+      Object.keys(setOut.files).forEach(function (f) { st.files[f] = setOut.files[f]; });
+      Object.keys(setOut.strings).forEach(function (k) { st.strings[k] = setOut.strings[k]; });
+      st.hooks.init.push('loadSettings();');
+    }
     if (st.needs.wx) cg.imp('Toybox.Time');
     var bg = null;
     if (design.bgImage && GW.assets[design.bgImage]) bg = { id: 'bgImage', asset: design.bgImage, w: GW.DEVICE.size, h: GW.DEVICE.size, full: true };
@@ -425,7 +435,7 @@
           (release.length ? '    function onHide() as Void {\n' + release.join('\n') + '\n    }\n\n' : '')) +
       '    function onUpdate(dc as Dc) as Void {\n' +
       (st.hooks.begin.length ? st.hooks.begin.map(function (l) { return '        ' + l + '\n'; }).join('')
-        : '        dc.setColor(Graphics.COLOR_WHITE, ' + GW.mcColor(design.bg) + ');\n        dc.clear();\n') +
+        : '        dc.setColor(Graphics.COLOR_WHITE, ' + bgExpr + ');\n        dc.clear();\n') +
       (bg ? '        if (_bg != null) {\n            dc.drawBitmap(0, 0, _bg);\n        }\n' : '') +
       (init.length ? init.join('\n') + '\n' : '') +
       calls.join('\n') + '\n' +
@@ -444,10 +454,12 @@
     var app =
       'import Toybox.Application;\nimport Toybox.Lang;\nimport Toybox.System;\nimport Toybox.WatchUi;\n\n' +
       'class ' + name + 'App extends Application.AppBase {\n\n' +
+      (setOut ? '    var _v;\n\n' : '') +
       '    function initialize() {\n        AppBase.initialize();\n    }\n\n' +
       '    function onStart(state as Dictionary?) as Void {\n        // the editable design travels inside the app (a text resource) so Garmin Studio can open this file again; this keeps it from being dropped\n' +
       '        if (System.getClockTime().sec == 99) {\n            System.println(WatchUi.loadResource(Rez.Strings.GwDesign));\n        }\n    }\n\n' +
-      '    function getInitialView() as [Views] or [Views, InputDelegates] {\n        return [ new ' + name + 'View() ];\n    }\n}\n';
+      '    function getInitialView() as [Views] or [Views, InputDelegates] {\n' + (setOut ? '        _v = new ' + name + 'View();\n        return [ _v ];\n' : '        return [ new ' + name + 'View() ];\n') + '    }\n' +
+      (setOut ? '\n    // the wearer changed a setting in the Garmin Connect app\n    function onSettingsChanged() as Void {\n        if (_v != null) {\n            _v.loadSettings();\n        }\n        WatchUi.requestUpdate();\n    }\n' : '') + '}\n';
 
     // ---------- warnings ----------
     var imgPx = 0;
@@ -461,6 +473,6 @@
     if (els.some(function (e) { var c = e.type === 'text' ? GW.textChars(e) : null; return c && GW.bmpOnly(c).refused > 0; })) warnings.push('A text uses a character above U+FFFF (an emoji, for example). Those are not supported and are left out of the exported font.');
     if (!els.length) warnings.push('The design is empty.');
 
-    return { name: name, type: isField ? 'datafield' : 'watchface', app: app, view: view, perms: perms, fonts: st.fonts, images: st.images, bg: bg, warnings: warnings, files: st.files, minApi: st.minApi, fontChars: st.fchars };
+    return { name: name, type: isField ? 'datafield' : 'watchface', app: app, view: view, perms: perms, fonts: st.fonts, images: st.images, bg: bg, warnings: warnings, files: st.files, strings: st.strings, minApi: st.minApi, fontChars: st.fchars };
   };
 })(window.GW);

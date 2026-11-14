@@ -126,7 +126,8 @@
     Object.keys(src.files || {}).forEach(function (p) { text(p, src.files[p]); });
     // the editable design rides inside the app as a text resource, so a built .prg / .iq can be opened in Garmin Studio again
     jobs.push(GW.packDesign(GW.serialize(), appId).then(function (packed) {
-      text('resources/strings/strings.xml', '<strings>\n    <string id="AppName">' + xmlEsc(design.name) + '</string>\n    <string id="GwDesign">' + packed + '</string>\n</strings>\n');
+      var extra = Object.keys(src.strings || {}).map(function (k) { return '    <string id="' + k + '">' + xmlEsc(src.strings[k]) + '</string>\n'; }).join('');   // titles and choices of the watch settings
+      text('resources/strings/strings.xml', '<strings>\n    <string id="AppName">' + xmlEsc(design.name) + '</string>\n    <string id="GwDesign">' + packed + '</string>\n' + extra + '</strings>\n');
     }));
 
     var drawables = ['    <bitmap id="LauncherIcon" filename="launcher_icon.png"/>'];
