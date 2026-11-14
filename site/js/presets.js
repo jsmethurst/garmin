@@ -68,6 +68,30 @@
         });
         return D('Terminal Türkçe', '#000000', [font(B, 'Share Tech Mono', 400, 52, 'digits'), font(F, 'Share Tech Mono', 400, 17, 'full')], els);
       } },
+    { id: 'activitydial', name: 'Activity Dial', blurb: 'Black analog dial with white batons and hands, a red second hand, a date plate, a temperature gauge, a steps ring and three activity rings.',
+      build: function () {
+        var X = 'FONT_XTINY', w = '#ffffff';
+        function disc(x, y, r, c, n) { return E('shape', { name: n || 'Plate', kind: 'circle', x: x, y: y, r: r, fill: true, color: c }); }
+        var els = [
+          E('ticks', { name: 'Bezel ticks', r: 139, len: 4, count: 120, major: 0, width: 1, color: '#777777' }),
+          E('ticks', { name: 'Hour batons', r: 128, len: 17, count: 12, major: 1, majorLen: 17, width: 5, majorWidth: 5, color: w, majorColor: w }),
+          disc(140, 12, 18, '#000000', 'Hide 12 baton'), disc(140, 268, 18, '#000000', 'Hide 6 baton'),
+          // date plate at the top
+          disc(140, 52, 33, '#000000'), E('shape', { name: 'Date plate outline', kind: 'circle', x: 140, y: 52, r: 33, fill: false, pen: 1, color: '#555555' }),
+          txt(140, 38, 'date', X, '#ff5555', { fmt: 'ddd', upper: true }), txt(140, 58, 'date', 'FONT_MEDIUM', w, { fmt: 'DD' }),
+          // temperature gauge at the left
+          E('arc', { name: 'Temperature gauge', cx: 72, cy: 140, r: 31, pen: 5, start: 225, sweep: 270, dir: 'cw', source: 'temp', min: -10, max: 40, color: '#ffaa00', track: '#333333', round: true }),
+          txt(72, 138, 'temp', 'FONT_MEDIUM', w, {}), txt(58, 160, 'tempLow', X, '#ffff00', {}), txt(88, 160, 'tempHigh', X, '#ff5555', {}),
+          // steps ring at the right
+          E('arc', { name: 'Steps ring', cx: 208, cy: 140, r: 31, pen: 6, start: 0, sweep: 360, dir: 'cw', source: 'steps', color: '#00aaff', track: '#003355', round: true }),
+          E('icon', { name: 'Walk icon', x: 208, y: 140, kind: 'walk', size: 26, color: w }),
+          // activity rings at the bottom
+          E('arc', { name: 'Move ring', cx: 140, cy: 206, r: 31, pen: 8, start: 0, sweep: 360, dir: 'cw', source: 'calories', color: '#ff0055', track: '#550022', round: true }),
+          E('arc', { name: 'Exercise ring', cx: 140, cy: 206, r: 22, pen: 8, start: 0, sweep: 360, dir: 'cw', source: 'intMins', color: '#aaff00', track: '#335500', round: true }),
+          E('arc', { name: 'Stand ring', cx: 140, cy: 206, r: 13, pen: 8, start: 0, sweep: 360, dir: 'cw', source: 'floors', color: '#00ffff', track: '#005555', round: true }),
+          E('hands', { name: 'Hands', style: 'sword', hLen: 66, hW: 11, mLen: 104, mW: 8, hColor: w, mColor: w, oColor: '#000000', oW: 1, sShow: true, sLen: 118, sTail: 26, sW: 2, sColor: '#ff0000', hub: 5, hubColor: '#ff0000' })];
+        return D('Activity Dial', '#000000', [], els);
+      } },
     // ---- three very busy faces: as many data points as fit ----
     { id: 'missioncontrol', name: 'Mission Control', blurb: 'Two rings, date, sun times, two clocks, weather, moon, a big time and nine more numbers.',
       build: function () {

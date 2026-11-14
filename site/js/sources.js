@@ -255,6 +255,15 @@
     mcNum: function (el, cg) { cg.need('wx'); cg.helper('tempNow'); return 'tempNow(' + ({ C: 1, F: 2 }[el.unit] || 0) + ')'; },
     mcStr: function (el, cg) { cg.helper('ns'); cg.need('wx'); cg.helper('tempNow'); return 'ns(tempNow(' + ({ C: 1, F: 2 }[el.unit] || 0) + '))'; }
   });
+  [['tempLow', 'Temperature, today’s low', 'tempLowNow', 'tempLow'], ['tempHigh', 'Temperature, today’s high', 'tempHighNow', 'tempHigh']].forEach(function (d) {
+    numeric(d[0], d[1], 'Environment', {
+      fn: d[2], needs: ['wx'], range: [-10, 40], opts: ['unit_temp'], imports: ['Toybox.Weather'],
+      num: function (e) { var v = e.sim[d[3]]; return e.sim.metric ? v : v * 9 / 5 + 32; },
+      str: function (el, env) { var v = env.sim[d[3]], c = el.unit === 'F' ? false : (el.unit === 'C' ? true : env.sim.metric); return String(Math.round(c ? v : v * 9 / 5 + 32)); },
+      mcNum: function (el, cg) { cg.need('wx'); cg.helper(d[2]); return d[2] + '(' + ({ C: 1, F: 2 }[el.unit] || 0) + ')'; },
+      mcStr: function (el, cg) { cg.helper('ns'); cg.need('wx'); cg.helper(d[2]); return 'ns(' + d[2] + '(' + ({ C: 1, F: 2 }[el.unit] || 0) + '))'; }
+    });
+  });
   GW.WX_NAMES = ['Clear', 'Part cloudy', 'Cloudy', 'Rain', 'Snow', 'Storm', 'Fog', 'Sleet', '--'];
   def('weatherDesc', {
     label: 'Weather conditions', group: 'Environment', kind: 'str', opts: ['trnames'], imports: ['Toybox.Weather'],

@@ -61,6 +61,20 @@
     stressNow: { imports: ['Toybox.SensorHistory'], code: sensor('stressNow', 'getStressHistory') },
     spo2Now: { imports: ['Toybox.SensorHistory'], code: sensor('spo2Now', 'getOxygenSaturationHistory') },
     respNow: { imports: ['Toybox.SensorHistory'], code: sensor('respNow', 'getRespirationRateHistory') },
+    tempLowNow: {
+      needs: ['wx'],
+      code: 'function tempLowNow(mode) {\n        if (_wx == null || _wx.lowTemperature == null) { return null; }\n        var t = _wx.lowTemperature.toFloat();\n' +
+        '        var f = (mode == 2) || (mode == 0 && System.getDeviceSettings().temperatureUnits == System.UNIT_STATUTE);\n' +
+        '        if (f) { t = t * 9.0 / 5.0 + 32.0; }\n        return Math.round(t).toNumber();\n    }',
+      imports: ['Toybox.Math']
+    },
+    tempHighNow: {
+      needs: ['wx'],
+      code: 'function tempHighNow(mode) {\n        if (_wx == null || _wx.highTemperature == null) { return null; }\n        var t = _wx.highTemperature.toFloat();\n' +
+        '        var f = (mode == 2) || (mode == 0 && System.getDeviceSettings().temperatureUnits == System.UNIT_STATUTE);\n' +
+        '        if (f) { t = t * 9.0 / 5.0 + 32.0; }\n        return Math.round(t).toNumber();\n    }',
+      imports: ['Toybox.Math']
+    },
     tempNow: {
       needs: ['wx'],
       code: 'function tempNow(mode) {\n        if (_wx == null || _wx.temperature == null) { return null; }\n        var t = _wx.temperature.toFloat();\n' +
