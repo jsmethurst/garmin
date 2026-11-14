@@ -543,27 +543,27 @@
   function hexCentre(el, q, r) { return [Math.round(el.cx) + Math.trunc(Math.sqrt(3) * el.r * (q + r / 2)), Math.round(el.cy) + Math.trunc(1.5 * el.r * r)]; }
   T.hexgrid = {
     label: 'Honeycomb lines', icon: '⬡',
-    defaults: function () { return { type: 'hexgrid', name: 'Honeycomb', cx: 140, cy: 140, r: 29, skip: 2, pen: 1, color: '#555555' }; },
+    defaults: function () { return { type: 'hexgrid', name: 'Honeycomb', cx: 140, cy: 140, r: 30, gap: 1, skip: 2, pen: 1, color: '#555555' }; },
     pos: [['cx', 'cy']],
     draw: function (ctx, el) {
       ctx.strokeStyle = q(el.color); ctx.lineWidth = el.pen; ctx.lineCap = 'butt';
       for (var qq = -7; qq <= 7; qq++) for (var rr = -7; rr <= 7; rr++) {
         var s = -qq - rr; if (Math.abs(s) > 7 || Math.max(Math.abs(qq), Math.abs(rr), Math.abs(s)) <= el.skip) continue;
         var c = hexCentre(el, qq, rr); if (c[0] < -el.r || c[0] > GW.SIZE + el.r || c[1] < -el.r || c[1] > GW.SIZE + el.r) continue;
-        ctx.beginPath(); hexPts(c[0], c[1], el.r).forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); ctx.stroke();
+        ctx.beginPath(); hexPts(c[0], c[1], el.r - (el.gap || 0)).forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); ctx.stroke();   // the lattice uses the full cell size, the drawn hexagon is a little smaller (the gap)
       }
     },
     box: function (el) { return { x: el.cx - 7 * el.r, y: el.cy - 7 * el.r, w: 14 * el.r, h: 14 * el.r }; },
     fields: function () {
       return [
         { k: 'color', t: 'color', label: 'Line color' },
-        { t: 'row', fields: [{ k: 'r', t: 'num', label: 'Cell size', min: 8, max: 80 }, { k: 'pen', t: 'num', label: 'Line width', min: 1, max: 6 }] },
+        { t: 'row', fields: [{ k: 'r', t: 'num', label: 'Cell size', min: 8, max: 80 }, { k: 'gap', t: 'num', label: 'Gap', min: 0, max: 6 }, { k: 'pen', t: 'num', label: 'Line width', min: 1, max: 6 }] },
         { k: 'skip', t: 'num', label: 'Rings left empty in the middle', min: 0, max: 6 },
         { t: 'row', fields: [{ k: 'cx', t: 'num', label: 'Centre X', min: -50, max: 330 }, { k: 'cy', t: 'num', label: 'Centre Y', min: -50, max: 330 }] }
       ];
     },
     gen: function (el, cg) {
-      var P = hexPts(0, 0, el.r), size = GW.SIZE, id = String(el.id).replace(/[^A-Za-z0-9]/g, '');
+      var P = hexPts(0, 0, el.r - (el.gap || 0)), size = GW.SIZE, id = String(el.id).replace(/[^A-Za-z0-9]/g, '');
       cg.member('    const HEX_' + id + '_X = [' + P.map(function (p) { return p[0]; }).join(', ') + '];');
       cg.member('    const HEX_' + id + '_Y = [' + P.map(function (p) { return p[1]; }).join(', ') + '];');
       return ['dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);', 'dc.setPenWidth(' + N(el.pen) + ');',
