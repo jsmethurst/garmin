@@ -101,10 +101,10 @@
       S.all(d).push(s); if (!d.colorMode) d.colorMode = 'theme'; return s;
     },
     // every place that uses a color role takes its starting color (so the preview shows what the watch shows before anyone changes a setting)
-    applyDefault: function (s, d) {
-      d = d || GW.design;
-      d.elements.forEach(function (e) { if (e.set) Object.keys(e.set).forEach(function (k) { if (e.set[k] === s.id) e[k] = s.def; }); });
-      if (d.bgSet === s.id) d.bg = s.def;
+    applyDefault: function (s, d, color) {        // color: show this on the face without changing the role's own starting color (theme preview)
+      d = d || GW.design; var c = color || s.def;
+      d.elements.forEach(function (e) { if (e.set) Object.keys(e.set).forEach(function (k) { if (e.set[k] === s.id) e[k] = c; }); });
+      if (d.bgSet === s.id) d.bg = c;
     },
     unmapAll: function (id, d) {
       d = d || GW.design;

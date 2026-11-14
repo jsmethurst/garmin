@@ -319,6 +319,7 @@
         var head = h('div', { style: FLEX }, [h('span', { class: 'muted small', style: 'width:96px', text: 'Original' })]);
         roles.forEach(function (r) { head.appendChild(h('span', { class: 'swatch', title: r.label + ' (starting color)', style: 'width:36px;flex:0 0 auto' }, [h('i', { style: 'background:' + GW.q(r.def) })])); });
         head.appendChild(h('span', { class: 'muted small', text: 'as designed' }));
+        head.appendChild(h('button', { class: 'btn sm', text: 'Preview', title: 'Show the original colors on the face', onclick: function () { roles.forEach(function (r) { GW.settings.applyDefault(r); }); GW.commit(true); GW.renderPanel(); } }));
         p.appendChild(head);
         th.themes.forEach(function (t, i) {
           var nm = h('input', { type: 'text', value: t.name, maxlength: 20, style: 'width:96px;flex:0 0 auto', 'aria-label': 'Theme name' });
@@ -329,8 +330,8 @@
             b.addEventListener('click', function () { GW.pickColor(b, cur, function (c) { t.colors[r.id] = GW.q(c); GW.commit(false); GW.renderPanel(); }); });
             row.push(b);
           });
-          row.push(h('button', { class: 'btn sm', text: 'Preview', title: 'Show this theme on the face (sets the starting colors)', onclick: function () {
-            roles.forEach(function (r) { r.def = GW.settings.themeColor(t, r); GW.settings.applyDefault(r); }); GW.commit(true); GW.renderPanel(); } }));
+          row.push(h('button', { class: 'btn sm', text: 'Preview', title: 'Show this theme on the face (the starting colors stay as designed)', onclick: function () {
+            roles.forEach(function (r) { GW.settings.applyDefault(r, null, GW.settings.themeColor(t, r)); }); GW.commit(true); GW.renderPanel(); } }));
           row.push(h('button', { class: 'btn sm danger', text: '×', onclick: function () { th.themes.splice(i, 1); GW.commit(false); GW.renderPanel(); } }));
           p.appendChild(h('div', { style: FLEX }, row));
         });
