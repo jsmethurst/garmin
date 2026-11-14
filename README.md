@@ -63,6 +63,8 @@ The repo is a Vercel project: `site/` is served as static files and `api/` holds
 
 After redeploying, open the site → **Get it on my watch** → **Set up the builder**. This is a personal tool: keep Vercel's deployment protection on so only you can reach `/api/*`.
 
+* `api/layouts` is the **shared library** behind the Save button: everyone who opens the site sees the same saved layouts. It keeps one private file per layout in a **Vercel Blob** store (Project → Storage → create a *Private* Blob store and connect it to the project, which adds `BLOB_READ_WRITE_TOKEN`; redeploy afterwards). Without a store, layouts are saved in each browser only.
+
 The site still works as plain static hosting; without the backend the build button simply hides and you use the ZIP + README flow.
 
 ## How it is put together
