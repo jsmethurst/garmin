@@ -162,7 +162,7 @@
         ctr.forEach(function (c) { els.push(E('shape', { name: 'Time cell', kind: 'hex', x: c.p[0], y: c.p[1], r: R, fill: true, color: '#000055' })); });
         var ring = cells.filter(function (c) { return c.d === 2; }).sort(function (a, b) { return Math.atan2(a.p[0] - 140, -(a.p[1] - 140)) - Math.atan2(b.p[0] - 140, -(b.p[1] - 140)); });
         var CELLS = [['steps', 'steps', '', '#0055aa'], ['heart-pulse', 'hr', '', '#aa0000'], ['battery', 'batteryDays', 'g', '#00aa55'], ['wx', 'temp', '°', '#ff5500'], ['sunnext', 'sunNext', '', '#aa5500'], ['fire', 'calories', '', '#aa0055'],
-          ['run', 'distance', ' km', '#0000aa'], ['stairs', 'floors', '', '#00aaaa'], ['flash', 'bodyBat', '', '#5500aa'], ['weather-windy', 'resp', '', '#0055aa'], ['terrain', 'altitude', 'm', '#555555'], ['timer', 'intMins', 'd', '#aa5500']];
+          ['run', 'distance', 'km', '#0000aa'], ['stairs', 'floors', '', '#00aaaa'], ['flash', 'bodyBat', '', '#5500aa'], ['weather-windy', 'resp', '', '#0055aa'], ['terrain', 'altitude', 'm', '#555555'], ['timer', 'intMins', 'd', '#aa5500']];
         ring.forEach(function (c, i) { els.push(E('shape', { name: 'Cell ' + CELLS[i][1], kind: 'hex', x: c.p[0], y: c.p[1], r: R, fill: true, color: CELLS[i][3] })); });
         els.push(E('hexgrid', { name: 'Honeycomb grid', cx: 140, cy: 140, r: R, skip: 1, pen: 2, color: w }));
         // time exactly in the middle; New York zone and time above, weekday, day and month together below (Turkish abbreviations)
