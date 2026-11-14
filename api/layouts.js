@@ -11,18 +11,20 @@ const KINDS = ['watch', 'field'];
 const b64 = (s) => Buffer.from(String(s).trim().toLowerCase(), 'utf8').toString('base64url');
 const pathOf = (kind, name) => `layouts/${kind}/${b64(name)}.json`;
 
+// Blob stores come in two flavours: a read-write token (BLOB_READ_WRITE_TOKEN) or, newer, BLOB_STORE_ID with no token (OIDC).
 // The store's token is normally BLOB_READ_WRITE_TOKEN, but connecting a store with a name prefix gives <PREFIX>_READ_WRITE_TOKEN: accept either.
 const tokenKey = () => (process.env.BLOB_READ_WRITE_TOKEN ? 'BLOB_READ_WRITE_TOKEN' : Object.keys(process.env).find((k) => /_READ_WRITE_TOKEN$/.test(k) && process.env[k]));
 
 export default async function handler(req, res) {
   const key = tokenKey();
-  if (!key) {
+  // Newer Blob stores have no read-write token: the project gets BLOB_STORE_ID and the SDK signs in with the deployment's OIDC identity
+  if (!key && !process.env.BLOB_STORE_ID) {
     const seen = Object.keys(process.env).filter((k) => /BLOB/i.test(k));   // names only, never values: helps to see what the project has
     const reason = 'No Blob store token in this deployment' + (seen.length ? ' (found: ' + seen.join(', ') + ')' : ' (no BLOB variables at all: connect the store to the project and redeploy)');
     if (req.method === 'GET') return json(res, 200, { configured: false, reason, layouts: [] });
     return json(res, 503, { ok: false, message: reason });
   }
-  const token = process.env[key];
+  const token = key ? process.env[key] : undefined;
   try {
     if (req.method === 'GET') {
       const blobs = [];
