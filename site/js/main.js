@@ -17,21 +17,32 @@
   // ---------- drawing ----------
   var drawQ = false;
   function schedule() { if (drawQ) return; drawQ = true; requestAnimationFrame(draw); }
-  // Exact pixels: the preview is the watch's own pixel grid, enlarged by a whole number so every watch pixel is the same size on screen.
+  // Exact pixels: the preview is the watch's own pixel grid, enlarged by a whole number k: every watch pixel is a k × k block of your display's pixels, hard-edged
+  // (no smoothing), in the watch's 64 colours. The watch picture is sized so the screen fills its frame exactly at that k.
   var exact = true; try { exact = localStorage.getItem('gw.exact') !== '0'; } catch (e) { }
   var pxCv = document.createElement('canvas'), pxCtx = pxCv.getContext('2d', { willReadFrequently: true });
-  // 1× means one watch pixel is one pixel of this display (so the face is 280 or 260 display pixels across, like the real screen); 2×, 3×, 4× enlarge it by whole numbers
-  var zoom = 1; try { zoom = Math.max(1, Math.min(8, +localStorage.getItem('gw.zoom') || 1)); } catch (e) { }
-  function exactScale() { return zoom; }
+  var fitKey = '', fitK = 1;
+  function exactFit(d) {
+    var w = document.querySelector('.watch'), g = cv.parentNode; if (!w || !g) return 1;
+    var key = [window.innerWidth, window.innerHeight, GW.SIZE, d, w.className, g.style.width, w.style.getPropertyValue('--rat')].join('|');
+    if (key === fitKey) return fitK;
+    w.style.width = '';   // what the page layout would give the watch picture
+    var frac = g.style.width ? parseFloat(g.style.width) / 100 : 0.53, maxW = w.getBoundingClientRect().width;
+    fitK = Math.max(1, Math.floor(maxW * frac * d / GW.SIZE + 1e-6));
+    w.style.width = (GW.SIZE * fitK / d / frac) + 'px';   // the screen is now exactly SIZE × k display pixels across
+    fitKey = [window.innerWidth, window.innerHeight, GW.SIZE, d, w.className, g.style.width, w.style.getPropertyValue('--rat')].join('|');
+    return fitK;
+  }
   function fit() {
-    var d = window.devicePixelRatio || 1;
+    var d = window.devicePixelRatio || 1, w = document.querySelector('.watch');
     if (exact && GW.design.kind !== 'datafield') {
-      var k = exactScale(), px = GW.SIZE * k;
+      var k = exactFit(d), px = GW.SIZE * k;
       if (cv.width !== px) { cv.width = cv.height = px; }
-      cv.style.width = cv.style.height = (px / d) + 'px'; cv.classList.add('exact');
+      cv.classList.add('exact');
       return;
     }
-    cv.style.width = cv.style.height = ''; cv.classList.remove('exact');
+    if (w && fitKey) { w.style.width = ''; fitKey = ''; }
+    cv.classList.remove('exact');
     var px2 = Math.max(100, Math.round(cv.clientWidth * d));
     if (cv.width !== px2) { cv.width = cv.height = px2; }
   }
@@ -325,7 +336,6 @@
   });
   $('optSnap').addEventListener('change', function () { opts.snap = this.checked; });
   $('optGrid').addEventListener('change', function () { opts.grid = this.checked; schedule(); });
-  (function () { var z = $('optZoom'); if (!z) return; z.value = String(zoom); z.addEventListener('change', function () { zoom = +this.value || 1; try { localStorage.setItem('gw.zoom', String(zoom)); } catch (e) { } schedule(); }); })();
   (function () { var o = $('optExact'); if (!o) return; o.checked = exact; o.addEventListener('change', function () { exact = this.checked; try { localStorage.setItem('gw.exact', exact ? '1' : '0'); } catch (e) { } schedule(); }); })();
   window.addEventListener('resize', schedule);
   $('optLive').addEventListener('change', function () { GW.sim.live = this.checked; schedule(); if (document.querySelector('#tabs button.on').dataset.tab === 'sim') GW.renderPanel(); });

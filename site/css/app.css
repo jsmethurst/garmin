@@ -150,7 +150,7 @@ button { cursor: pointer; }
 .watch.dev .frame { display: none; }
 .devimg { position: absolute; inset: 0; width: 100%; height: 100%; }
 #cv { display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
-#cv.exact { image-rendering: pixelated; margin: auto; position: absolute; inset: 0; }
+#cv.exact { image-rendering: pixelated; }
 .status { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: center; font-size: 12.5px; }
 .status .mono { min-width: 92px; color: var(--muted); }
 .tgl { display: flex; gap: 6px; align-items: center; color: var(--muted); cursor: pointer; }
