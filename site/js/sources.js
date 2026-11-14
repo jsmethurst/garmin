@@ -336,6 +336,11 @@
     str: function (el, env) { var d = env.now; return ('0' + d.getUTCHours()).slice(-2) + ':' + ('0' + d.getUTCMinutes()).slice(-2); },
     mcStr: function (el, cg) { cg.helper('utcStr'); return 'utcStr()'; }
   });
+  def('nyZoneTime', {
+    label: 'New York zone and time ("EST 07:58")', group: 'Environment', kind: 'str', opts: [], imports: ['Toybox.Time', 'Toybox.Time.Gregorian'],
+    str: function (el, env) { var n = nyParts(env.now); return n.zone + ' ' + n.t; },
+    mcStr: function (el, cg) { cg.helper('nyStr'); return '(nyStr(1) + " " + nyStr(0))'; }
+  });
   def('nyZone', {
     label: 'New York zone (EDT / EST)', group: 'Environment', kind: 'str', opts: [], imports: ['Toybox.Time', 'Toybox.Time.Gregorian'],
     str: function (el, env) { return nyParts(env.now).zone; },
