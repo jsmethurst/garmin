@@ -153,7 +153,7 @@
       } },
     { id: 'honeycomb', name: 'Honeycomb', blurb: 'A big navy hexagon holds the time and date; twelve coloured cells round it carry data; plain honeycomb lines run off the screen.',
       build: function () {
-        var R = 32, W = Math.sqrt(3) * R, w = '#ffffff', X = 'FONT_XTINY';
+        var R = 31, W = Math.sqrt(3) * R, w = '#ffffff', X = 'FONT_XTINY';
         function pos(q, r) { return [140 + Math.trunc(W * (q + r / 2)), 140 + Math.trunc(1.5 * R * r)]; }
         var cells = []; for (var q = -2; q <= 2; q++) for (var r = -2; r <= 2; r++) { var s = -q - r; if (Math.abs(s) > 2) continue; cells.push({ q: q, r: r, d: Math.max(Math.abs(q), Math.abs(r), Math.abs(s)), p: pos(q, r) }); }
         var els = [E('hexgrid', { name: 'Honeycomb lines', cx: 140, cy: 140, r: R - 1, skip: 2, pen: 1, color: '#555555' })];
