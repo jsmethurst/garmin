@@ -151,22 +151,20 @@
           E('moon', { name: 'Moon', x: 214, y: 246, r: 10, lit: '#ffffff', dark: '#555555', rim: '#000000' }));
         return D('Data Wall', '#ffffff', [], els);
       } },
-    { id: 'honeycomb', name: 'Honeycomb', blurb: 'A big navy hexagon holds the time and date; twelve coloured cells round it carry data; one white honeycomb grid runs over everything and off the screen.',
+    { id: 'honeycomb', name: 'Honeycomb', blurb: 'Black on white: a big hexagon holds the time and date; twelve cells round it carry data; one black honeycomb grid runs off the screen.',
       build: function () {
-        var R = 31, W = Math.sqrt(3) * R, w = '#ffffff', X = 'FONT_XTINY';
+        var R = 31, W = Math.sqrt(3) * R, w = '#000000', X = 'FONT_XTINY';   // black on white: black lines, text and symbols
         function pos(q, r) { return [140 + Math.trunc(W * (q + r / 2)), 140 + Math.trunc(1.5 * R * r)]; }
         var cells = []; for (var q = -2; q <= 2; q++) for (var r = -2; r <= 2; r++) { var s = -q - r; if (Math.abs(s) > 2) continue; cells.push({ q: q, r: r, d: Math.max(Math.abs(q), Math.abs(r), Math.abs(s)), p: pos(q, r) }); }
         var els = [];
-        // cell fills first; one white honeycomb grid goes over them (and runs off the screen); the symbols and values go on top
+        // one black honeycomb grid (it runs off the screen); the symbols and values sit in its cells
         var ctr = cells.filter(function (c) { return c.d <= 1; });
-        ctr.forEach(function (c) { els.push(E('shape', { name: 'Time cell', kind: 'hex', x: c.p[0], y: c.p[1], r: R, fill: true, color: '#000055' })); });
         var ring = cells.filter(function (c) { return c.d === 2; }).sort(function (a, b) { return Math.atan2(a.p[0] - 140, -(a.p[1] - 140)) - Math.atan2(b.p[0] - 140, -(b.p[1] - 140)); });
         var CELLS = [['steps', 'steps', '', '#0055aa'], ['heart-pulse', 'hr', '', '#aa0000'], ['battery', 'batteryDays', 'g', '#00aa55'], ['wx', 'temp', '°', '#ff5500'], ['sunnext', 'sunNext', '', '#aa5500'], ['fire', 'calories', '', '#aa0055'],
           ['run', 'distance', 'km', '#0000aa'], ['stairs', 'floors', '', '#00aaaa'], ['flash', 'bodyBat', '', '#5500aa'], ['weather-windy', 'resp', '', '#0055aa'], ['terrain', 'altitude', 'm', '#555555'], ['timer', 'intMins', 'd', '#aa5500']];
-        ring.forEach(function (c, i) { els.push(E('shape', { name: 'Cell ' + CELLS[i][1], kind: 'hex', x: c.p[0], y: c.p[1], r: R, fill: true, color: CELLS[i][3] })); });
         els.push(E('hexgrid', { name: 'Honeycomb grid', cx: 140, cy: 140, r: R, skip: 1, pen: 2, color: w }));
         // time exactly in the middle; New York zone and time above, weekday, day and month together below (Turkish abbreviations)
-        els.push(txt(140, 140, 'time', 'FONT_NUMBER_MEDIUM', w, { secs: false }), txt(140, 107, 'nyZoneTime', X, '#aaddff', {}), txt(140, 173, 'date', X, '#aaddff', { fmt: 'ddd D MMM', tr: true, upper: true }));
+        els.push(txt(140, 140, 'time', 'FONT_NUMBER_MEDIUM', w, { secs: false }), txt(140, 107, 'nyZoneTime', X, w, {}), txt(140, 173, 'date', X, w, { fmt: 'ddd D MMM', tr: true, upper: true }));
         ring.forEach(function (c, i) {
           var d = CELLS[i], x = c.p[0], y = c.p[1];
           // a small symbol near the top of the cell, the value in the extra-small font below it
@@ -175,7 +173,7 @@
           else els.push(E('icon', { name: 'Icon ' + d[1], x: x, y: y - 12, kind: d[0], size: 13, color: w }));
           els.push(txt(x, y + 8, d[1], X, w, { justify: 'C', suffix: d[2] }));
         });
-        return D('Honeycomb', '#000000', [], els);
+        return D('Honeycomb', '#ffffff', [], els);
       } },
     { id: 'pilot', name: 'Pilot', blurb: 'Classic analog: sword hands, big numerals, a date window at 3.',
       build: function () {

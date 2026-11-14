@@ -6,5 +6,14 @@
   GW.PATCHES = [
     { id: '2026-11-14-honeycomb-altitude-m', layout: 'Honeycomb', kind: 'watch', ops: [{ find: { source: 'altitude' }, set: { suffix: 'm' } }] }
     ,{ id: '2026-11-14-honeycomb-distance-km', layout: 'Honeycomb', kind: 'watch', ops: [{ find: { source: 'distance' }, set: { suffix: 'km' } }] }
+    ,{ id: '2026-11-14-honeycomb-black-on-white', layout: 'Honeycomb', kind: 'watch', ops: [
+      { design: { bg: '#ffffff' } },
+      { find: { type: 'shape', kind: 'hex' }, set: { color: '#ffffff' } },          // the coloured cells become plain white
+      { find: { type: 'hexgrid' }, set: { color: '#000000' } },
+      { find: { type: 'text' }, set: { color: '#000000' } },
+      { find: { type: 'icon' }, set: { color: '#000000' } },
+      { find: { type: 'wxicon' }, set: { mono: '#000000' } },
+      { find: { type: 'sunmark' }, set: { color: '#000000' } }
+    ] }
   ];
 })(window.GW);
