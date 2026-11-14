@@ -368,7 +368,7 @@
           if (r !== 'label' && r !== 'unit') return h('span', { class: 'muted small', style: 'min-width:44px', text: r === 'icon' ? 'icon (picked for you)' : ROLE[r] });
           var rs = h('select', { class: 'sel', 'aria-label': 'What this text is', title: 'A name (Heart) or a unit (BPM)', style: 'width:auto' });
           [['label', 'name'], ['unit', 'unit']].forEach(function (o) { var op = settingOpt(o[0], o[1]); if (o[0] === r) op.selected = true; rs.appendChild(op); });
-          rs.addEventListener('change', function () { if (rs.value === 'unit') e.srcRole = 'unit'; else delete e.srcRole; GW.commit(true); GW.renderPanel(); });
+          rs.addEventListener('change', function () { e.srcRole = rs.value; GW.commit(true); GW.renderPanel(); });
           return rs;
         })(), h('span', { text: e.name || e.type, style: 'flex:1' }),
         h('button', { class: 'btn sm', text: '×', title: 'Take this layer out of the slot', onclick: function () { GW.settings.removeMember(s, e); GW.commit(true); GW.renderPanel(); } })]));

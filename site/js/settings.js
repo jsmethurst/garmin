@@ -53,7 +53,8 @@
   // short labels for the text that names a reading ("STEPS", "HR"); anything else is the reading's name in capitals, cut short
   var SHORT = { steps: 'STEPS', stepGoal: 'GOAL', calories: 'CAL', floors: 'FLOORS', intMins: 'MIN', distance: 'DIST', workoutDist: 'DIST', altitude: 'ALT', battery: 'BATT', batteryDays: 'DAYS',
     bodyBat: 'BODY', hr: 'HR', stress: 'STRESS', resp: 'RESP', spo2: 'SPO2', notif: 'MSG', temp: 'TEMP', weatherDesc: 'WEATHER', sunrise: 'RISE', sunset: 'SET', date: 'DATE', time: 'TIME' };
-  var AFFIX = { battery: '%', spo2: '%', temp: '°' };
+  var AFFIX = { battery: '%', spo2: '%', temp: '°', bodyBat: '%', hr: 'BPM', batteryDays: 'd', moonIllum: '%', calories: 'kcal', distance: 'km', altitude: 'm' };
+  var UNITLIKE = /^\s*(bpm|%|°[cf]?|km|mi|m|ft|min|h|d|kcal|cal|steps|days|brpm|mph|km\/h)\s*$/i;   // a fixed text like this is a unit, not a name
   GW.sourceShort = function (c) { var s = GW.sources[c]; return SHORT[c] || (s ? s.label.toUpperCase().slice(0, 8) : String(c).toUpperCase()); };
 
   // ---------- the list ----------
@@ -175,7 +176,7 @@
     members: function (id, d) { d = d || GW.design; return d.elements.filter(function (e) { return e.srcSet === id; }); },
     roleOf: function (e) {          // what a layer does in a data slot
       if (e.type === 'icon') return 'icon';
-      if (e.type === 'text') return e.source === 'custom' ? (e.srcRole === 'unit' ? 'unit' : 'label') : 'value';
+      if (e.type === 'text') return e.source === 'custom' ? ((e.srcRole || (UNITLIKE.test(e.text || '') ? 'unit' : 'label')) === 'unit' ? 'unit' : 'label') : 'value';
       if (e.type === 'arc' || e.type === 'seggauge') return 'gauge';
       return null;
     },
@@ -194,6 +195,7 @@
       function put(e) {
         if (!e || e.srcSet === s.id || !S.roleOf(e)) return;
         e.srcSet = s.id; added.push(e.name || e.type);
+        if (e.type === 'text' && e.source === 'custom' && !e.srcRole) e.srcRole = S.roleOf(e) === 'unit' || S.members(s.id, d).some(function (o) { return o !== e && S.roleOf(o) === 'label'; }) ? 'unit' : 'label';   // a second fixed text next to a name is the unit
         var r = S.roleOf(e);
         if (r === 'value' || r === 'gauge') {
           if (s.choices.indexOf(e.source) < 0) s.choices.unshift(e.source);
@@ -243,13 +245,14 @@
       if (r === 'value') { v.source = c; v.prefix = a.prefix || ''; v.suffix = a.suffix || ''; }
       else if (r === 'gauge') { v.source = c; if (el.type === 'arc') { v.min = null; v.max = null; } }
       else if (r === 'icon') { var ic = GW.ICON_FOR && GW.ICON_FOR[c]; if (ic && GW.ICONS && GW.ICONS[ic]) v.kind = ic; }
-      else if (r === 'unit') { v.text = c === start ? el.text : (((s.affix && s.affix[c]) || {}).suffix || ''); }
+      else if (r === 'unit') { v.text = c === start ? el.text : (((s.affix && s.affix[c]) || {}).suffix || AFFIX[c] || ''); }
       else if (r === 'label') { v.text = c === start ? el.text : ((s.labels && s.labels[c] != null) ? s.labels[c] : GW.sourceShort(c)); }
       return v;
     },
     // make the layers show reading c (also what the preview shows)
     applyChoice: function (s, c, d) {
       d = d || GW.design; var start = S.startChoice(s, d), ms = S.members(s.id, d);
+      ms.forEach(function (e) { if (e.type === 'text' && e.source === 'custom' && !e.srcRole) e.srcRole = S.roleOf(e); });   // fix what was guessed
       ms.forEach(function (e) {                                  // remember what the current reading looked like
         var r = S.roleOf(e);
         if (r === 'value') s.affix[start] = { prefix: e.prefix || '', suffix: e.suffix || '' };
