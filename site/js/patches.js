@@ -15,18 +15,5 @@
       { find: { type: 'wxicon' }, set: { mono: '#000000' } },
       { find: { type: 'sunmark' }, set: { color: '#000000' } }
     ] }
-    // "Honeycomb Colored": a copy of the Honeycomb exactly as it is in the library (so your font and position changes come along), coloured by what each cell measures:
-    // activity amber, effort red, body rose, weather and sun blue, altitude teal, battery green; white lines, text and symbols on black
-    ,{ id: '2026-11-14-honeycomb-colored', copyOf: 'Honeycomb', as: 'Honeycomb Colored', kind: 'watch', ops: [
-      { design: { bg: '#000000' } },
-      { find: { type: 'hexgrid' }, set: { color: '#ffffff' } },
-      { find: { type: 'text' }, set: { color: '#ffffff' } },
-      { find: { type: 'text', source: 'nyZoneTime' }, set: { color: '#aaddff' } },
-      { find: { type: 'text', source: 'date' }, set: { color: '#aaddff' } },
-      { find: { type: 'icon' }, set: { color: '#ffffff' } },
-      { find: { type: 'wxicon' }, set: { mono: '#ffffff' } },
-      { find: { type: 'sunmark' }, set: { color: '#ffffff' } },
-      { honeycombFills: { centre: '#000055', groups: { steps: '#aa5500', distance: '#aa5500', floors: '#aa5500', calories: '#aa0000', intMins: '#aa0000', hr: '#aa0055', bodyBat: '#aa0055', resp: '#aa0055', temp: '#0055aa', sunNext: '#0055aa', altitude: '#00aaaa', batteryDays: '#00aa55' } } }
-    ] }
   ];
 })(window.GW);
