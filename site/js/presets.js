@@ -131,25 +131,25 @@
           E('hands', { name: 'Hands', style: 'sword', hLen: 56, hW: 9, mLen: 92, mW: 7, hColor: '#ffffff', mColor: '#ffffff', oColor: '#000022', oW: 1, sShow: true, sLen: 112, sTail: 20, sW: 1, sColor: '#ff5500', hub: 5, hubColor: '#ff5500' }));
         return D('Cockpit', '#000022', [], els);
       } },
-    { id: 'datawall', name: 'Data Wall', blurb: 'No rings, no clutter budget: time, date and twelve numbers each with its own gauge, plus weather and sun times.',
+    { id: 'datawall', name: 'Data Wall', blurb: 'Black on white for daylight: time, date and twelve numbers each with its own gauge, plus weather and sun times.',
       build: function () {
-        var X = 'FONT_XTINY', T = 'FONT_TINY', w = '#ffffff', g = '#999999';
-        var els = [txt(140, 28, 'date', X, '#ffaa00', { fmt: 'ddd DD MMM', upper: true }),
-          txt(128, 58, 'time', 'FONT_NUMBER_MEDIUM', w, { secs: false }), txt(190, 64, 'second', T, '#ffaa00', { justify: 'L' })];
-        var cells = [['HR', 'hr', '#ff5555'], ['STEPS', 'steps', '#00ffff'], ['CAL', 'calories', '#ff8800'],
-          ['FLOORS', 'floors', '#ffff55'], ['INT MIN', 'intMins', '#55ff55'], ['DIST KM', 'distance', '#55aaff'],
-          ['BATT %', 'battery', '#55ff55'], ['BODY', 'bodyBat', '#55aaff'], ['STRESS', 'stress', '#ffaa00'],
-          ['SPO2', 'spo2', '#aa55ff'], ['RESP', 'resp', '#55ffaa'], ['ALT M', 'altitude', '#aaaaaa']];
+        var X = 'FONT_XTINY', T = 'FONT_TINY', w = '#000000', g = '#555555';   // dark on white: easier to read in daylight on the transflective screen
+        var els = [txt(140, 28, 'date', X, '#ff5500', { fmt: 'ddd DD MMM', upper: true }),
+          txt(128, 58, 'time', 'FONT_NUMBER_MEDIUM', w, { secs: false }), txt(190, 64, 'second', T, '#ff5500', { justify: 'L' })];
+        var cells = [['HR', 'hr', '#aa0000'], ['STEPS', 'steps', '#0055aa'], ['CAL', 'calories', '#ff5500'],
+          ['FLOORS', 'floors', '#aa5500'], ['INT MIN', 'intMins', '#00aa00'], ['DIST KM', 'distance', '#0055aa'],
+          ['BATT %', 'battery', '#00aa00'], ['BODY', 'bodyBat', '#0055aa'], ['STRESS', 'stress', '#ff5500'],
+          ['SPO2', 'spo2', '#5500aa'], ['RESP', 'resp', '#00aaaa'], ['ALT M', 'altitude', '#555555']];
         cells.forEach(function (c, i) {
           var cx = [72, 140, 208][i % 3], cy = 100 + Math.floor(i / 3) * 38;
           els.push(txt(cx, cy - 11, 'custom', X, g, { justify: 'C', text: c[0] }), txt(cx, cy + 3, c[1], T, w, { justify: 'C' }),
-            E('seggauge', { name: c[0] + ' gauge', shape: 'bar', n: 5, w: 46, h: 3, gap: 2, slant: 0, orient: 'h', dir: 'ltr', x: cx, y: cy + 13, source: c[1], color: c[2], unlit: '#3a3a3a' }));
+            E('seggauge', { name: c[0] + ' gauge', shape: 'bar', n: 5, w: 46, h: 3, gap: 2, slant: 0, orient: 'h', dir: 'ltr', x: cx, y: cy + 13, source: c[1], color: c[2], unlit: '#aaaaaa' }));
         });
-        els.push(E('wxicon', { name: 'Weather icon', x: 62, y: 246, size: 22 }), txt(78, 246, 'temp', T, w, { justify: 'L', suffix: '°' }),
-          E('sunicon', { name: 'Sunrise icon', x: 132, y: 240, r: 4, kind: 'rise', color: '#ffaa00' }), txt(141, 239, 'sunrise', X, w, { justify: 'L' }),
+        els.push(E('wxicon', { name: 'Weather icon', x: 62, y: 246, size: 22, mono: '#0055aa' }), txt(78, 246, 'temp', T, w, { justify: 'L', suffix: '°' }),
+          E('sunicon', { name: 'Sunrise icon', x: 132, y: 240, r: 4, kind: 'rise', color: '#aa5500' }), txt(141, 239, 'sunrise', X, w, { justify: 'L' }),
           E('sunicon', { name: 'Sunset icon', x: 132, y: 255, r: 4, kind: 'set', color: '#ff5500' }), txt(141, 254, 'sunset', X, w, { justify: 'L' }),
-          E('moon', { name: 'Moon', x: 214, y: 246, r: 10, lit: '#ffffaa', dark: '#444444' }));
-        return D('Data Wall', '#000000', [], els);
+          E('moon', { name: 'Moon', x: 214, y: 246, r: 10, lit: '#ffffff', dark: '#555555', rim: '#000000' }));
+        return D('Data Wall', '#ffffff', [], els);
       } },
     { id: 'pilot', name: 'Pilot', blurb: 'Classic analog: sword hands, big numerals, a date window at 3.',
       build: function () {
