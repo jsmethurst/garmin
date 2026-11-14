@@ -964,13 +964,14 @@
     // every layout, built-in or saved, can be removed from the list (after a confirmation)
     function card(thumb, name, saved, onload, onremove, removeMsg) {
       var kids = [thumb, h('b', { text: name })];
-      if (saved) kids.push(h('span', { class: 'muted small', text: GW.layouts.shared() ? 'shared' : 'saved' }));
+      if (saved) kids.push(h('span', { class: 'muted small', text: typeof saved === 'string' ? saved : (GW.layouts.shared() ? 'shared' : 'saved') }));
       var c = h('button', { class: 'pcard', onclick: function () { load(onload); GW.toast(name + ' loaded. Ctrl+Z undoes it.'); } }, kids);
       return h('div', { class: 'pwrap' }, [c, h('button', { class: 'pdel', title: 'Delete this layout', 'aria-label': 'Delete ' + name, text: '×', onclick: function () {
         if (window.confirm(removeMsg)) { onremove(); GW.openPresets(); }
       } })]);
     }
     function blankThumb(color) { var c = document.createElement('canvas'); c.width = c.height = 120; var x = c.getContext('2d'); x.fillStyle = color; x.fillRect(0, 0, 120, 120); c.style.width = c.style.height = '120px'; return c; }
+    function ago(ts) { var m = Math.max(0, Math.round((Date.now() - ts) / 60000)); return 'edited ' + (m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'); }
     var shown = {};
     if (GW.layouts.shared()) {
       // the library is the only list: built-in layouts are in it like any other, and everyone edits the same copy
@@ -980,7 +981,7 @@
         return (oa == null ? 1e6 - a.ts / 1e9 : oa) - (ob == null ? 1e6 - b.ts / 1e9 : ob);
       }).forEach(function (l) {
         var blank = /^blank/i.test(l.name) && !(l.data.design.elements || []).length;
-        grid.appendChild(card(blank ? blankThumb(fld ? '#fff' : '#000') : GW.thumb(l.data.design, 140), l.name, false, function (done) { GW.openLayout(l, done); },
+        grid.appendChild(card(blank ? blankThumb(fld ? '#fff' : '#000') : GW.thumb(l.data.design, 140), l.name, ago(l.ts), function (done) { GW.openLayout(l, done); },
           function () { GW.layouts.remove(l.name, kind); }, 'Delete “' + l.name + '” for everyone? Nobody will have it afterwards.'));
       });
     } else {
