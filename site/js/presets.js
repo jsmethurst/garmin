@@ -151,6 +151,36 @@
           E('moon', { name: 'Moon', x: 214, y: 246, r: 10, lit: '#ffffff', dark: '#555555', rim: '#000000' }));
         return D('Data Wall', '#ffffff', [], els);
       } },
+    { id: 'honeycomb', name: 'Honeycomb', blurb: 'A big navy hexagon holds the time and date; twelve coloured cells round it carry data; plain honeycomb lines run off the screen.',
+      build: function () {
+        var R = 30, W = Math.sqrt(3) * R, w = '#ffffff', X = 'FONT_XTINY', T = 'FONT_TINY';
+        function pos(q, r) { return [140 + Math.trunc(W * (q + r / 2)), 140 + Math.trunc(1.5 * R * r)]; }
+        var cells = []; for (var q = -2; q <= 2; q++) for (var r = -2; r <= 2; r++) { var s = -q - r; if (Math.abs(s) > 2) continue; cells.push({ q: q, r: r, d: Math.max(Math.abs(q), Math.abs(r), Math.abs(s)), p: pos(q, r) }); }
+        var els = [E('hexgrid', { name: 'Honeycomb lines', cx: 140, cy: 140, r: R - 1, skip: 2, pen: 1, color: '#555555' })];
+        // the middle cell and the six round it make one big shape for the time and date
+        var ctr = cells.filter(function (c) { return c.d <= 1; });
+        ctr.forEach(function (c) { els.push(E('shape', { name: 'Time cell', kind: 'hex', x: c.p[0], y: c.p[1], r: R + 1, fill: true, color: '#000055' })); });
+        var dirs = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
+        ctr.forEach(function (c) { for (var e = 0; e < 6; e++) {
+          if (ctr.some(function (o) { return o.q === c.q + dirs[(e + 1) % 6][0] && o.r === c.r + dirs[(e + 1) % 6][1]; })) continue;
+          var a = (30 + 60 * e) * Math.PI / 180, b = (90 + 60 * e) * Math.PI / 180;
+          els.push(E('shape', { name: 'Time outline', kind: 'line', x: c.p[0] + Math.round(R * Math.cos(a)), y: c.p[1] + Math.round(R * Math.sin(a)), x2: c.p[0] + Math.round(R * Math.cos(b)), y2: c.p[1] + Math.round(R * Math.sin(b)), pen: 2, color: w }));
+        } });
+        els.push(txt(140, 129, 'time', 'FONT_NUMBER_MEDIUM', w, { secs: false }), txt(140, 161, 'date', X, '#aaddff', { fmt: 'DDDD', upper: true }), txt(140, 175, 'date', X, '#aaddff', { fmt: 'D MMMM', upper: true }));
+        // twelve data cells, clockwise from the top
+        var ring = cells.filter(function (c) { return c.d === 2; }).sort(function (a, b) { return Math.atan2(a.p[0] - 140, -(a.p[1] - 140)) - Math.atan2(b.p[0] - 140, -(b.p[1] - 140)); });
+        var CELLS = [['steps', 'steps', '', '#0055aa'], ['heart-pulse', 'hr', '', '#aa0000'], ['battery', 'battery', '%', '#00aa55'], ['wx', 'temp', '°', '#ff5500'], ['sunnext', 'sunNext', '', '#aa5500'], ['fire', 'calories', '', '#aa0055'],
+          ['run', 'distance', ' km', '#0000aa'], ['stairs', 'floors', '', '#00aaaa'], ['brain', 'stress', '', '#5500aa'], ['water-percent', 'spo2', '%', '#0055aa'], ['earth', 'nyTime', '', '#555555'], ['timer', 'intMins', ' min', '#aa5500']];
+        ring.forEach(function (c, i) {
+          var d = CELLS[i], x = c.p[0], y = c.p[1];
+          els.push(E('shape', { name: 'Cell ' + d[1], kind: 'hex', x: x, y: y, r: R - 2, fill: true, color: d[3] }));
+          if (d[0] === 'wx') els.push(E('wxicon', { name: 'Weather icon', x: x, y: y - 8, size: 20, mono: w }));
+          else if (d[0] === 'sunnext') els.push(txt(x, y - 9, 'sunNextName', X, w, { justify: 'C' }));
+          else els.push(E('icon', { name: 'Icon ' + d[1], x: x, y: y - 9, kind: d[0], size: 16, color: w }));
+          els.push(txt(x, y + 9, d[1], (d[2].length > 3 || d[1] === 'distance') ? X : T, w, { justify: 'C', suffix: d[2] }));
+        });
+        return D('Honeycomb', '#000000', [], els);
+      } },
     { id: 'pilot', name: 'Pilot', blurb: 'Classic analog: sword hands, big numerals, a date window at 3.',
       build: function () {
         var N = 'f_pil38';

@@ -535,9 +535,52 @@
     }
   };
 
+
+  // ================= HONEYCOMB GRID (lines only) =================
+  // The lines of a honeycomb that run on past the edge of the screen. Cells nearer the centre than `skip` rings are left out (they hold other things).
+  function hexCentre(el, q, r) { return [Math.round(el.cx) + Math.trunc(Math.sqrt(3) * el.r * (q + r / 2)), Math.round(el.cy) + Math.trunc(1.5 * el.r * r)]; }
+  T.hexgrid = {
+    label: 'Honeycomb lines', icon: '⬡',
+    defaults: function () { return { type: 'hexgrid', name: 'Honeycomb', cx: 140, cy: 140, r: 29, skip: 2, pen: 1, color: '#555555' }; },
+    pos: [['cx', 'cy']],
+    draw: function (ctx, el) {
+      ctx.strokeStyle = q(el.color); ctx.lineWidth = el.pen; ctx.lineCap = 'butt';
+      for (var qq = -7; qq <= 7; qq++) for (var rr = -7; rr <= 7; rr++) {
+        var s = -qq - rr; if (Math.abs(s) > 7 || Math.max(Math.abs(qq), Math.abs(rr), Math.abs(s)) <= el.skip) continue;
+        var c = hexCentre(el, qq, rr); if (c[0] < -el.r || c[0] > GW.SIZE + el.r || c[1] < -el.r || c[1] > GW.SIZE + el.r) continue;
+        ctx.beginPath(); hexPts(c[0], c[1], el.r).forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); ctx.stroke();
+      }
+    },
+    box: function (el) { return { x: el.cx - 7 * el.r, y: el.cy - 7 * el.r, w: 14 * el.r, h: 14 * el.r }; },
+    fields: function () {
+      return [
+        { k: 'color', t: 'color', label: 'Line color' },
+        { t: 'row', fields: [{ k: 'r', t: 'num', label: 'Cell size', min: 8, max: 80 }, { k: 'pen', t: 'num', label: 'Line width', min: 1, max: 6 }] },
+        { k: 'skip', t: 'num', label: 'Rings left empty in the middle', min: 0, max: 6 },
+        { t: 'row', fields: [{ k: 'cx', t: 'num', label: 'Centre X', min: -50, max: 330 }, { k: 'cy', t: 'num', label: 'Centre Y', min: -50, max: 330 }] }
+      ];
+    },
+    gen: function (el, cg) {
+      var P = hexPts(0, 0, el.r), size = GW.SIZE, id = String(el.id).replace(/[^A-Za-z0-9]/g, '');
+      cg.member('    const HEX_' + id + '_X = [' + P.map(function (p) { return p[0]; }).join(', ') + '];');
+      cg.member('    const HEX_' + id + '_Y = [' + P.map(function (p) { return p[1]; }).join(', ') + '];');
+      return ['dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);', 'dc.setPenWidth(' + N(el.pen) + ');',
+        'for (var q = -7; q <= 7; q++) {', '    for (var r = -7; r <= 7; r++) {', '        var s = -q - r;',
+        '        var d = q.abs();', '        if (r.abs() > d) { d = r.abs(); }', '        if (s.abs() > d) { d = s.abs(); }',
+        '        if (s.abs() > 7 || d <= ' + N(el.skip) + ') { continue; }',
+        '        var x = ' + N(el.cx) + ' + (' + (Math.sqrt(3) * el.r).toFixed(4) + ' * (q + r / 2.0)).toNumber();',
+        '        var y = ' + N(el.cy) + ' + (' + (1.5 * el.r).toFixed(4) + ' * r).toNumber();',
+        '        if (x < -' + N(el.r) + ' || x > ' + (size + N(el.r)) + ' || y < -' + N(el.r) + ' || y > ' + (size + N(el.r)) + ') { continue; }',
+        '        for (var k = 0; k < 6; k++) {', '            var k2 = (k + 1) % 6;',
+        '            dc.drawLine(x + HEX_' + id + '_X[k], y + HEX_' + id + '_Y[k], x + HEX_' + id + '_X[k2], y + HEX_' + id + '_Y[k2]);', '        }', '    }', '}', 'dc.setPenWidth(1);'];
+    }
+  };
+
   // ================= SHAPE =================
+  // a pointy-top hexagon with whole-pixel corners (so the preview matches the watch exactly)
+  function hexPts(x, y, r) { var o = []; for (var k = 0; k < 6; k++) { var a = rad(30 + 60 * k); o.push([Math.round(x) + Math.round(r * Math.cos(a)), Math.round(y) + Math.round(r * Math.sin(a))]); } return o; }
   T.shape = {
-    label: 'Line / box / circle', icon: '▭',
+    label: 'Line / box / circle / hexagon', icon: '▭',
     defaults: function () {
       return { type: 'shape', name: 'Shape', kind: 'rect', x: 140, y: 140, x2: 200, y2: 140, w: 80, h: 40, r: 30, fill: true, pen: 2, rad: 0, color: '#ffffff' };
     },
@@ -547,6 +590,7 @@
       ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineWidth = el.pen; ctx.lineCap = 'butt';
       if (el.kind === 'line') { ctx.beginPath(); ctx.moveTo(el.x, el.y); ctx.lineTo(el.x2, el.y2); ctx.stroke(); }
       else if (el.kind === 'circle') { ctx.beginPath(); ctx.arc(el.x, el.y, el.r, 0, Math.PI * 2); el.fill ? ctx.fill() : ctx.stroke(); }
+      else if (el.kind === 'hex') { ctx.beginPath(); hexPts(el.x, el.y, el.r).forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); el.fill ? ctx.fill() : ctx.stroke(); }
       else if (el.rot) {
         var c = GW.rectPts(el); ctx.beginPath(); c.forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); el.fill ? ctx.fill() : ctx.stroke();
       } else {
@@ -558,7 +602,7 @@
     },
     box: function (el) {
       if (el.kind === 'line') return { x: Math.min(el.x, el.x2), y: Math.min(el.y, el.y2), w: Math.abs(el.x2 - el.x), h: Math.abs(el.y2 - el.y) };
-      if (el.kind === 'circle') return { x: el.x - el.r, y: el.y - el.r, w: el.r * 2, h: el.r * 2 };
+      if (el.kind === 'circle' || el.kind === 'hex') return { x: el.x - el.r, y: el.y - el.r, w: el.r * 2, h: el.r * 2 };
       return { x: el.x - el.w / 2, y: el.y - el.h / 2, w: el.w, h: el.h };
     },
     hit: function (el, x, y) {
@@ -567,7 +611,7 @@
         var t = clamp(((x - ax) * dx + (y - ay) * dy) / l2, 0, 1);
         return Math.hypot(x - (ax + t * dx), y - (ay + t * dy)) <= Math.max(5, el.pen / 2 + 3);
       }
-      if (el.kind === 'circle') {
+      if (el.kind === 'circle' || el.kind === 'hex') {
         var d = Math.hypot(x - el.x, y - el.y);
         return el.fill ? d <= el.r + 2 : Math.abs(d - el.r) <= el.pen / 2 + 5;
       }
@@ -577,14 +621,14 @@
       return x >= b.x - o && x <= b.x + b.w + o && y >= b.y - o && y <= b.y + b.h + o && !(x > b.x + o && x < b.x + b.w - o && y > b.y + o && y < b.y + b.h - o);
     },
     fields: function (el) {
-      var f = [{ k: 'kind', t: 'seg', label: 'Shape', opts: [['rect', 'Box'], ['circle', 'Circle'], ['line', 'Line']] }, { k: 'color', t: 'color', label: 'Color' }];
+      var f = [{ k: 'kind', t: 'seg', label: 'Shape', opts: [['rect', 'Box'], ['circle', 'Circle'], ['hex', 'Hexagon'], ['line', 'Line']] }, { k: 'color', t: 'color', label: 'Color' }];
       if (el.kind !== 'line') f.push({ k: 'fill', t: 'check', label: 'Filled' });
       if (el.kind === 'line' || !el.fill) f.push({ k: 'pen', t: 'num', label: 'Line width', min: 1, max: 30 });
       if (el.kind === 'rect') {
         f.push({ t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 1, max: 400 }, { k: 'h', t: 'num', label: 'Height', min: 1, max: 400 }] });
         f.push({ k: 'rad', t: 'num', label: 'Corner radius', min: 0, max: 100 });
       }
-      if (el.kind === 'circle') f.push({ k: 'r', t: 'range', label: 'Radius', min: 1, max: 200 });
+      if (el.kind === 'circle' || el.kind === 'hex') f.push({ k: 'r', t: 'range', label: el.kind === 'hex' ? 'Size (centre to corner)' : 'Radius', min: 1, max: 200 });
       f.push({ t: 'h', label: el.kind === 'line' ? 'Start point' : 'Centre' });
       f.push({ t: 'row', fields: [{ k: 'x', t: 'num', label: 'X', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y', min: -50, max: 330 }] });
       if (el.kind === 'line') {
@@ -602,6 +646,10 @@
       } else if (el.kind === 'circle') {
         if (el.fill) L.push('dc.fillCircle(' + N(el.x) + ', ' + N(el.y) + ', ' + N(el.r) + ');');
         else { L.push('dc.setPenWidth(' + N(el.pen) + ');'); L.push('dc.drawCircle(' + N(el.x) + ', ' + N(el.y) + ', ' + N(el.r) + ');'); L.push('dc.setPenWidth(1);'); }
+      } else if (el.kind === 'hex') {
+        var hp = hexPts(el.x, el.y, el.r).map(function (p) { return '[' + p[0] + ', ' + p[1] + ']'; }).join(', ');
+        if (el.fill) L.push('dc.fillPolygon([' + hp + ']);');
+        else { L.push('dc.setPenWidth(' + N(el.pen) + ');'); L.push('var hp = [' + hp + '];'); L.push('for (var i = 0; i < 6; i++) { dc.drawLine(hp[i][0], hp[i][1], hp[(i + 1) % 6][0], hp[(i + 1) % 6][1]); }'); L.push('dc.setPenWidth(1);'); }
       } else if (el.rot) {
         var rp = GW.rectPts(el).map(function (p) { return '[' + N(p[0]) + ', ' + N(p[1]) + ']'; }).join(', ');
         if (el.fill) L.push('dc.fillPolygon([' + rp + ']);');
