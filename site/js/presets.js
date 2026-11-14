@@ -68,6 +68,65 @@
         });
         return D('Terminal Türkçe', '#000000', [font(B, 'Share Tech Mono', 400, 52, 'digits'), font(F, 'Share Tech Mono', 400, 17, 'full')], els);
       } },
+    // ---- three very busy faces: as many data points as fit ----
+    { id: 'missioncontrol', name: 'Mission Control', blurb: 'Two rings, date, sun times, two clocks, weather, moon, a big time and nine more numbers.',
+      build: function () {
+        var X = 'FONT_XTINY', S = 'FONT_SMALL', w = '#ffffff', g = '#aaaaaa';
+        var els = [ring('steps', 136, 4, 0, 360, '#00ffff'), ring('battery', 130, 4, 0, 360, '#55ff55'),
+          txt(140, 40, 'date', X, w, { fmt: 'ddd DD MMM YYYY', upper: true }),
+          E('sunicon', { name: 'Sunrise icon', x: 86, y: 59, r: 5, kind: 'rise', color: '#ffaa00' }), txt(96, 58, 'sunrise', X, w, { justify: 'L' }),
+          E('sunicon', { name: 'Sunset icon', x: 172, y: 59, r: 5, kind: 'set', color: '#ff5500' }), txt(182, 58, 'sunset', X, w, { justify: 'L' }),
+          txt(98, 76, 'nyTime', X, w, { justify: 'L', prefix: 'NY ' }), txt(168, 76, 'utcTime', X, w, { justify: 'L', prefix: 'UTC ' }),
+          E('wxicon', { name: 'Weather icon', x: 78, y: 99, size: 28 }), txt(96, 93, 'temp', S, w, { justify: 'L', suffix: '°C' }), txt(96, 109, 'weatherDesc', X, g, { justify: 'L', upper: true }),
+          E('moon', { name: 'Moon', x: 212, y: 98, r: 13, lit: '#ffffaa', dark: '#444444' }),
+          txt(134, 148, 'time', 'FONT_NUMBER_MEDIUM', w, { secs: false }), txt(194, 154, 'second', S, '#ffaa00', { justify: 'L' })];
+        [[182, [['heart', 'hr', '#ff5555', ''], ['shoe-print', 'steps', '#00ffff', ''], ['fire', 'calories', '#ff8800', '']]],
+         [202, [['stairs', 'floors', '#ffff55', ''], ['timer', 'intMins', '#55ff55', ' min'], ['map-marker-distance', 'distance', '#55aaff', ' km']]],
+         [222, [['battery', 'batteryDays', '#55ff55', ' d'], ['brain', 'stress', '#ffaa00', ''], ['water-percent', 'spo2', '#55aaff', '%']]]].forEach(function (row) {
+          [76, 140, 204].forEach(function (cx, i) { var c = row[1][i]; els.push(E('icon', { name: 'Icon ' + c[1], x: cx - 24, y: row[0], kind: c[0], size: 14, color: c[2] }), txt(cx - 14, row[0], c[1], X, w, { justify: 'L', suffix: c[3] })); });
+        });
+        els.push(E('barchart', { name: 'Steps, 8 days', x: 140, y: 246, w: 96, h: 14, source: 'steps', gap: 2, color: '#00aaff', todayColor: '#ffff00', unlit: '#222222', bars: 8, span: 'prev' }));
+        return D('Mission Control', '#000000', [], els);
+      } },
+    { id: 'cockpit', name: 'Cockpit', blurb: 'Analog hands over a busy dial: three sub-dials, date, two clocks, sun times, weather, moon and a steps chart.',
+      build: function () {
+        var X = 'FONT_XTINY', w = '#ffffff', g = '#aaaaaa';
+        function sub(cx, cy, src, col, name) { return [E('arc', { name: name + ' dial', cx: cx, cy: cy, r: 27, pen: 4, start: 0, sweep: 360, dir: 'cw', source: src, color: col, track: '#333333' }), txt(cx, cy - 2, src, X, w, { justify: 'C' }), txt(cx, cy + 10, 'custom', X, g, { justify: 'C', text: name })]; }
+        var els = [E('shape', { name: 'Dial', kind: 'circle', x: 140, y: 140, r: 140, fill: true, color: '#000022', locked: true }),
+          E('ticks', { name: 'Minute ticks', r: 136, len: 5, count: 60, major: 5, majorLen: 11, width: 1, majorWidth: 3, color: '#777777', majorColor: '#ffffff' }),
+          txt(140, 36, 'date', X, '#ffaa00', { fmt: 'ddd DD MMM', upper: true }),
+          E('sunicon', { name: 'Sunrise icon', x: 96, y: 56, r: 5, kind: 'rise', color: '#ffaa00' }), txt(105, 55, 'sunrise', X, w, { justify: 'L' }),
+          E('sunicon', { name: 'Sunset icon', x: 160, y: 56, r: 5, kind: 'set', color: '#ff5500' }), txt(169, 55, 'sunset', X, w, { justify: 'L' }),
+          txt(118, 74, 'nyTime', X, g, { justify: 'R', prefix: 'NY ' }), txt(162, 74, 'utcTime', X, g, { justify: 'L', prefix: 'UTC ' })]
+          .concat(sub(80, 140, 'steps', '#00ffff', 'STEPS'), sub(200, 140, 'battery', '#55ff55', 'BATT'), sub(140, 198, 'bodyBat', '#55aaff', 'BODY'));
+        els.push(E('wxicon', { name: 'Weather icon', x: 118, y: 106, size: 22 }), txt(132, 106, 'temp', X, w, { justify: 'L', suffix: '°' }),
+          E('moon', { name: 'Moon', x: 168, y: 106, r: 9, lit: '#ffffaa', dark: '#444444' }),
+          E('icon', { name: 'Icon hr', x: 96, y: 236, kind: 'heart', size: 13, color: '#ff5555' }), txt(106, 236, 'hr', X, w, { justify: 'L' }),
+          E('icon', { name: 'Icon cal', x: 146, y: 236, kind: 'fire', size: 13, color: '#ff8800' }), txt(156, 236, 'calories', X, w, { justify: 'L' }),
+          E('barchart', { name: 'Steps, 8 days', x: 140, y: 262, w: 60, h: 10, source: 'steps', gap: 2, color: '#0077aa', todayColor: '#ffff00', unlit: null, bars: 8, span: 'prev' }),
+          E('hands', { name: 'Hands', style: 'sword', hLen: 56, hW: 9, mLen: 92, mW: 7, hColor: '#ffffff', mColor: '#ffffff', oColor: '#000022', oW: 1, sShow: true, sLen: 112, sTail: 20, sW: 1, sColor: '#ff5500', hub: 5, hubColor: '#ff5500' }));
+        return D('Cockpit', '#000022', [], els);
+      } },
+    { id: 'datawall', name: 'Data Wall', blurb: 'No rings, no clutter budget: time, date and twelve numbers each with its own gauge, plus weather and sun times.',
+      build: function () {
+        var X = 'FONT_XTINY', T = 'FONT_TINY', w = '#ffffff', g = '#999999';
+        var els = [txt(140, 28, 'date', X, '#ffaa00', { fmt: 'ddd DD MMM', upper: true }),
+          txt(128, 58, 'time', 'FONT_NUMBER_MEDIUM', w, { secs: false }), txt(190, 64, 'second', T, '#ffaa00', { justify: 'L' })];
+        var cells = [['HR', 'hr', '#ff5555'], ['STEPS', 'steps', '#00ffff'], ['CAL', 'calories', '#ff8800'],
+          ['FLOORS', 'floors', '#ffff55'], ['INT MIN', 'intMins', '#55ff55'], ['DIST KM', 'distance', '#55aaff'],
+          ['BATT %', 'battery', '#55ff55'], ['BODY', 'bodyBat', '#55aaff'], ['STRESS', 'stress', '#ffaa00'],
+          ['SPO2', 'spo2', '#aa55ff'], ['RESP', 'resp', '#55ffaa'], ['ALT M', 'altitude', '#aaaaaa']];
+        cells.forEach(function (c, i) {
+          var cx = [72, 140, 208][i % 3], cy = 100 + Math.floor(i / 3) * 38;
+          els.push(txt(cx, cy - 11, 'custom', X, g, { justify: 'C', text: c[0] }), txt(cx, cy + 3, c[1], T, w, { justify: 'C' }),
+            E('seggauge', { name: c[0] + ' gauge', shape: 'bar', n: 5, w: 46, h: 3, gap: 2, slant: 0, orient: 'h', dir: 'ltr', x: cx, y: cy + 13, source: c[1], color: c[2], unlit: '#3a3a3a' }));
+        });
+        els.push(E('wxicon', { name: 'Weather icon', x: 62, y: 246, size: 22 }), txt(78, 246, 'temp', T, w, { justify: 'L', suffix: '°' }),
+          E('sunicon', { name: 'Sunrise icon', x: 132, y: 240, r: 4, kind: 'rise', color: '#ffaa00' }), txt(141, 239, 'sunrise', X, w, { justify: 'L' }),
+          E('sunicon', { name: 'Sunset icon', x: 132, y: 255, r: 4, kind: 'set', color: '#ff5500' }), txt(141, 254, 'sunset', X, w, { justify: 'L' }),
+          E('moon', { name: 'Moon', x: 214, y: 246, r: 10, lit: '#ffffaa', dark: '#444444' }));
+        return D('Data Wall', '#000000', [], els);
+      } },
     { id: 'pilot', name: 'Pilot', blurb: 'Classic analog: sword hands, big numerals, a date window at 3.',
       build: function () {
         var N = 'f_pil38';
