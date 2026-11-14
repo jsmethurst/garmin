@@ -64,6 +64,13 @@
     all: function (d) {
       d = d || GW.design; var l = d.settings || (d.settings = []);
       l.forEach(function (s) { if (s.kind === 'source') { s.choices = s.choices || []; s.labels = s.labels || {}; s.affix = s.affix || {}; } });
+    if (!d.ctextFix) {          // an earlier version gave every theme a computed Main text color; Main text keeps its own color unless a theme sets it by hand
+      d.ctextFix = 1;
+      l.forEach(function (t) { if (t.kind === 'theme') t.themes.forEach(function (x) {
+        var b = GW.q((x.colors && x.colors.cbg) || d.bg), lum = [1, 3, 5].reduce(function (a, i) { return a + parseInt(b.substr(i, 2), 16); }, 0), auto = lum > 380 ? '#000000' : '#ffffff';
+        if (x.colors && x.colors.ctext && GW.q(x.colors.ctext) === auto) delete x.colors.ctext;
+      }); });
+    }
     l.forEach(function (s) { if (s.kind === 'source' && s.choices && S.hasUnit(s, d)) S.members(s.id, d).forEach(function (e) { if (S.roleOf(e) === 'value' && e.suffix) e.suffix = ''; }); });   // a separate unit layer carries the unit, so the value gets none   // slots saved by earlier versions have no label / unit tables
       return l;
     },
@@ -133,9 +140,7 @@
     addLibraryTheme: function (lib, d) {
       d = d || GW.design; var t = S.ensureTheme(d), c = {};
       var bg = S.find('cbg', d), mn = S.find('cmain', d), hi = S.find('chi', d);
-      var tx = S.find('ctext', d);
       if (bg) c.cbg = GW.q(lib[1]); if (mn) c.cmain = GW.q(lib[2]); if (hi) c.chi = GW.q(lib[3]);
-      if (tx) { var b = GW.q(lib[1]), lum = [1, 3, 5].reduce(function (a, i) { return a + parseInt(b.substr(i, 2), 16); }, 0); c.ctext = lum > 380 ? '#000000' : '#ffffff'; }   // readable on the theme's background
       t.themes.push({ name: lib[0], colors: c }); return t;
     },
     addBlankTheme: function (d) {
@@ -152,7 +157,6 @@
       var top = Object.keys(hist).sort(function (a, b) { return hist[b] - hist[a]; })[0] || '#ffffff';
       var r = S.ensureRole('text', top, d); r.def = top;
       d.elements.forEach(function (e) { if (e.type === 'text' && typeof e.color === 'string' && GW.q(e.color) === top && !(e.set && e.set.color)) { e.set = e.set || {}; e.set.color = 'ctext'; } });
-      var th = S.theme(d); if (th) th.themes.forEach(function (t) { if (!t.colors.ctext) { var b = GW.q(t.colors.cbg || d.bg), lum = [1, 3, 5].reduce(function (x, i) { return x + parseInt(b.substr(i, 2), 16); }, 0); t.colors.ctext = lum > 380 ? '#000000' : '#ffffff'; } });
       return r;
     },
 
