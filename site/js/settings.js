@@ -63,7 +63,8 @@
   var S = GW.settings = {
     all: function (d) {
       d = d || GW.design; var l = d.settings || (d.settings = []);
-      l.forEach(function (s) { if (s.kind === 'source') { s.choices = s.choices || []; s.labels = s.labels || {}; s.affix = s.affix || {}; } });   // slots saved by earlier versions have no label / unit tables
+      l.forEach(function (s) { if (s.kind === 'source') { s.choices = s.choices || []; s.labels = s.labels || {}; s.affix = s.affix || {}; } });
+    l.forEach(function (s) { if (s.kind === 'source' && s.choices && S.hasUnit(s, d)) S.members(s.id, d).forEach(function (e) { if (S.roleOf(e) === 'value' && e.suffix) e.suffix = ''; }); });   // a separate unit layer carries the unit, so the value gets none   // slots saved by earlier versions have no label / unit tables
       return l;
     },
     find: function (id, d) { var l = S.all(d); for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return null; },
@@ -232,7 +233,7 @@
     // the text that names a reading, and what goes before / after its value: for the reading shown now they are the layers' own text
     labelOf: function (s, c, d) { var st = S.startChoice(s, d); if (c === st) { var m = S.members(s.id, d).filter(function (e) { return S.roleOf(e) === 'label'; })[0]; return m ? m.text || '' : ''; } return s.labels[c] != null ? s.labels[c] : GW.sourceShort(c); },
     setLabel: function (s, c, txt, d) { s.labels[c] = txt; if (c === S.startChoice(s, d)) S.members(s.id, d).forEach(function (e) { if (S.roleOf(e) === 'label') e.text = txt; }); },
-    suffixOf: function (s, c, d) { if (c === S.startChoice(s, d)) { var ms = S.members(s.id, d), m = ms.filter(function (e) { return S.roleOf(e) === 'value'; })[0], u = ms.filter(function (e) { return S.roleOf(e) === 'unit'; })[0]; return m ? m.suffix || '' : (u ? u.text || '' : ''); } return (s.affix[c] || {}).suffix || ''; },
+    suffixOf: function (s, c, d) { if (c === S.startChoice(s, d)) { var ms = S.members(s.id, d), m = ms.filter(function (e) { return S.roleOf(e) === 'value'; })[0], u = ms.filter(function (e) { return S.roleOf(e) === 'unit'; })[0]; return u ? u.text || '' : (m ? m.suffix || '' : ''); } return (s.affix[c] || {}).suffix || ''; },
     setSuffix: function (s, c, txt, d) { s.affix[c] = Object.assign({}, s.affix[c], { suffix: txt }); if (c === S.startChoice(s, d)) S.members(s.id, d).forEach(function (e) { if (S.roleOf(e) === 'value') e.suffix = txt; else if (S.roleOf(e) === 'unit') e.text = txt; }); },
     addChoice: function (s, c) {
       if (s.choices.indexOf(c) >= 0) return;
@@ -240,9 +241,10 @@
     },
     removeChoice: function (s, c) { s.choices = s.choices.filter(function (x) { return x !== c; }); },
     // a copy of one layer as it looks when the wearer has chosen reading c
-    variant: function (el, s, c, start) {
+    hasUnit: function (s, d) { return S.members(s.id, d).some(function (e) { return S.roleOf(e) === 'unit'; }); },   // a separate unit layer: the value itself carries no unit
+    variant: function (el, s, c, start, d) {
       var r = S.roleOf(el), v = Object.assign({}, el), a = c === start ? { prefix: el.prefix || '', suffix: el.suffix || '' } : ((s.affix && s.affix[c]) || { prefix: '', suffix: '' });
-      if (r === 'value') { v.source = c; v.prefix = a.prefix || ''; v.suffix = a.suffix || ''; }
+      if (r === 'value') { v.source = c; v.prefix = a.prefix || ''; v.suffix = S.hasUnit(s, d) ? '' : (a.suffix || ''); }
       else if (r === 'gauge') { v.source = c; if (el.type === 'arc') { v.min = null; v.max = null; } }
       else if (r === 'icon') { var ic = GW.ICON_FOR && GW.ICON_FOR[c]; if (ic && GW.ICONS && GW.ICONS[ic]) v.kind = ic; }
       else if (r === 'unit') { v.text = c === start ? el.text : (((s.affix && s.affix[c]) || {}).suffix || AFFIX[c] || ''); }
@@ -253,13 +255,15 @@
     applyChoice: function (s, c, d) {
       d = d || GW.design; var start = S.startChoice(s, d), ms = S.members(s.id, d);
       ms.forEach(function (e) { if (e.type === 'text' && e.source === 'custom' && !e.srcRole) e.srcRole = S.roleOf(e); });   // fix what was guessed
+      var hu = S.hasUnit(s, d);
       ms.forEach(function (e) {                                  // remember what the current reading looked like
         var r = S.roleOf(e);
-        if (r === 'value') s.affix[start] = { prefix: e.prefix || '', suffix: e.suffix || '' };
+        if (r === 'value' && !hu) s.affix[start] = { prefix: e.prefix || '', suffix: e.suffix || '' };
+        if (r === 'value' && hu) s.affix[start] = { prefix: e.prefix || '', suffix: (s.affix[start] || {}).suffix || '' };
         if (r === 'label') s.labels[start] = e.text || '';
         if (r === 'unit') s.affix[start] = Object.assign({}, s.affix[start], { suffix: e.text || '' });
       });
-      ms.forEach(function (e) { var v = S.variant(e, s, c, start); ['source', 'prefix', 'suffix', 'kind', 'text', 'min', 'max'].forEach(function (k) { if (k in v) e[k] = v[k]; }); });
+      ms.forEach(function (e) { var v = S.variant(e, s, c, start, d); ['source', 'prefix', 'suffix', 'kind', 'text', 'min', 'max'].forEach(function (k) { if (k in v) e[k] = v[k]; }); });
     }
   };
 
@@ -295,7 +299,7 @@
     cg.setUse(s.id);
     var out = [];
     s.choices.forEach(function (c, i) {
-      var ls = one(S.variant(el, s, c, start)); if (!ls || !ls.length) return;
+      var ls = one(S.variant(el, s, c, start, d)); if (!ls || !ls.length) return;
       out.push('if (_s_' + s.id + ' == ' + i + ') {'); ls.forEach(function (l) { out.push('    ' + l); }); out.push('}');
     });
     return out;
