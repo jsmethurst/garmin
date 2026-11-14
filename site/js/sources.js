@@ -143,9 +143,9 @@
     mcStr: function (el, cg) { cg.need('clk'); return '_clk.sec.format("%02d")'; }
   });
   def('ampm', {
-    label: 'AM / PM', group: 'Time', kind: 'str', opts: [],
-    str: function (el, env) { return env.h < 12 ? 'AM' : 'PM'; },
-    mcStr: function (el, cg) { cg.need('clk'); return '((_clk.hour < 12) ? "AM" : "PM")'; }
+    label: 'AM / PM', group: 'Time', kind: 'str', opts: ['ampm1'],
+    str: function (el, env) { var s = env.h < 12 ? 'AM' : 'PM'; return el.ap1 ? s.charAt(0) : s; },
+    mcStr: function (el, cg) { cg.need('clk'); return el.ap1 ? '((_clk.hour < 12) ? "A" : "P")' : '((_clk.hour < 12) ? "AM" : "PM")'; }
   });
   def('date', {
     label: 'Date', group: 'Time', kind: 'str', opts: ['datefmt', 'trnames'],

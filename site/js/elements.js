@@ -81,6 +81,7 @@
       f.push({ k: 'source', t: 'source', label: 'Shows' });
       if (o.indexOf('text') >= 0) f.push({ k: 'text', t: 'text', label: 'Text' });
       if (o.indexOf('hmode') >= 0) f.push({ k: 'hmode', t: 'seg', label: 'Clock', opts: [['auto', 'Watch'], ['h24', '24h'], ['h12', '12h']] });
+      if (o.indexOf('ampm1') >= 0) f.push({ k: 'ap1', t: 'check', label: 'Just A or P (not AM / PM)' });
       if (o.indexOf('lz') >= 0) f.push({ k: 'lz', t: 'check', label: 'Leading zero on hour' });
       if (o.indexOf('secs') >= 0) f.push({ k: 'secs', t: 'check', label: 'Show seconds' });
       if (o.indexOf('sep') >= 0) f.push({ k: 'sep', t: 'seg', label: 'Separator', opts: [[':', ':'], ['.', '.'], [' ', 'space'], ['', 'none']] });
