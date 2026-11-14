@@ -326,8 +326,24 @@
       else if (op.remove) design.elements = design.elements.filter(function (e) { return !matches(e, op.remove.find || op.remove); });
       else if (op.add) { if (!(op.once && design.elements.some(function (e) { return matches(e, op.once); }))) design.elements.push(GW.newElement(op.add.type, op.add)); }
       else if (op.design) Object.assign(design, op.design);
+      else if (op.honeycombFills) honeycombFills(design, op.honeycombFills);
     });
     return JSON.stringify(design) !== before;
+  }
+  // coloured cells behind a honeycomb face: one hexagon under every data text (found by its position, so cells moved by hand still work), the centre in one colour
+  function honeycombFills(design, o) {
+    var grid = design.elements.filter(function (e) { return e.type === 'hexgrid'; })[0]; if (!grid) return;
+    var R = grid.r, W = Math.sqrt(3) * R, cells = [];
+    for (var q = -3; q <= 3; q++) for (var r = -3; r <= 3; r++) { if (Math.abs(q + r) > 3) continue; cells.push({ d: Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)), x: grid.cx + Math.trunc(W * (q + r / 2)), y: grid.cy + Math.trunc(1.5 * R * r) }); }
+    design.elements = design.elements.filter(function (e) { return !(e.type === 'shape' && e.kind === 'hex'); });
+    var fills = [], used = {};
+    cells.filter(function (c) { return c.d <= 1; }).forEach(function (c) { fills.push(GW.newElement('shape', { name: 'Time cell', kind: 'hex', x: c.x, y: c.y, r: R, fill: true, color: o.centre })); });
+    design.elements.forEach(function (e) {
+      var col = e.type === 'text' && o.groups[e.source]; if (!col) return;
+      var best = null; cells.filter(function (c) { return c.d >= 2; }).forEach(function (c) { var dd = Math.hypot(c.x - e.x, c.y - (e.y - 8)); if (!best || dd < best.dd) best = { c: c, dd: dd }; });
+      if (best && !used[best.c.x + ',' + best.c.y]) { used[best.c.x + ',' + best.c.y] = 1; fills.push(GW.newElement('shape', { name: 'Cell ' + e.source, kind: 'hex', x: best.c.x, y: best.c.y, r: R, fill: true, color: col })); }
+    });
+    design.elements = fills.concat(design.elements);   // the fills go underneath everything, the grid and the text stay on top
   }
   GW.maintainLibrary = function (done) {
     var L = GW.layouts; if (!L.shared()) { done && done(false); return; }
@@ -340,8 +356,16 @@
     });
     (GW.PATCHES || []).forEach(function (pt) {
       if (applied.indexOf(pt.id) >= 0) return;
+      var kind = pt.kind || 'watch';
+      if (pt.copyOf) {   // a new layout made as a copy of an existing one (as it is right now), then changed
+        var src = L.find(pt.copyOf, kind); if (!src) return;   // wait until the original exists
+        newApplied.push(pt.id);
+        if (L.find(pt.as, kind)) return;
+        var cp = GW.clone(src.data); cp.design.name = pt.as; applyOps(cp.design, pt.ops);
+        L.put({ name: pt.as, kind: kind, ts: Date.now(), device: src.device, data: cp }); changed = true; return;
+      }
       newApplied.push(pt.id);
-      var l = L.find(pt.layout, pt.kind || 'watch'); if (!l) return;
+      var l = L.find(pt.layout, kind); if (!l) return;
       var data = GW.clone(l.data);
       if (applyOps(data.design, pt.ops)) { L.put(Object.assign({}, l, { ts: Date.now(), data: data })); changed = true; }
     });
