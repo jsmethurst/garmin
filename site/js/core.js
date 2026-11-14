@@ -226,7 +226,7 @@ window.GW = window.GW || {};
   // Saving under a name that already exists, a built-in preset's name included, updates that layout; a new name adds one.
   // Until the server store is connected (or when the site is opened from a plain file / local server) the library falls back to this browser only.
   var LKEY = 'gw.layouts.v1';
-  var shared = { on: false, list: [], sig: '', why: '' };      // on: the server store answered (or answered once before); list: its layouts
+  var shared = { on: false, list: [], sig: '', why: '', meta: { seeded: [], applied: [] } };      // on: the server store answered (or answered once before); list: its layouts
   var PKEY = 'gw.layouts.pending.v1', CKEY = 'gw.layouts.cache.v1';
   function lkey(n) { return String(n || '').trim().toLowerCase(); }
   function same(a, b) { return a.kind === b.kind && lkey(a.name) === lkey(b.name); }
@@ -260,7 +260,8 @@ window.GW = window.GW || {};
     refresh: function (done) {
       call('GET').then(function (j) {
         if (!j.configured) { shared.on = false; shared.why = j.reason || ''; done && done(false); return; }
-        var was = shared.sig; shared.on = true; shared.why = ''; shared.list = j.layouts || []; writeJ(CKEY, shared.list);
+        var was = shared.sig; shared.on = true; shared.why = ''; shared.list = j.layouts || []; shared.meta = j.meta || { seeded: [], applied: [] }; writeJ(CKEY, shared.list);
+        var finish = done; done = function (ch) { if (GW.maintainLibrary) GW.maintainLibrary(function (m) { shared.sig = sigOf(merged()); finish && finish(ch || m); }); else finish && finish(ch); };   // then: put built-in layouts in the library, apply patches
         if (j.errors && j.errors.length && GW.toast) GW.toast(j.errors.length + ' shared layout' + (j.errors.length > 1 ? 's' : '') + ' could not be read from the server: ' + j.errors[0]);
         var up = pending().concat(localAll()).filter(function (l) { var s = shared.list.filter(function (x) { return same(x, l); })[0]; return !s || l.ts > s.ts; });
         if (!up.length) { if (localAll().length) { try { localStorage.removeItem(LKEY); } catch (e) { } } shared.sig = sigOf(merged()); done && done(was !== shared.sig); return; }
@@ -275,9 +276,21 @@ window.GW = window.GW || {};
         shared.on = false; shared.why = 'the server did not answer (' + (e && e.message || 'offline') + ')'; done && done(false);
       });
     },
+    meta: function () { return shared.meta; },
+    // add or replace one layout in the shared library (kept in this browser until the server has it)
+    put: function (entry, cb) {
+      var p = pending().filter(function (x) { return !same(x, entry); }); p.push(entry); setPending(p);
+      var i = -1; shared.list.forEach(function (x, k) { if (same(x, entry)) i = k; }); i >= 0 ? shared.list[i] = entry : shared.list.push(entry); shared.sig = sigOf(merged());
+      upload(entry, function (e) { if (!e) writeJ(CKEY, shared.list); cb && cb(e); });
+    },
+    addMeta: function (m) {
+      shared.meta = { seeded: (shared.meta.seeded || []).concat(m.seeded || []), applied: (shared.meta.applied || []).concat(m.applied || []) };
+      call('POST', '', { meta: m }).then(null, function () { });
+    },
     save: function (cb) {
       var d = GW.design, kind = GW.modeOf(), name = String(d.name || '').trim() || 'Untitled', updated = false;
       var entry = { name: name, kind: kind, ts: Date.now(), data: GW.serialize() };
+      var old = shared.on && merged().filter(function (l) { return same(l, entry); })[0]; if (old && old.device) entry.device = old.device;   // a pixel-matched layout keeps its watch
       if (shared.on) {
         updated = merged().some(function (l) { return same(l, entry); });
         var p = pending().filter(function (x) { return !same(x, entry); }); p.push(entry);

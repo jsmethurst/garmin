@@ -18,6 +18,8 @@ async function withAccess(fn) {
 }
 const b64 = (s) => Buffer.from(String(s).trim().toLowerCase(), 'utf8').toString('base64url');
 const pathOf = (kind, name) => `layouts/${kind}/${b64(name)}.json`;
+const META = 'layouts/_meta.json';   // which built-in layouts were put in the library already, and which patches were applied
+const uniq = (a, b) => [...new Set([...(a || []), ...(b || [])])];
 
 // Blob stores come in two flavours: a read-write token (BLOB_READ_WRITE_TOKEN) or, newer, BLOB_STORE_ID with no token (OIDC).
 // The store's token is normally BLOB_READ_WRITE_TOKEN, but connecting a store with a name prefix gives <PREFIX>_READ_WRITE_TOKEN: accept either.
@@ -39,17 +41,29 @@ export default async function handler(req, res) {
       let cursor;
       do { const r = await list({ token, prefix: 'layouts/', cursor, limit: 1000 }); blobs.push(...r.blobs); cursor = r.hasMore ? r.cursor : undefined; } while (cursor);
       const errors = [];
+      let meta = { seeded: [], applied: [] };
       const layouts = (await Promise.all(blobs.map(async (b) => {
+        if (b.pathname === META) {
+          try { const g = await withAccess((a) => get(b.pathname, { token, access: a })); if (g) meta = JSON.parse(await new Response(g.stream).text()); } catch (e) { errors.push(b.pathname + ': ' + String(e.message || e)); }
+          return null;
+        }
         try {
           const g = await withAccess((a) => get(b.pathname, { token, access: a }));
           if (!g) { errors.push(b.pathname + ': not found'); return null; }
           return JSON.parse(await new Response(g.stream).text());
         } catch (e) { errors.push(b.pathname + ': ' + String(e.message || e)); return null; }
       }))).filter((l) => l && l.name && KINDS.includes(l.kind) && l.data);
-      return json(res, 200, { configured: true, layouts, errors });
+      return json(res, 200, { configured: true, layouts, errors, meta });
     }
     if (req.method === 'POST') {
       const l = await readBody(req, 4 * 1024 * 1024);
+      if (l.meta) {   // the lists only ever grow, so two people writing at once cannot undo each other
+        let cur = { seeded: [], applied: [] };
+        try { const g = await withAccess((a) => get(META, { token, access: a })); if (g) cur = JSON.parse(await new Response(g.stream).text()); } catch { /* none yet */ }
+        const next = { seeded: uniq(cur.seeded, l.meta.seeded), applied: uniq(cur.applied, l.meta.applied) };
+        await withAccess((a) => put(META, JSON.stringify(next), { token, access: a, allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json' }));
+        return json(res, 200, { ok: true, meta: next });
+      }
       if (!l.name || !KINDS.includes(l.kind) || !l.data) return json(res, 400, { ok: false, message: 'A layout needs a name, a kind (watch or field) and its data.' });
       const entry = { name: String(l.name).trim().slice(0, 80), kind: l.kind, ts: Number(l.ts) || Date.now(), data: l.data };
       await withAccess((a) => put(pathOf(entry.kind, entry.name), JSON.stringify(entry), { token, access: a, allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json' }));

@@ -972,24 +972,40 @@
     }
     function blankThumb(color) { var c = document.createElement('canvas'); c.width = c.height = 120; var x = c.getContext('2d'); x.fillStyle = color; x.fillRect(0, 0, 120, 120); c.style.width = c.style.height = '120px'; return c; }
     var shown = {};
-    GW.PRESETS.forEach(function (p) {
-      if ((p.kind === 'datafield') !== fld) return;
-      var key = p.name.toLowerCase(), saved = GW.layouts.find(p.name, kind);
-      if (saved) shown[key] = 1;
-      if (!saved && hidden.indexOf(key) >= 0) return;
-      var thumb = p.id === 'blank' || p.id === 'blankfield' ? blankThumb(p.id === 'blank' ? '#000' : '#fff') : GW.thumb(saved ? saved.data.design : Object.assign(p.build(), { size: 280 }), 140);
-      grid.appendChild(card(thumb, p.name, !!saved, function (done) { GW.applyPreset(p.id, done); }, function () {
-        if (saved) GW.layouts.remove(p.name, kind); else GW.layouts.hide(p.name, kind);
-        if (saved) GW.layouts.hide(p.name, kind);
-      }, 'Delete the layout “' + p.name + '”?' + (saved ? (GW.layouts.shared() ? ' The shared version goes too, for everyone.' : ' Your saved version goes too.') : '')));
-    });
-    GW.layouts.all().forEach(function (l) {
-      if (l.kind !== kind || shown[l.name.toLowerCase()]) return;
-      grid.appendChild(card(GW.thumb(l.data.design, 140), l.name, true, function (done) { GW.loadFrom(GW.clone(l.data), done); },
-        function () { GW.layouts.remove(l.name, kind); }, (GW.layouts.shared() ? 'Delete the shared layout “' + l.name + '”? It disappears for everyone.' : 'Delete your saved layout “' + l.name + '”?')));
-    });
+    if (GW.layouts.shared()) {
+      // the library is the only list: built-in layouts are in it like any other, and everyone edits the same copy
+      var order = {}; GW.PRESETS.forEach(function (p, k) { order[p.name.toLowerCase()] = k; });
+      GW.layouts.all().filter(function (l) { return l.kind === kind; }).sort(function (a, b) {
+        var oa = order[a.name.toLowerCase()], ob = order[b.name.toLowerCase()];
+        return (oa == null ? 1e6 - a.ts / 1e9 : oa) - (ob == null ? 1e6 - b.ts / 1e9 : ob);
+      }).forEach(function (l) {
+        var blank = /^blank/i.test(l.name) && !(l.data.design.elements || []).length;
+        grid.appendChild(card(blank ? blankThumb(fld ? '#fff' : '#000') : GW.thumb(l.data.design, 140), l.name, false, function (done) { GW.openLayout(l, done); },
+          function () { GW.layouts.remove(l.name, kind); }, 'Delete “' + l.name + '” for everyone? Nobody will have it afterwards.'));
+      });
+    } else {
+      GW.PRESETS.forEach(function (p) {
+        if ((p.kind === 'datafield') !== fld) return;
+        var key = p.name.toLowerCase(), saved = GW.layouts.find(p.name, kind);
+        if (saved) shown[key] = 1;
+        if (!saved && hidden.indexOf(key) >= 0) return;
+        var thumb = p.id === 'blank' || p.id === 'blankfield' ? blankThumb(p.id === 'blank' ? '#000' : '#fff') : GW.thumb(saved ? saved.data.design : Object.assign(p.build(), { size: 280 }), 140);
+        grid.appendChild(card(thumb, p.name, !!saved, function (done) { GW.applyPreset(p.id, done); }, function () {
+          if (saved) GW.layouts.remove(p.name, kind); else GW.layouts.hide(p.name, kind);
+          if (saved) GW.layouts.hide(p.name, kind);
+        }, 'Delete the layout “' + p.name + '”?' + (saved ? (GW.layouts.shared() ? ' The shared version goes too, for everyone.' : ' Your saved version goes too.') : '')));
+      });
+      GW.layouts.all().forEach(function (l) {
+        if (l.kind !== kind || shown[l.name.toLowerCase()]) return;
+        grid.appendChild(card(GW.thumb(l.data.design, 140), l.name, true, function (done) { GW.loadFrom(GW.clone(l.data), done); },
+          function () { GW.layouts.remove(l.name, kind); }, (GW.layouts.shared() ? 'Delete the shared layout “' + l.name + '”? It disappears for everyone.' : 'Delete your saved layout “' + l.name + '”?')));
+      });
+    }
     var kids = [grid];
-    if (hidden.length) kids.push(h('p', {}, [h('button', { class: 'btn sm', text: 'Restore the layouts I deleted', onclick: function () { GW.layouts.restoreHidden(kind); GW.openPresets(); } })]));
+    if (GW.layouts.shared()) {
+      var missing = GW.PRESETS.filter(function (p) { return ((p.kind === 'datafield') === fld) && !GW.layouts.find(p.name, kind); });
+      if (missing.length) kids.push(h('p', {}, [h('button', { class: 'btn sm', text: 'Put back the original layouts that are missing (' + missing.length + ')', onclick: function () { GW.restoreBuiltins(); GW.openPresets(); } })]));
+    } else if (hidden.length) kids.push(h('p', {}, [h('button', { class: 'btn sm', text: 'Restore the layouts I deleted', onclick: function () { GW.layouts.restoreHidden(kind); GW.openPresets(); } })]));
     // open a .prg / .iq that Garmin Studio built (the editable design is stored inside it)
     var pick = h('input', { type: 'file', accept: '.prg,.iq,.zip', hidden: true });
     pick.addEventListener('change', function () {

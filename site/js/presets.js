@@ -313,14 +313,62 @@
     { id: 'blank', name: 'Blank', blurb: 'Start from nothing.', build: function () { return D('My Watchface', '#000000', [], []); } }
   ];
 
+  // ---------- one library ----------
+  // The layouts in the shared library are the only copies: a built-in layout is just what the library starts with (it is put there once),
+  // and after that whoever edits it - you in the editor, or a patch from the code - changes that one copy.
+  function kindOf(p) { return p.kind === 'datafield' ? 'field' : 'watch'; }
+  function seedEntry(p) { return { name: p.name, kind: kindOf(p), ts: Date.now(), device: p.device, data: { v: 1, design: Object.assign(p.build(), { size: 280 }), assets: p.assets ? p.assets() : {} } }; }
+  // patches: small edits to a layout that already lives in the library, applied once on top of whatever it looks like now
+  //   { id, layout: 'Name', kind: 'watch', ops: [ { find: { source: 'altitude' }, set: { suffix: 'm' } }, { add: {...element}, once: { name: '...' } }, { remove: { find } }, { design: { bg: '#000000' } } ] }
+  function matches(e, f) { return Object.keys(f).every(function (k) { return e[k] === f[k]; }); }
+  function applyOps(design, ops) {
+    var before = JSON.stringify(design);
+    (ops || []).forEach(function (op) {
+      if (op.find && op.set) design.elements.forEach(function (e) { if (matches(e, op.find)) Object.assign(e, op.set); });
+      else if (op.remove) design.elements = design.elements.filter(function (e) { return !matches(e, op.remove.find || op.remove); });
+      else if (op.add) { if (!(op.once && design.elements.some(function (e) { return matches(e, op.once); }))) design.elements.push(GW.newElement(op.add.type, op.add)); }
+      else if (op.design) Object.assign(design, op.design);
+    });
+    return JSON.stringify(design) !== before;
+  }
+  GW.maintainLibrary = function (done) {
+    var L = GW.layouts; if (!L.shared()) { done && done(false); return; }
+    var meta = L.meta(), seeded = meta.seeded || [], applied = meta.applied || [], newSeeded = [], newApplied = [], changed = false;
+    GW.PRESETS.forEach(function (p) {
+      if (seeded.indexOf(p.id) >= 0) return;
+      newSeeded.push(p.id);
+      if (L.find(p.name, kindOf(p))) return;   // someone already has a layout of this name: that one is the layout
+      try { L.put(seedEntry(p)); changed = true; } catch (e) { if (window.console) console.error('could not add built-in layout', p.id, e); }
+    });
+    (GW.PATCHES || []).forEach(function (pt) {
+      if (applied.indexOf(pt.id) >= 0) return;
+      newApplied.push(pt.id);
+      var l = L.find(pt.layout, pt.kind || 'watch'); if (!l) return;
+      var data = GW.clone(l.data);
+      if (applyOps(data.design, pt.ops)) { L.put(Object.assign({}, l, { ts: Date.now(), data: data })); changed = true; }
+    });
+    if (newSeeded.length || newApplied.length) L.addMeta({ seeded: newSeeded, applied: newApplied });
+    done && done(changed);
+  };
+  // put back any built-in layout that is missing from the library (for the "restore" button)
+  GW.restoreBuiltins = function () {
+    var n = 0; GW.PRESETS.forEach(function (p) { if (!GW.layouts.find(p.name, kindOf(p))) { GW.layouts.put(seedEntry(p)); n++; } }); return n;
+  };
+  // open a layout from the library (switching to its watch first when it was laid out pixel for pixel for one)
+  GW.openLayout = function (l, done) {
+    if (l.device && GW.DEVICE.id !== l.device) { GW.setDevice(l.device); var ds = document.getElementById('deviceSel'); if (ds) ds.value = GW.DEVICE.id; }
+    GW.loadFrom(GW.clone(l.data), done);
+  };
+
   // The presets are drawn on the 280 px screen; opening one on another watch converts it (see GW.convertSize).
   GW.applyPreset = function (id, done) {
     var p = GW.PRESETS.filter(function (x) { return x.id === id; })[0]; if (!p) return;
     if (p.device && GW.DEVICE.id !== p.device) {   // laid out pixel for pixel for one watch: switch to it first, or it would be scaled
       GW.setDevice(p.device); var ds = document.getElementById('deviceSel'); if (ds) ds.value = GW.DEVICE.id;
     }
-    var saved = GW.layouts && GW.layouts.find(p.name, p.kind === 'datafield' ? 'field' : 'watch');   // a saved layout with this name replaces the built-in
-    GW.loadFrom(saved ? GW.clone(saved.data) : { design: Object.assign(p.build(), { size: 280 }), assets: p.assets ? p.assets() : {} }, done);
+    var saved = GW.layouts && GW.layouts.find(p.name, p.kind === 'datafield' ? 'field' : 'watch');   // the library's copy is the layout; the built-in is only what it started from
+    if (saved) { GW.openLayout(saved, done); return; }
+    GW.loadFrom({ design: Object.assign(p.build(), { size: 280 }), assets: p.assets ? p.assets() : {} }, done);
   };
 
 })(window.GW);
