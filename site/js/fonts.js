@@ -278,6 +278,17 @@
     var ks = Object.keys(tintCache); if (ks.length > 400) delete tintCache[ks[0]];
     return (tintCache[k] = c);
   }
+  // one glyph turned clockwise by `deg` (the same bitmap the turned copy of the font holds), its pen origin at (x, y) on the baseline
+  GW.drawGlyphRot = function (ctx, f, ch, deg, x, y, color) {
+    var rinfo = GW.rotFontInfo(f, deg), bb = rinfo.glyphs[ch], src = GW.glyphCanvas(f, ch, deg); if (!bb || bb.blank || !src) return;
+    var k = key(f) + '|' + ch + '|' + color + '|r' + deg; if (!tintCache[k]) {
+      var c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+      var cx = c.getContext('2d'); cx.drawImage(src, 0, 0); cx.globalCompositeOperation = 'source-in'; cx.fillStyle = color; cx.fillRect(0, 0, c.width, c.height);
+      var ks = Object.keys(tintCache); if (ks.length > 600) delete tintCache[ks[0]];
+      tintCache[k] = c;
+    }
+    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(tintCache[k], x + bb.bx, y + bb.by); ctx.restore();
+  };
   GW.drawText = function (ctx, fontId, text, x, y, justify, color, top) {
     var b = GW.layoutText(ctx, fontId, text, x, y, justify, top), sys = SYS[fontId], cf = !sys && GW.customFont(fontId);
     ctx.fillStyle = color;
