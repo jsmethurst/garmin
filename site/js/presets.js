@@ -345,8 +345,8 @@
           gauge('Calories', 'calories', 84, 'ccw', 'cstair', dflt[7], { min: 0, max: 3000 }),
           gauge('Watch battery', 'battery', 186, 'cw', 'cwbat', dflt[8]),
           gauge('Body battery', 'bodyBat', 174, 'ccw', 'cbbat', dflt[9]),
-          txt(140, 33, 'hr', 'fQuad', Q(dflt[4]), { name: 'Heart rate', suffix: ' BPM', curve: true, set: { color: 'ctext' } }),
-          txt(140, 246, 'date', 'fQuad', Q(dflt[4]), { name: 'Day and date', fmt: 'ddd DD MMM', tr: true, upper: true, curve: true, set: { color: 'ctext' } })
+          txt(140, 36, 'hr', 'fQuad', Q(dflt[4]), { name: 'Heart rate', set: { color: 'ctext' } }),
+          txt(140, 246, 'date', 'fQuad', Q(dflt[4]), { name: 'Day and date', fmt: 'ddd DD', tr: true, upper: true, set: { color: 'ctext' } })
         ];
         return d;
       } },
