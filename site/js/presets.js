@@ -320,19 +320,19 @@
         var Q = GW.q, dflt = TH[0];
         var d = D('Quadrant', Q(dflt[1]), [{ id: 'fQuad', family: 'Michroma', weight: 400, px: 12, glyphs: 'auto', spacing: 0, aa: 'mip', bold: 1 }], []);
         var roles = [['cbg', 'Background', 1], ['cmain', 'Hour digits', 2], ['chi', 'Minute digits', 3], ['ctext', 'Main text', 4], ['ctrack', 'Gauge track', 5],
-                     ['cstep', 'Steps gauge', 6], ['cstair', 'Stairs gauge', 7], ['cwbat', 'Watch battery gauge', 8], ['cbbat', 'Body battery gauge', 9]];
+                     ['cstep', 'Steps gauge', 6], ['cstair', 'Calories gauge', 7], ['cwbat', 'Watch battery gauge', 8], ['cbbat', 'Body battery gauge', 9]];
         d.settings = roles.map(function (r) { return { id: r[0], kind: 'color', label: r[1], def: Q(dflt[r[2]]), keep: true }; });
         d.settings.push({ id: 'ct', kind: 'theme', label: 'Color theme', original: dflt[0], themes: TH.slice(1).map(function (t) {
           var c = {}; roles.forEach(function (r) { c[r[0]] = Q(t[r[2]]); }); return { name: t[0], colors: c };
         }) });
         d.colorMode = 'theme'; d.bgSet = 'cbg';
-        function gauge(name, src, start, dir, role, col) {
-          return E('arc', { name: name, cx: 140, cy: 140, r: 127, pen: 7, start: start, sweep: 78, dir: dir, source: src, color: Q(col), track: Q(dflt[5]), round: true, set: { color: role, track: 'ctrack' } });
+        function gauge(name, src, start, dir, role, col, o) {
+          return E('arc', Object.assign({ name: name, cx: 140, cy: 140, r: 127, pen: 7, start: start, sweep: 78, dir: dir, source: src, color: Q(col), track: Q(dflt[5]), round: true, set: { color: role, track: 'ctrack' } }, o || {}));
         }
         d.elements = [
           E('slabtime', { name: 'Time', colorH: Q(dflt[2]), colorM: Q(dflt[3]), set: { colorH: 'cmain', colorM: 'chi' } }),
           gauge('Steps', 'steps', 276, 'cw', 'cstep', dflt[6]),
-          gauge('Stairs', 'floors', 84, 'ccw', 'cstair', dflt[7]),
+          gauge('Calories', 'calories', 84, 'ccw', 'cstair', dflt[7], { min: 0, max: 3000 }),
           gauge('Watch battery', 'battery', 186, 'cw', 'cwbat', dflt[8]),
           gauge('Body battery', 'bodyBat', 174, 'ccw', 'cbbat', dflt[9]),
           txt(140, 40, 'hr', 'fQuad', Q(dflt[4]), { name: 'Heart rate', set: { color: 'ctext' } }),
