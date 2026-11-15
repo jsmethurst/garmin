@@ -327,10 +327,10 @@
         }) });
         d.colorMode = 'theme'; d.bgSet = 'cbg';
         function gauge(name, src, start, dir, role, col, o) {
-          return E('arc', Object.assign({ name: name, cx: 140, cy: 140, r: 127, pen: 7, start: start, sweep: 78, dir: dir, source: src, color: Q(col), track: Q(dflt[5]), round: true, set: { color: role, track: 'ctrack' } }, o || {}));
+          return E('arc', Object.assign({ name: name, cx: 140, cy: 140, r: 136, pen: 8, start: start, sweep: 78, dir: dir, source: src, color: Q(col), track: Q(dflt[5]), round: true, set: { color: role, track: 'ctrack' } }, o || {}));
         }
         d.elements = [
-          E('slabtime', { name: 'Time', colorH: Q(dflt[2]), colorM: Q(dflt[3]), set: { colorH: 'cmain', colorM: 'chi' } }),
+          E('slabtime', { name: 'Time', size: 93, colorH: Q(dflt[2]), colorM: Q(dflt[3]), set: { colorH: 'cmain', colorM: 'chi' } }),
           gauge('Steps', 'steps', 276, 'cw', 'cstep', dflt[6]),
           gauge('Calories', 'calories', 84, 'ccw', 'cstair', dflt[7], { min: 0, max: 3000 }),
           gauge('Watch battery', 'battery', 186, 'cw', 'cwbat', dflt[8]),
