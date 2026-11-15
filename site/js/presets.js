@@ -310,7 +310,7 @@
       build: function () {
         // colors per theme: [name, background, hour digits, minute digits, text, gauge track, steps, stairs, watch battery, body battery]
         var TH = [
-          ['Paper',        '#ffffff', '#000000', '#00aaaa', '#555555', '#aaaaaa', '#005555', '#00aaaa', '#aa0000', '#ffaa00'],
+          ['Paper',        '#ffffff', '#000000', '#00aaaa', '#000000', '#aaaaaa', '#005555', '#00aaaa', '#aa0000', '#ffaa00'],
           ['Cream & coral', '#000000', '#ffffff', '#ff7755', '#aaaaaa', '#555555', '#55aaff', '#ff7755', '#00ffaa', '#ffff55'],
           ['Mint & peach', '#000000', '#aaffaa', '#ffaaaa', '#aaaaaa', '#555555', '#aaffaa', '#aaffaa', '#ffaaaa', '#ffaaaa'],
           ['Sky & white',  '#000000', '#55aaff', '#ffffff', '#aaaaaa', '#555555', '#ff55aa', '#55aaff', '#ffff00', '#ffffff'],
@@ -318,7 +318,7 @@
           ['Violet',       '#000000', '#ffaaff', '#aa55ff', '#aaaaaa', '#555555', '#ffffff', '#ffaaff', '#5500aa', '#aa55ff']
         ];
         var Q = GW.q, dflt = TH[0];
-        var d = D('Quadrant', Q(dflt[1]), [{ id: 'fQuad', family: 'Michroma', weight: 400, px: 11, glyphs: 'auto', spacing: 0, aa: 'mip' }], []);
+        var d = D('Quadrant', Q(dflt[1]), [{ id: 'fQuad', family: 'Michroma', weight: 400, px: 12, glyphs: 'auto', spacing: 0, aa: 'mip', bold: 1 }], []);
         var roles = [['cbg', 'Background', 1], ['cmain', 'Hour digits', 2], ['chi', 'Minute digits', 3], ['ctext', 'Main text', 4], ['ctrack', 'Gauge track', 5],
                      ['cstep', 'Steps gauge', 6], ['cstair', 'Stairs gauge', 7], ['cwbat', 'Watch battery gauge', 8], ['cbbat', 'Body battery gauge', 9]];
         d.settings = roles.map(function (r) { return { id: r[0], kind: 'color', label: r[1], def: Q(dflt[r[2]]), keep: true }; });
