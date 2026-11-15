@@ -19,6 +19,7 @@ function balanced(src) {
   for (let i = 0; i < src.length; i++) {
     const c = src[i];
     if (inStr) { if (c === '\\') i++; else if (c === '"') inStr = false; continue; }
+    if (c === "'") { i += (src[i + 1] === '\\') ? 3 : 2; continue; }   // a character literal like '"' or '\'' (the turned-font tables have them)
     if (c === '"') inStr = true;
     else if (c === '/' && src[i + 1] === '/') { while (i < src.length && src[i] !== '\n') i++; }
     else if ('([{'.includes(c)) st.push(c);
