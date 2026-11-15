@@ -90,9 +90,9 @@
     if (el.upper) expr = '(' + expr + ').toUpper()';
     if (el.lower && !(el.source === 'date' && el.tr)) expr = '(' + expr + ').toLower()';
     var f = GW.customFont(GW.fontFor(el)), met = GW.fontMetrics(f), tch = GW.textChars(el) || met.chars;
-    var seen = {}, chars = tch.split('').filter(function (ch) { if (seen[ch] || ch === ' ' || !met.glyphs[ch]) return false; return (seen[ch] = 1); });
-    var id = String(el.id).replace(/[^A-Za-z0-9]/g, ''), lit = function (ch) { return ch === "'" ? "'\\''" : (ch === '\\' ? "'\\\\'" : "'" + ch + "'"); };
-    var gl = [], av = [];
+    // the letters the layer can show (and the space), each with its code, its advance and its outline; plain number tables, no character literals
+    var seen = {}, chars = (tch + ' ').split('').filter(function (ch) { if (seen[ch] || !met.glyphs[ch]) return false; return (seen[ch] = 1); });
+    var id = String(el.id).replace(/[^A-Za-z0-9]/g, ''), codes = [], av = [], gl = [];
     chars.forEach(function (ch) {
       var bytes = [];
       outline(f, ch).forEach(function (pl) {
@@ -100,34 +100,48 @@
         bytes.push(pl.hole ? 1 : 0, pl.pts.length);
         pl.pts.forEach(function (p) { bytes.push(p[0]); }); pl.pts.forEach(function (p) { bytes.push(p[1]); });
       });
-      if (bytes.length) gl.push(lit(ch) + ' => [' + bytes.join(',') + ']b');
+      codes.push(ch.charCodeAt(0)); av.push(met.glyphs[ch].adv); gl.push('[' + (bytes.length ? bytes.join(',') : '0') + ']b');   // a letter with no ink holds one byte
     });
-    ((tch + ' ').split('').filter(function (ch, i, a) { return a.indexOf(ch) === i; })).forEach(function (ch) { var g = met.glyphs[ch]; if (g) av.push(lit(ch) + ' => ' + g.adv); });
     var P = place(el, T.text.string(el, GW.env()), f);
     cg.helper('arcGly');
-    cg.member('    const GL_' + id + ' = {\n        ' + gl.join(',\n        ') + '\n    };');
-    cg.member('    const AV_' + id + ' = { ' + av.join(', ') + ' };');
+    cg.member('    const GC_' + id + ' = [' + codes.join(', ') + '];');
+    cg.member('    const GA_' + id + ' = [' + av.join(', ') + '];');
+    cg.member('    const GL_' + id + ' = [\n        ' + gl.join(',\n        ') + '\n    ];');
     cg.member('    const AC_' + id + ' = [' + [Math.round(GW.SIZE / 2), Math.round(GW.SIZE / 2), P.Rc.toFixed(2), P.phic.toFixed(2), P.dir, P.off, P.k.toFixed(1)].join(', ') + '];');
     var bgx = GW.bgExpr ? GW.bgExpr(cg.design, cg) : GW.mcColor(cg.design.bg);
-    return ['arcGly(dc, GL_' + id + ', AV_' + id + ', AC_' + id + ', ' + expr + ', ' + GW.mcColor(el.color) + ', ' + bgx + ');'];
+    return ['arcGly(dc, [GC_' + id + ', GA_' + id + ', GL_' + id + '], AC_' + id + ', ' + expr + ', ' + GW.mcColor(el.color) + ', ' + bgx + ');'];
   };
   if (GW.MC_HELPERS) GW.MC_HELPERS.arcGly = {
     imports: ['Toybox.Math'],
-    code: 'function arcGly(dc, gl, adv, cfg, s, fg, bg) {\n' +
+    code: 'function arcGly(dc, tab, cfg, s, fg, bg) {\n' +
+      '        var codes = tab[0];\n' +
+      '        var advs = tab[1];\n' +
       '        var chars = s.toCharArray();\n' +
       '        var n = chars.size();\n' +
+      '        var gi = new [n];\n' +
       '        var tw = 0;\n' +
       '        for (var i = 0; i < n; i++) {\n' +
-      '            var w = adv[chars[i]];\n' +
-      '            tw += (w != null) ? w : 8;\n' +
+      '            var code = chars[i].toNumber();\n' +
+      '            var g = -1;\n' +
+      '            for (var k = 0; k < codes.size(); k++) {\n' +
+      '                if (codes[k] == code) {\n' +
+      '                    g = k;\n' +
+      '                    break;\n' +
+      '                }\n' +
+      '            }\n' +
+      '            gi[i] = g;\n' +
+      '            tw += (g >= 0) ? advs[g] : 8;\n' +
       '        }\n' +
       '        var x = 0;\n' +
       '        for (var j = 0; j < n; j++) {\n' +
-      '            var ch = chars[j];\n' +
-      '            var a = adv[ch];\n' +
-      '            if (a == null) { a = 8; }\n' +
-      '            var d = gl[ch];\n' +
-      '            if (d != null) {\n' +
+      '            var g2 = gi[j];\n' +
+      '            if (g2 < 0) {\n' +
+      '                x += 8;\n' +
+      '                continue;\n' +
+      '            }\n' +
+      '            var a = advs[g2];\n' +
+      '            var d = tab[2][g2];\n' +
+      '            if (d.size() > 1) {\n' +
       '                var phi = cfg[3] + cfg[4] * ((x + a / 2.0 - tw / 2.0) / cfg[2]) * 57.29578;\n' +
       '                var q = Math.toRadians(phi - cfg[5]);\n' +
       '                var p = Math.toRadians(phi);\n' +
@@ -145,7 +159,7 @@
       '        for (var pass = 0; pass < 2; pass++) {\n' +
       '            dc.setColor((pass == 0) ? fg : bg, Graphics.COLOR_TRANSPARENT);\n' +
       '            var i = 0;\n' +
-      '            while (i < n) {\n' +
+      '            while (i + 1 < n) {\n' +
       '                var cnt = d[i + 1];\n' +
       '                if (d[i] == pass) {\n' +
       '                    var pts = new [cnt];\n' +
