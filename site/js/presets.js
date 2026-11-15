@@ -318,7 +318,7 @@
           ['Violet',       '#000000', '#ffaaff', '#aa55ff', '#aaaaaa', '#555555', '#ffffff', '#ffaaff', '#5500aa', '#aa55ff']
         ];
         var Q = GW.q, dflt = TH[0];
-        var d = D('Quadrant', Q(dflt[1]), [], []);
+        var d = D('Quadrant', Q(dflt[1]), [{ id: 'fQuad', family: 'Michroma', weight: 400, px: 11, glyphs: 'auto', spacing: 0, aa: 'mip' }], []);
         var roles = [['cbg', 'Background', 1], ['cmain', 'Hour digits', 2], ['chi', 'Minute digits', 3], ['ctext', 'Main text', 4], ['ctrack', 'Gauge track', 5],
                      ['cstep', 'Steps gauge', 6], ['cstair', 'Stairs gauge', 7], ['cwbat', 'Watch battery gauge', 8], ['cbbat', 'Body battery gauge', 9]];
         d.settings = roles.map(function (r) { return { id: r[0], kind: 'color', label: r[1], def: Q(dflt[r[2]]), keep: true }; });
@@ -335,8 +335,8 @@
           gauge('Stairs', 'floors', 84, 'ccw', 'cstair', dflt[7]),
           gauge('Watch battery', 'battery', 186, 'cw', 'cwbat', dflt[8]),
           gauge('Body battery', 'bodyBat', 174, 'ccw', 'cbbat', dflt[9]),
-          txt(140, 40, 'date', 'FONT_XTINY', Q(dflt[4]), { name: 'Day and date', fmt: 'ddd DD', tr: true, upper: true, set: { color: 'ctext' } }),
-          txt(140, 244, 'hr', 'FONT_XTINY', Q(dflt[4]), { name: 'Heart rate', set: { color: 'ctext' } })
+          txt(140, 40, 'hr', 'fQuad', Q(dflt[4]), { name: 'Heart rate', set: { color: 'ctext' } }),
+          txt(140, 244, 'date', 'fQuad', Q(dflt[4]), { name: 'Day and date', fmt: 'ddd DD', tr: true, upper: true, set: { color: 'ctext' } })
         ];
         return d;
       } },
