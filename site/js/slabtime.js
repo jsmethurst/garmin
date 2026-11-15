@@ -96,7 +96,7 @@
   }
 
   // ---------- trace the cut shape into outlines (whole watch pixels) ----------
-  function trace(mask, w, h, fx0, fy0) {
+  function loopsOf(mask, w, h) {
     var W1 = w + 1, out = {}, i;
     function add(a, b) { (out[a] || (out[a] = [])).push(b); }
     for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
@@ -121,7 +121,10 @@
         if (loop.length > 3) loops.push(loop.map(function (k) { return [k % W1, Math.floor(k / W1)]; }));
       }
     });
-    var res = [];
+    return loops;
+  }
+  function trace(mask, w, h, fx0, fy0) {
+    var loops = loopsOf(mask, w, h), res = [];
     loops.forEach(function (lp) {
       lp = dropCollinear(lp);
       var s = rdpClosed(lp, 0.9), pts = [];
@@ -159,6 +162,8 @@
     for (i = 1; i < b.length - 1; i++) if (keepB[i]) out.push(b[i]);
     return out;
   }
+
+  GW._trace = { loopsOf: loopsOf, dropCollinear: dropCollinear, rdpClosed: rdpClosed, area: area };
 
   // shapes are cached per setting (a drawing of one digit takes a moment)
   var cache = {};

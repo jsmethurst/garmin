@@ -1,47 +1,81 @@
-/* Curved text: a text layer can follow the edge of the round screen (the text of the top half bends like the top of the screen, the text of the
-   bottom half like the bottom). It needs a bitmap font, because every letter is turned: the watch holds copies of the font turned in steps of 10 degrees
-   and puts each letter on the circle, using the copy closest to the angle it needs. The preview uses the very same copies, so the two agree. */
+/* Curved text: a text layer can follow the edge of the round screen (text in the top half bends like the top of the screen, text in the bottom half like
+   the bottom). Every letter is drawn as a small filled outline (the outline of the letter in the layer's font), turned by exactly the angle it needs and
+   placed exactly on the circle, so the curve is smooth. No font file goes on the watch for such a layer, which also keeps the face's memory use low.
+   The preview draws the same outlines with the same arithmetic. */
 (function (GW) {
   'use strict';
-  var T = GW.types, STEP = 10;
+  var T = GW.types, Z = 8, OFF = 64;          // Z: raster pixels per pixel while the outlines are made; OFF: shifts the stored quarter-pixel coordinates to be positive
 
-  // where every letter goes: its position on the circle and the turned copy it uses
-  function layout(el, str, fid, rot0, n) {
-    var f = GW.customFont(fid), met = GW.fontMetrics(f), c = GW.SIZE / 2;
-    var dx = el.x - c, dy = el.y - c, Rc = Math.max(10, Math.hypot(dx, dy)), top = el.y < c;
+  // ---------- the outline of one letter, as polygons in quarter pixels from the letter's pen origin on the baseline ----------
+  var cache = {};
+  function outline(f, ch) {
+    var k = f.id + '|' + f.family + '|' + f.weight + '|' + f.px + '|' + (f.bold || 0) + '|' + ch;
+    if (cache[k]) return cache[k];
+    var met = GW.fontMetrics(f), g = met.glyphs[ch], res = [];
+    if (g && !g.blank) {
+      var pad = 3, w = Math.ceil((g.w + 2 * pad) * Z), h = Math.ceil((g.h + 2 * pad) * Z), cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      var c = cv.getContext('2d', { willReadFrequently: true });
+      c.scale(Z, Z); c.translate(pad, pad);
+      c.font = GW.fontCss(f); c.fillStyle = '#fff'; c.textBaseline = 'alphabetic'; c.textAlign = 'left';
+      c.fillText(ch, -g.x0, -g.y0);
+      if (f.bold) { c.lineWidth = f.bold; c.lineJoin = 'round'; c.strokeStyle = '#fff'; c.strokeText(ch, -g.x0, -g.y0); }
+      var im = c.getImageData(0, 0, w, h).data, mask = new Uint8Array(w * h), i;
+      for (i = 0; i < mask.length; i++) mask[i] = im[i * 4 + 3] >= 128 ? 1 : 0;
+      var tr = GW._trace;
+      tr.loopsOf(mask, w, h).forEach(function (lp) {
+        lp = tr.dropCollinear(lp);
+        var s = tr.rdpClosed(lp, 1.1), pts = [];
+        s.forEach(function (p) {
+          var u = (p[0] / Z - pad + g.x0 + (g.dx || 0)), v = (p[1] / Z - pad + g.y0), X = Math.round(u * 4) + OFF, Y = Math.round(v * 4) + OFF, L = pts[pts.length - 1];
+          if (!L || L[0] !== X || L[1] !== Y) pts.push([X, Y]);
+        });
+        if (pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) pts.pop();
+        var A = tr.area(pts); if (pts.length < 3 || Math.abs(A) < 3) return;
+        pts.forEach(function (p) { if (p[0] < 0 || p[0] > 255 || p[1] < 0 || p[1] > 255) throw new Error('A letter outline does not fit in a byte table'); });
+        res.push({ hole: A < 0, pts: pts });
+      });
+    }
+    return (cache[k] = res);
+  }
+
+  // ---------- where every letter goes ----------
+  function place(el, str, f) {
+    var met = GW.fontMetrics(f), c = GW.SIZE / 2, dx = el.x - c, dy = el.y - c, Rc = Math.max(10, Math.hypot(dx, dy)), top = el.y < c;
     var phic = Math.atan2(dx, -dy) * 180 / Math.PI;                       // clock degrees of the text centre (0 = 12 o'clock, 180 = 6 o'clock)
     if (!top && phic < 0) phic += 360;
     var dir = top ? 1 : -1, off = top ? 0 : 180, k = (met.asc - met.desc) / 2;
     var chars = str.split(''), adv = chars.map(function (ch) { var g = met.glyphs[ch]; return g ? g.adv : 8; });
     var tw = adv.reduce(function (a, b) { return a + b; }, 0), x = 0, out = [];
     chars.forEach(function (ch, i) {
-      var a = adv[i], t = (x + a / 2 - tw / 2) / Rc, phi = phic + dir * t * 180 / Math.PI, rot = phi - off;
-      var j = Math.max(0, Math.min(n - 1, Math.trunc((rot - rot0) / STEP + 0.5))), q = rot0 + j * STEP, qr = q * Math.PI / 180;
-      var cxp = c + Rc * Math.sin(phi * Math.PI / 180), cyp = c - Rc * Math.cos(phi * Math.PI / 180);
-      out.push({ ch: ch, q: q, px: cxp - (a / 2 * Math.cos(qr) + k * Math.sin(qr)), py: cyp - (a / 2 * Math.sin(qr) - k * Math.cos(qr)), blank: ch === ' ' });
+      var a = adv[i], t = (x + a / 2 - tw / 2) / Rc, phi = phic + dir * t * 180 / Math.PI, q = (phi - off) * Math.PI / 180, p = phi * Math.PI / 180;
+      var cx = c + Rc * Math.sin(p), cy = c - Rc * Math.cos(p);
+      out.push({ ch: ch, cos: Math.cos(q), sin: Math.sin(q), ox: cx - (a / 2 * Math.cos(q) + k * Math.sin(q)), oy: cy - (a / 2 * Math.sin(q) - k * Math.cos(q)) });
       x += a;
     });
-    return { glyphs: out, Rc: Rc, phic: phic, dir: dir, off: off, k: k, tw: tw };
+    return { glyphs: out, Rc: Rc, phic: phic, dir: dir, off: off, k: k };
   }
-  // the turned copies the watch needs: enough angles for the longest text the layer can show (the current one, with some room)
-  function range(el, fid) {
-    var str = T.text.string(el, GW.env()), probe = layout(el, str, fid, -90, 19), half = probe.tw * 1.3 / 2 / probe.Rc * 180 / Math.PI;
-    var m = Math.min(60, Math.ceil(half / STEP) * STEP);
-    return { rot0: -m, n: 2 * m / STEP + 1 };
-  }
-  GW.arcRange = range;
 
   var tdraw = T.text.draw, tgen = T.text.gen, tfields = T.text.fields;
-  function curved(el) { return el.curve && !el.rot && GW.customFont(GW.fontFor(el)) && !GW.customFont(GW.fontFor(el)).prebuilt; }
+  function curved(el) { var f = GW.customFont(GW.fontFor(el)); return !!(el.curve && !el.rot && f && !f.prebuilt); }
   T.text.draw = function (ctx, el, env) {
     if (!curved(el)) return tdraw.apply(this, arguments);
-    var fid = GW.fontFor(el), f = GW.customFont(fid), r = range(el, fid), L = layout(el, T.text.string(el, env), fid, r.rot0, r.n), col = GW.q(el.color);
-    L.glyphs.forEach(function (g) { if (!g.blank) GW.drawGlyphRot(ctx, f, g.ch, g.q, Math.trunc(g.px - 0) , Math.trunc(g.py - 0), col); });
+    var f = GW.customFont(GW.fontFor(el)), L = place(el, T.text.string(el, env), f);
+    ctx.save(); ctx.fillStyle = GW.q(el.color); ctx.beginPath();
+    L.glyphs.forEach(function (g) {
+      outline(f, g.ch).forEach(function (pl) {
+        pl.pts.forEach(function (p, i) {
+          var u = (p[0] - OFF) / 4, v = (p[1] - OFF) / 4, X = Math.trunc(g.ox + u * g.cos - v * g.sin), Y = Math.trunc(g.oy + u * g.sin + v * g.cos);
+          i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+        });
+        ctx.closePath();
+      });
+    });
+    ctx.fill('evenodd'); ctx.restore();
   };
   T.text.fields = function (el) {
     var f = tfields.call(this, el), i = -1;
     f.forEach(function (x, n) { if (x && x.k === 'justify') i = n; });
-    if (i >= 0) f.splice(i, 0, { k: 'curve', t: 'check', label: 'Curve the text along the screen edge (bitmap fonts; the upper half bends like the top, the lower half like the bottom)' });
+    if (i >= 0) f.splice(i, 0, { k: 'curve', t: 'check', label: 'Curve the text along the screen edge (the upper half bends like the top, the lower half like the bottom; any bitmap font)' });
     return f;
   };
   T.text.gen = function (el, cg) {
@@ -55,22 +89,31 @@
     var expr = parts.join(' + ');
     if (el.upper) expr = '(' + expr + ').toUpper()';
     if (el.lower && !(el.source === 'date' && el.tr)) expr = '(' + expr + ').toLower()';
-    var fid = GW.fontFor(el), f = GW.customFont(fid), r = range(el, fid), tch = GW.textChars(el);
-    var id = String(el.id).replace(/[^A-Za-z0-9]/g, ''), fonts = [], ms = [], adv = null;
-    for (var j = 0; j < r.n; j++) {
-      var deg = r.rot0 + j * STEP, rid = fid + '_r' + (deg < 0 ? 'n' + Math.round(-deg) : Math.round(deg));
-      cg.fontChars(rid, tch);
-      var rf = cg.rotFont(fid, deg); fonts.push(rf.ref); ms.push(rf.m); adv = rf.adv;
-    }
-    var probe = layout(el, T.text.string(el, GW.env()), fid, r.rot0, r.n);
-    cg.helper('arcTxt');
-    cg.member('    const AC_' + id + ' = [' + [Math.round(GW.SIZE / 2), Math.round(GW.SIZE / 2), probe.Rc.toFixed(2), probe.phic.toFixed(2), probe.dir, probe.off, r.rot0, STEP, probe.k.toFixed(1)].join(', ') + '];');
-    return ['var af = [' + fonts.join(', ') + '];', 'var am = [' + ms.join(', ') + '];',   // the turned copies, in order of angle, and where each one's glyphs sit
-      'dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);', 'arcTxt(dc, af, ' + adv + ', AC_' + id + ', ' + expr + ', am);'];
+    var f = GW.customFont(GW.fontFor(el)), met = GW.fontMetrics(f), tch = GW.textChars(el) || met.chars;
+    var seen = {}, chars = tch.split('').filter(function (ch) { if (seen[ch] || ch === ' ' || !met.glyphs[ch]) return false; return (seen[ch] = 1); });
+    var id = String(el.id).replace(/[^A-Za-z0-9]/g, ''), lit = function (ch) { return ch === "'" ? "'\\''" : (ch === '\\' ? "'\\\\'" : "'" + ch + "'"); };
+    var gl = [], av = [];
+    chars.forEach(function (ch) {
+      var bytes = [];
+      outline(f, ch).forEach(function (pl) {
+        if (pl.pts.length > 255) throw new Error('A letter outline is too detailed for the table');
+        bytes.push(pl.hole ? 1 : 0, pl.pts.length);
+        pl.pts.forEach(function (p) { bytes.push(p[0]); }); pl.pts.forEach(function (p) { bytes.push(p[1]); });
+      });
+      if (bytes.length) gl.push(lit(ch) + ' => [' + bytes.join(',') + ']b');
+    });
+    ((tch + ' ').split('').filter(function (ch, i, a) { return a.indexOf(ch) === i; })).forEach(function (ch) { var g = met.glyphs[ch]; if (g) av.push(lit(ch) + ' => ' + g.adv); });
+    var P = place(el, T.text.string(el, GW.env()), f);
+    cg.helper('arcGly');
+    cg.member('    const GL_' + id + ' = {\n        ' + gl.join(',\n        ') + '\n    };');
+    cg.member('    const AV_' + id + ' = { ' + av.join(', ') + ' };');
+    cg.member('    const AC_' + id + ' = [' + [Math.round(GW.SIZE / 2), Math.round(GW.SIZE / 2), P.Rc.toFixed(2), P.phic.toFixed(2), P.dir, P.off, P.k.toFixed(1)].join(', ') + '];');
+    var bgx = GW.bgExpr ? GW.bgExpr(cg.design, cg) : GW.mcColor(cg.design.bg);
+    return ['arcGly(dc, GL_' + id + ', AV_' + id + ', AC_' + id + ', ' + expr + ', ' + GW.mcColor(el.color) + ', ' + bgx + ');'];
   };
-  if (GW.MC_HELPERS) GW.MC_HELPERS.arcTxt = {
+  if (GW.MC_HELPERS) GW.MC_HELPERS.arcGly = {
     imports: ['Toybox.Math'],
-    code: 'function arcTxt(dc, fonts, adv, cfg, s, ms) {\n' +
+    code: 'function arcGly(dc, gl, adv, cfg, s, fg, bg) {\n' +
       '        var chars = s.toCharArray();\n' +
       '        var n = chars.size();\n' +
       '        var tw = 0;\n' +
@@ -83,20 +126,38 @@
       '            var ch = chars[j];\n' +
       '            var a = adv[ch];\n' +
       '            if (a == null) { a = 8; }\n' +
-      '            if (ch != \' \') {\n' +
-      '                var t = (x + a / 2.0 - tw / 2.0) / cfg[2];\n' +
-      '                var phi = cfg[3] + cfg[4] * t * 57.29578;\n' +
-      '                var idx = ((phi - cfg[5] - cfg[6]) / cfg[7] + 0.5).toNumber();\n' +
-      '                if (idx < 0) { idx = 0; }\n' +
-      '                if (idx > fonts.size() - 1) { idx = fonts.size() - 1; }\n' +
-      '                var m = ms[idx];\n' +
-      '                var q = Math.toRadians(m[0]);\n' +
+      '            var d = gl[ch];\n' +
+      '            if (d != null) {\n' +
+      '                var phi = cfg[3] + cfg[4] * ((x + a / 2.0 - tw / 2.0) / cfg[2]) * 57.29578;\n' +
+      '                var q = Math.toRadians(phi - cfg[5]);\n' +
       '                var p = Math.toRadians(phi);\n' +
-      '                var px = cfg[0] + cfg[2] * Math.sin(p) - (a / 2.0 * Math.cos(q) + cfg[8] * Math.sin(q));\n' +
-      '                var py = cfg[1] - cfg[2] * Math.cos(p) - (a / 2.0 * Math.sin(q) - cfg[8] * Math.cos(q));\n' +
-      '                dc.drawText((px - m[2]).toNumber(), (py - m[1]).toNumber(), fonts[idx], ch.toString(), Graphics.TEXT_JUSTIFY_LEFT);\n' +
+      '                var c = Math.cos(q);\n' +
+      '                var sn = Math.sin(q);\n' +
+      '                var ox = cfg[0] + cfg[2] * Math.sin(p) - (a / 2.0 * c + cfg[6] * sn);\n' +
+      '                var oy = cfg[1] - cfg[2] * Math.cos(p) - (a / 2.0 * sn - cfg[6] * c);\n' +
+      '                glyphPoly(dc, d, [ox, oy, c, sn], fg, bg);\n' +
       '            }\n' +
       '            x += a;\n' +
+      '        }\n' +
+      '    }\n\n' +
+      '    function glyphPoly(dc, d, m, fg, bg) {\n' +
+      '        var n = d.size();\n' +
+      '        for (var pass = 0; pass < 2; pass++) {\n' +
+      '            dc.setColor((pass == 0) ? fg : bg, Graphics.COLOR_TRANSPARENT);\n' +
+      '            var i = 0;\n' +
+      '            while (i < n) {\n' +
+      '                var cnt = d[i + 1];\n' +
+      '                if (d[i] == pass) {\n' +
+      '                    var pts = new [cnt];\n' +
+      '                    for (var k = 0; k < cnt; k++) {\n' +
+      '                        var u = (d[i + 2 + k] - 64) / 4.0;\n' +
+      '                        var v = (d[i + 2 + cnt + k] - 64) / 4.0;\n' +
+      '                        pts[k] = [(m[0] + u * m[2] - v * m[3]).toNumber(), (m[1] + u * m[3] + v * m[2]).toNumber()];\n' +
+      '                    }\n' +
+      '                    dc.fillPolygon(pts);\n' +
+      '                }\n' +
+      '                i += 2 + cnt * 2;\n' +
+      '            }\n' +
       '        }\n' +
       '    }'
   };
