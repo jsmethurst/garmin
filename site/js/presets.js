@@ -315,7 +315,17 @@
           ['Mint & peach', '#000000', '#aaffaa', '#ffaaaa', '#aaaaaa', '#555555', '#aaffaa', '#aaffaa', '#ffaaaa', '#ffaaaa'],
           ['Sky & white',  '#000000', '#55aaff', '#ffffff', '#aaaaaa', '#555555', '#ff55aa', '#55aaff', '#ffff00', '#ffffff'],
           ['Sunshine & rose', '#000000', '#ffff55', '#ff5555', '#aaaaaa', '#555555', '#55aaff', '#ffff55', '#aa55ff', '#ff5555'],
-          ['Violet',       '#000000', '#ffaaff', '#aa55ff', '#aaaaaa', '#555555', '#ffffff', '#ffaaff', '#5500aa', '#aa55ff']
+          ['Violet',       '#000000', '#ffaaff', '#aa55ff', '#aaaaaa', '#555555', '#ffffff', '#ffaaff', '#5500aa', '#aa55ff'],
+          // dark
+          ['Ember',        '#000000', '#ffaa00', '#ff5500', '#aaaaaa', '#555555', '#ffaa00', '#ff5500', '#ffff55', '#aa0000'],
+          ['Neon',         '#000000', '#00ffff', '#ff55ff', '#aaaaaa', '#555555', '#00ffff', '#ff55ff', '#55ff55', '#ffff55'],
+          ['Deep sea',     '#000055', '#aaffff', '#55aaff', '#aaaaaa', '#0000aa', '#00ffff', '#55aaff', '#aaffaa', '#ffffff'],
+          ['Forest',       '#000000', '#aaffaa', '#55ff55', '#aaaaaa', '#005500', '#55ff55', '#aaff00', '#ffff55', '#00aaaa'],
+          // light
+          ['Daylight',     '#ffffff', '#000055', '#0055aa', '#000000', '#aaaaaa', '#0055aa', '#00aaff', '#aa0000', '#00aa55'],
+          ['Sand',         '#ffffaa', '#550000', '#aa5500', '#000000', '#aaaa55', '#aa5500', '#aa0000', '#005500', '#0055aa'],
+          ['Mint',         '#aaffaa', '#005500', '#00aa55', '#000000', '#55aa55', '#00aa55', '#aa5500', '#aa0000', '#0055aa'],
+          ['Blush',        '#ffaaaa', '#550000', '#aa0055', '#000000', '#aa5555', '#aa0055', '#aa5500', '#550055', '#005555']
         ];
         var Q = GW.q, dflt = TH[0];
         var d = D('Quadrant', Q(dflt[1]), [{ id: 'fQuad', family: 'Michroma', weight: 400, px: 12, glyphs: 'auto', spacing: 0, aa: 'mip', bold: 1 }], []);
@@ -327,7 +337,7 @@
         }) });
         d.colorMode = 'theme'; d.bgSet = 'cbg';
         function gauge(name, src, start, dir, role, col, o) {
-          return E('arc', Object.assign({ name: name, cx: 140, cy: 140, r: 136, pen: 8, start: start, sweep: 78, dir: dir, source: src, color: Q(col), track: Q(dflt[5]), round: true, set: { color: role, track: 'ctrack' } }, o || {}));
+          return E('arc', Object.assign({ name: name, cx: 140, cy: 140, r: 137, pen: 13, start: start, sweep: 78, dir: dir, source: src, color: Q(col), track: Q(dflt[5]), round: true, set: { color: role, track: 'ctrack' } }, o || {}));
         }
         d.elements = [
           E('slabtime', { name: 'Time', size: 93, colorH: Q(dflt[2]), colorM: Q(dflt[3]), set: { colorH: 'cmain', colorM: 'chi' } }),

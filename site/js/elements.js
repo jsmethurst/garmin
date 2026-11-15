@@ -147,6 +147,8 @@
   };
 
   // ================= ARC GAUGE =================
+  // the round end of an arc: a filled circle on the watch (2 * hw + 1 pixels across), made just as wide as the stroke, never wider
+  function capHw(el) { return Math.max(1, Math.floor((el.pen - 1) / 2)); }
   function arcProgress(el, env) {
     var s = GW.sources[el.source]; if (!s || !s.num) return 0;
     var v = s.num(env); if (v == null) return 0;
@@ -167,7 +169,7 @@
     return out;
   }
   function segArcDraw(ctx, el, env) {
-    var p = arcProgress(el, env), sl = arcSlices(el), n = sl.length, cw = el.dir !== 'ccw', sgn = cw ? 1 : -1, hw = el.pen / 2;
+    var p = arcProgress(el, env), sl = arcSlices(el), n = sl.length, cw = el.dir !== 'ccw', sgn = cw ? 1 : -1, hw = capHw(el) + 0.5;
     var col = q(el.color), trk = el.track === 'none' ? null : (el.track === 'auto' ? GW.dim(el.color) : q(el.track));
     ctx.lineCap = 'butt';
     function arcTo(s0, deg, color) {
@@ -196,7 +198,7 @@
     draw: function (ctx, el, env) {
       if ((el.segs || 1) > 1) return segArcDraw(ctx, el, env);
       var p = arcProgress(el, env), cw = el.dir !== 'ccw', sgn = cw ? 1 : -1;
-      var a0 = rad(el.start - 90), hw = el.pen / 2;
+      var a0 = rad(el.start - 90), hw = capHw(el) + 0.5;
       var col = q(el.color), trk = el.track === 'none' ? null : (el.track === 'auto' ? GW.dim(el.color) : q(el.track));
       ctx.lineCap = 'butt';
       function arcTo(deg, color) {
@@ -256,7 +258,7 @@
       var mn = el.min != null ? el.min : (s.mcGoal ? 0 : r[0]);
       var mx = el.max != null ? String(el.max) : (s.mcGoal ? s.mcGoal(el, cg) : String(r[1]));
       var track = el.track === 'none' ? null : GW.mcColor(el.track === 'auto' ? GW.dim(el.color) : el.track);
-      var fc = GW.mcColor(el.color), cx = N(el.cx), cy = N(el.cy), R = N(el.r), hw = Math.max(1, N(el.pen / 2));
+      var fc = GW.mcColor(el.color), cx = N(el.cx), cy = N(el.cy), R = N(el.r), hw = capHw(el);
       var L = [];
       if ((el.segs || 1) > 1) {
         // the slice angles are class constants built once; the loop below only reads them
