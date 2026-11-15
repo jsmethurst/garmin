@@ -92,7 +92,30 @@
     var ky0 = Math.round((half + (y0 - 140) * kk - fy0) * RZ), ky1 = Math.round((half + (y0 + H - 140) * kk - fy0) * RZ);
     var mask = new Uint8Array(w * h);
     for (var y = Math.max(0, ky0); y < Math.min(h, ky1); y++) for (var x = Math.max(0, kx0); x < Math.min(w, kx1); x++) if (al[y * w + x] > CUT) mask[y * w + x] = 1;
-    return { polys: trace(mask, w, h, fx0, fy0), pos: pos, n: n };
+    return { rects: rectsOf(mask, w, h, fx0, fy0), pos: pos, n: n };
+  }
+
+  // ---------- the cut shape as whole-pixel rectangles ----------
+  // A watch pixel is on when at least half of its raster block is. Rows of the same runs are merged into rectangles, so a digit is a few dozen
+  // fillRectangle calls: exact on the watch (no polygon filling, which can go wrong on shapes that touch themselves), and no holes to paint over.
+  function rectsOf(mask, w, h, fx0, fy0) {
+    var W = w / RZ, H = h / RZ, open = {}, out = [], x, y, bx, by;
+    for (y = 0; y < H; y++) {
+      var runs = [], start = -1;
+      for (x = 0; x <= W; x++) {
+        var on = false;
+        if (x < W) { var c = 0; for (by = 0; by < RZ; by++) for (bx = 0; bx < RZ; bx++) c += mask[(y * RZ + by) * w + x * RZ + bx]; on = c * 2 >= RZ * RZ; }
+        if (on && start < 0) start = x;
+        if (!on && start >= 0) { runs.push([start, x]); start = -1; }
+      }
+      var next = {};
+      runs.forEach(function (r) {
+        var k = r[0] + ',' + r[1], o = open[k];
+        if (o) { o.h++; next[k] = o; } else { o = { x: fx0 + r[0], y: fy0 + y, w: r[1] - r[0], h: 1 }; out.push(o); next[k] = o; }
+      });
+      open = next;
+    }
+    return out;
   }
 
   // ---------- trace the cut shape into outlines (whole watch pixels) ----------
@@ -186,14 +209,12 @@
     defaults: function () { return { type: 'slabtime', name: 'Time', colorH: '#000000', colorM: '#00aaaa', hmode: 'auto', lz: true, size: 87, gap: 9, weight: 0, rd: 3.4 }; },
     pos: [],
     draw: function (ctx, el, env) {
-      var d = digits(el, env), bg = q(GW.design.bg);
+      var d = digits(el, env);
       ctx.save();
       [0, 1, 2, 3].forEach(function (pos) {
         if (d[pos] < 0) return;
-        var sh = GW.slabShape(d[pos], pos, el);
-        ctx.beginPath();
-        sh.polys.forEach(function (pl) { pl.pts.forEach(function (pt, i) { i ? ctx.lineTo(pt[0], pt[1]) : ctx.moveTo(pt[0], pt[1]); }); ctx.closePath(); });
-        ctx.fillStyle = q(pos < 2 ? el.colorH : el.colorM); ctx.fill('evenodd');
+        ctx.fillStyle = q(pos < 2 ? el.colorH : el.colorM);
+        GW.slabShape(d[pos], pos, el).rects.forEach(function (r) { ctx.fillRect(r.x, r.y, r.w, r.h); });
       });
       ctx.restore();
     },
@@ -217,53 +238,35 @@
       var id = String(el.id).replace(/[^A-Za-z0-9]/g, ''), rows = [], ox = [], oy = [], pos, n;
       for (pos = 0; pos < 4; pos++) for (n = 0; n < 10; n++) {
         var sh = GW.slabShape(n, pos, el), mx = 1e9, my = 1e9, bytes = [];
-        sh.polys.forEach(function (pl) { pl.pts.forEach(function (pt) { mx = Math.min(mx, pt[0]); my = Math.min(my, pt[1]); }); });
+        sh.rects.forEach(function (r) { mx = Math.min(mx, r.x); my = Math.min(my, r.y); });
         if (mx === 1e9) { mx = 0; my = 0; }
-        sh.polys.forEach(function (pl) {
-          if (pl.pts.length > 255) throw new Error('A digit outline is too detailed for the table (' + pl.pts.length + ' points)');
-          bytes.push(pl.hole ? 1 : 0, pl.pts.length);
-          pl.pts.forEach(function (pt) { bytes.push(pt[0] - mx); }); pl.pts.forEach(function (pt) { bytes.push(pt[1] - my); });
-        });
-        bytes.forEach(function (b) { if (b < 0 || b > 255) throw new Error('A digit outline does not fit in a byte table'); });
-        rows.push('[' + bytes.join(',') + ']b'); ox.push(mx); oy.push(my);
+        sh.rects.forEach(function (r) { bytes.push(r.x - mx, r.y - my, r.w, r.h); });
+        bytes.forEach(function (b) { if (b < 0 || b > 255) throw new Error('A digit does not fit in a byte table'); });
+        rows.push('[' + (bytes.length ? bytes.join(',') : '0') + ']b'); ox.push(mx); oy.push(my);
       }
       cg.member('    const SLAB_' + id + ' = [');
       rows.forEach(function (r, i) { cg.member('        ' + r + (i < rows.length - 1 ? ',' : '')); });
       cg.member('    ];');
       cg.member('    const SLAB_' + id + '_X = [' + ox.join(', ') + '];'); cg.member('    const SLAB_' + id + '_Y = [' + oy.join(', ') + '];');
       cg.need('clk'); cg.helper('hourNum'); cg.helper('drawSlab');
-      var bgx = GW.bgExpr ? GW.bgExpr(cg.design, cg) : GW.mcColor(cg.design.bg);
       var mode = { h24: 1, h12: 2 }[el.hmode] || 0, fg = GW.mcColor(el.colorH), fm = GW.mcColor(el.colorM), L = [];
       L.push('var _sh = hourNum(' + mode + ');', 'var _sm = _clk.min;');
       var seq = [[0, '(_sh / 10)', fg], [1, '(_sh % 10)', fg], [2, '(_sm / 10)', fm], [3, '(_sm % 10)', fm]];
       seq.forEach(function (s) {
-        var call = 'drawSlab(dc, SLAB_' + id + '[' + (s[0] * 10) + ' + ' + s[1] + '], SLAB_' + id + '_X[' + (s[0] * 10) + ' + ' + s[1] + '], SLAB_' + id + '_Y[' + (s[0] * 10) + ' + ' + s[1] + '], ' + s[2] + ', ' + bgx + ');';
+        var call = 'drawSlab(dc, SLAB_' + id + '[' + (s[0] * 10) + ' + ' + s[1] + '], SLAB_' + id + '_X[' + (s[0] * 10) + ' + ' + s[1] + '], SLAB_' + id + '_Y[' + (s[0] * 10) + ' + ' + s[1] + '], ' + s[2] + ');';
         L.push(s[0] === 0 && el.lz === false ? 'if (_sh >= 10) { ' + call + ' }' : call);
       });
       return L;
     }
   };
 
-  // the watch side: first every outline of the shape in the digit's color, then the holes in the background color
+  // the watch side: every rectangle of the shape, in the digit's color
   if (GW.MC_HELPERS) GW.MC_HELPERS.drawSlab = {
-    code: 'function drawSlab(dc, d, ox, oy, fg, bg) {\n' +
+    code: 'function drawSlab(dc, d, ox, oy, fg) {\n' +
+      '        dc.setColor(fg, Graphics.COLOR_TRANSPARENT);\n' +
       '        var n = d.size();\n' +
-      '        for (var pass = 0; pass < 2; pass++) {\n' +
-      '            dc.setColor((pass == 0) ? fg : bg, Graphics.COLOR_TRANSPARENT);\n' +
-      '            var i = 0;\n' +
-      '            while (i < n) {\n' +
-      '                var kind = d[i];\n' +
-      '                var cnt = d[i + 1];\n' +
-      '                i += 2;\n' +
-      '                if (kind == pass) {\n' +
-      '                    var pts = new [cnt];\n' +
-      '                    for (var k = 0; k < cnt; k++) {\n' +
-      '                        pts[k] = [ox + d[i + k], oy + d[i + cnt + k]];\n' +
-      '                    }\n' +
-      '                    dc.fillPolygon(pts);\n' +
-      '                }\n' +
-      '                i += cnt * 2;\n' +
-      '            }\n' +
+      '        for (var i = 0; i + 3 < n; i += 4) {\n' +
+      '            dc.fillRectangle(ox + d[i], oy + d[i + 1], d[i + 2], d[i + 3]);\n' +
       '        }\n' +
       '    }'
   };
