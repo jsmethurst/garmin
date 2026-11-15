@@ -751,7 +751,7 @@
       } }));
     });
     var g = $('addGrid'); g.innerHTML = '';
-    ['text', 'arc', 'hands', 'ticks', 'shape', 'hexgrid', 'image', 'barchart', 'movebar', 'moon', 'binary', 'wxicon', 'worldmap', 'sunicon', 'sunmark', 'icon', 'seggauge'].forEach(function (k) {
+    ['text', 'arc', 'hands', 'ticks', 'shape', 'hexgrid', 'image', 'barchart', 'movebar', 'moon', 'binary', 'wxicon', 'worldmap', 'sunicon', 'sunmark', 'icon', 'seggauge', 'slabtime'].forEach(function (k) {
       g.appendChild(h('button', { class: 'addbtn', onclick: function () { GW.addElement(k, { name: T[k].label }); } }, [h('i', { text: T[k].icon }), T[k].label]));
     });
   };

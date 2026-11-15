@@ -306,6 +306,40 @@
         ]);
         return d;
       } },
+    { id: 'quadrant', name: 'Quadrant', blurb: 'Four big digits fill the round screen like quadrants: square towards the middle, following the screen edge on the outside. Four quarter gauges (steps, stairs, watch and body battery) sit round them; the colors come in ready-made themes.',
+      build: function () {
+        // colors per theme: [name, background, hour digits, minute digits, text, gauge track, steps, stairs, watch battery, body battery]
+        var TH = [
+          ['Paper',        '#ffffff', '#000000', '#00aaaa', '#555555', '#aaaaaa', '#005555', '#00aaaa', '#aa0000', '#ffaa00'],
+          ['Cream & coral', '#000000', '#ffffff', '#ff7755', '#aaaaaa', '#555555', '#55aaff', '#ff7755', '#00ffaa', '#ffff55'],
+          ['Mint & peach', '#000000', '#aaffaa', '#ffaaaa', '#aaaaaa', '#555555', '#aaffaa', '#aaffaa', '#ffaaaa', '#ffaaaa'],
+          ['Sky & white',  '#000000', '#55aaff', '#ffffff', '#aaaaaa', '#555555', '#ff55aa', '#55aaff', '#ffff00', '#ffffff'],
+          ['Sunshine & rose', '#000000', '#ffff55', '#ff5555', '#aaaaaa', '#555555', '#55aaff', '#ffff55', '#aa55ff', '#ff5555'],
+          ['Violet',       '#000000', '#ffaaff', '#aa55ff', '#aaaaaa', '#555555', '#ffffff', '#ffaaff', '#5500aa', '#aa55ff']
+        ];
+        var Q = GW.q, dflt = TH[0];
+        var d = D('Quadrant', Q(dflt[1]), [], []);
+        var roles = [['cbg', 'Background', 1], ['cmain', 'Hour digits', 2], ['chi', 'Minute digits', 3], ['ctext', 'Main text', 4], ['ctrack', 'Gauge track', 5],
+                     ['cstep', 'Steps gauge', 6], ['cstair', 'Stairs gauge', 7], ['cwbat', 'Watch battery gauge', 8], ['cbbat', 'Body battery gauge', 9]];
+        d.settings = roles.map(function (r) { return { id: r[0], kind: 'color', label: r[1], def: Q(dflt[r[2]]), keep: true }; });
+        d.settings.push({ id: 'ct', kind: 'theme', label: 'Color theme', original: dflt[0], themes: TH.slice(1).map(function (t) {
+          var c = {}; roles.forEach(function (r) { c[r[0]] = Q(t[r[2]]); }); return { name: t[0], colors: c };
+        }) });
+        d.colorMode = 'theme'; d.bgSet = 'cbg';
+        function gauge(name, src, start, dir, role, col) {
+          return E('arc', { name: name, cx: 140, cy: 140, r: 127, pen: 7, start: start, sweep: 78, dir: dir, source: src, color: Q(col), track: Q(dflt[5]), round: true, set: { color: role, track: 'ctrack' } });
+        }
+        d.elements = [
+          E('slabtime', { name: 'Time', colorH: Q(dflt[2]), colorM: Q(dflt[3]), set: { colorH: 'cmain', colorM: 'chi' } }),
+          gauge('Steps', 'steps', 276, 'cw', 'cstep', dflt[6]),
+          gauge('Stairs', 'floors', 84, 'ccw', 'cstair', dflt[7]),
+          gauge('Watch battery', 'battery', 186, 'cw', 'cwbat', dflt[8]),
+          gauge('Body battery', 'bodyBat', 174, 'ccw', 'cbbat', dflt[9]),
+          txt(140, 40, 'date', 'FONT_XTINY', Q(dflt[4]), { name: 'Day and date', fmt: 'ddd DD', tr: true, upper: true, set: { color: 'ctext' } }),
+          txt(140, 244, 'hr', 'FONT_XTINY', Q(dflt[4]), { name: 'Heart rate', set: { color: 'ctext' } })
+        ];
+        return d;
+      } },
     { id: 'blankfield', name: 'Blank field', kind: 'datafield', blurb: 'Start from an empty screen and add your own cells.',
       build: function () { return cellDesign('My Data Field', []); } },
     { id: 'blank', name: 'Blank', blurb: 'Start from nothing.', build: function () { return D('My Watchface', '#000000', [], []); } }
