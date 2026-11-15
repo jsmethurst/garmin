@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm install --omit=dev",
-  "buildCommand": null,
+  "buildCommand": "sh tools/stamp.sh",
   "outputDirectory": "site",
   "functions": {
     "api/*.js": { "maxDuration": 300 }
