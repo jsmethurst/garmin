@@ -306,47 +306,21 @@
         ]);
         return d;
       } },
-    { id: 'quadrant', name: 'Quadrant', blurb: 'Four big digits fill the round screen like quadrants: square towards the middle, following the screen edge on the outside. Four quarter gauges (steps, stairs, watch and body battery) sit round them; the colors come in ready-made themes.',
+    { id: 'quadrant', name: 'Quadrant', blurb: 'Four big digits fill the round screen like quadrants: square towards the middle, following the screen edge on the outside. Four quarter gauges (steps, calories, watch and body battery) sit round them; heart rate on top, day and date at the bottom.',
       build: function () {
-        // colors per theme: [name, background, hour digits, minute digits, text, gauge track, steps, stairs, watch battery, body battery]
-        var TH = [
-          ['Paper',        '#ffffff', '#000000', '#00aaaa', '#000000', '#aaaaaa', '#005555', '#00aaaa', '#aa0000', '#ffaa00'],
-          ['Cream & coral', '#000000', '#ffffff', '#ff7755', '#aaaaaa', '#555555', '#55aaff', '#ff7755', '#00ffaa', '#ffff55'],
-          ['Mint & peach', '#000000', '#aaffaa', '#ffaaaa', '#aaaaaa', '#555555', '#aaffaa', '#aaffaa', '#ffaaaa', '#ffaaaa'],
-          ['Sky & white',  '#000000', '#55aaff', '#ffffff', '#aaaaaa', '#555555', '#ff55aa', '#55aaff', '#ffff00', '#ffffff'],
-          ['Sunshine & rose', '#000000', '#ffff55', '#ff5555', '#aaaaaa', '#555555', '#55aaff', '#ffff55', '#aa55ff', '#ff5555'],
-          ['Violet',       '#000000', '#ffaaff', '#aa55ff', '#aaaaaa', '#555555', '#ffffff', '#ffaaff', '#5500aa', '#aa55ff'],
-          // dark
-          ['Ember',        '#000000', '#ffaa00', '#ff5500', '#aaaaaa', '#555555', '#ffaa00', '#ff5500', '#ffff55', '#aa0000'],
-          ['Neon',         '#000000', '#00ffff', '#ff55ff', '#aaaaaa', '#555555', '#00ffff', '#ff55ff', '#55ff55', '#ffff55'],
-          ['Deep sea',     '#000055', '#aaffff', '#55aaff', '#aaaaaa', '#0000aa', '#00ffff', '#55aaff', '#aaffaa', '#ffffff'],
-          ['Forest',       '#000000', '#aaffaa', '#55ff55', '#aaaaaa', '#005500', '#55ff55', '#aaff00', '#ffff55', '#00aaaa'],
-          // light
-          ['Daylight',     '#ffffff', '#000055', '#0055aa', '#000000', '#aaaaaa', '#0055aa', '#00aaff', '#aa0000', '#00aa55'],
-          ['Sand',         '#ffffaa', '#550000', '#aa5500', '#000000', '#aaaa55', '#aa5500', '#aa0000', '#005500', '#0055aa'],
-          ['Mint',         '#aaffaa', '#005500', '#00aa55', '#000000', '#55aa55', '#00aa55', '#aa5500', '#aa0000', '#0055aa'],
-          ['Blush',        '#ffaaaa', '#550000', '#aa0055', '#000000', '#aa5555', '#aa0055', '#aa5500', '#550055', '#005555']
-        ];
-        var Q = GW.q, dflt = TH[0];
-        var d = D('Quadrant', Q(dflt[1]), [{ id: 'fQuad', family: 'Michroma', weight: 400, px: 12, glyphs: 'auto', spacing: 0, aa: 'mip', bold: 1 }], []);
-        var roles = [['cbg', 'Background', 1], ['cmain', 'Hour digits', 2], ['chi', 'Minute digits', 3], ['ctext', 'Main text', 4], ['ctrack', 'Gauge track', 5],
-                     ['cstep', 'Steps gauge', 6], ['cstair', 'Calories gauge', 7], ['cwbat', 'Watch battery gauge', 8], ['cbbat', 'Body battery gauge', 9]];
-        d.settings = roles.map(function (r) { return { id: r[0], kind: 'color', label: r[1], def: Q(dflt[r[2]]), keep: true }; });
-        d.settings.push({ id: 'ct', kind: 'theme', label: 'Color theme', original: dflt[0], themes: TH.slice(1).map(function (t) {
-          var c = {}; roles.forEach(function (r) { c[r[0]] = Q(t[r[2]]); }); return { name: t[0], colors: c };
-        }) });
-        d.colorMode = 'theme'; d.bgSet = 'cbg';
-        function gauge(name, src, start, dir, role, col, o) {
-          return E('arc', Object.assign({ name: name, cx: 140, cy: 140, r: 137, pen: 13, start: start, sweep: 78, dir: dir, source: src, color: Q(col), track: Q(dflt[5]), round: true, set: { color: role, track: 'ctrack' } }, o || {}));
+        var Q = GW.q;
+        var d = D('Quadrant', Q('#000000'), [{ id: 'fQuad', family: 'Michroma', weight: 400, px: 12, glyphs: 'auto', spacing: 2, aa: 'mip', bold: 1 }], []);
+        function gauge(name, src, start, dir, col, o) {
+          return E('arc', Object.assign({ name: name, cx: 140, cy: 140, r: 137, pen: 13, start: start, sweep: 78, dir: dir, source: src, color: Q(col), track: Q('#aaaaaa'), round: true }, o || {}));
         }
         d.elements = [
-          E('slabtime', { name: 'Time', size: 93, colorH: Q(dflt[2]), colorM: Q(dflt[3]), set: { colorH: 'cmain', colorM: 'chi' } }),
-          gauge('Steps', 'steps', 276, 'cw', 'cstep', dflt[6]),
-          gauge('Calories', 'calories', 84, 'ccw', 'cstair', dflt[7], { min: 0, max: 3000 }),
-          gauge('Watch battery', 'battery', 186, 'cw', 'cwbat', dflt[8]),
-          gauge('Body battery', 'bodyBat', 174, 'ccw', 'cbbat', dflt[9]),
-          txt(140, 36, 'hr', 'fQuad', Q(dflt[4]), { name: 'Heart rate', set: { color: 'ctext' } }),
-          txt(140, 246, 'date', 'fQuad', Q(dflt[4]), { name: 'Day and date', fmt: 'ddd DD', tr: true, upper: true, set: { color: 'ctext' } })
+          E('slabtime', { name: 'Time', size: 93, colorH: Q('#55aaff'), colorM: Q('#ffffff') }),
+          gauge('Steps', 'steps', 276, 'cw', '#00aa55'),
+          gauge('Calories', 'calories', 84, 'ccw', '#ff5500', { min: 0, max: 3000 }),
+          gauge('Watch battery', 'battery', 186, 'cw', '#ffff55'),
+          gauge('Body battery', 'bodyBat', 174, 'ccw', '#ffaa00'),
+          txt(140, 21, 'hr', 'fQuad', '#ffffff', { name: 'Heart rate', fontSize: 13 }),
+          txt(140, 254, 'date', 'fQuad', '#ffffff', { name: 'Day and date', fmt: 'ddd DD', tr: true, upper: true, fontSize: 13 })
         ];
         return d;
       } },

@@ -242,7 +242,7 @@
         if (mx === 1e9) { mx = 0; my = 0; }
         sh.rects.forEach(function (r) { bytes.push(r.x - mx, r.y - my, r.w, r.h); });
         bytes.forEach(function (b) { if (b < 0 || b > 255) throw new Error('A digit does not fit in a byte table'); });
-        rows.push('[' + (bytes.length ? bytes.join(',') : '0') + ']b'); ox.push(mx); oy.push(my);
+        rows.push('"' + bytes.map(function (b) { return (b < 16 ? '0' : '') + b.toString(16); }).join('') + '"'); ox.push(mx); oy.push(my);   // hex text: a plain string, not a long list of numbers
       }
       cg.member('    const SLAB_' + id + ' = [');
       rows.forEach(function (r, i) { cg.member('        ' + r + (i < rows.length - 1 ? ',' : '')); });
@@ -260,14 +260,20 @@
     }
   };
 
-  // the watch side: every rectangle of the shape, in the digit's color
+  // the watch side: every rectangle of the shape (four hex bytes each: x, y, width, height), in the digit's color
   if (GW.MC_HELPERS) GW.MC_HELPERS.drawSlab = {
-    code: 'function drawSlab(dc, d, ox, oy, fg) {\n' +
+    code: 'function drawSlab(dc, s, ox, oy, fg) {\n' +
       '        dc.setColor(fg, Graphics.COLOR_TRANSPARENT);\n' +
-      '        var n = d.size();\n' +
-      '        for (var i = 0; i + 3 < n; i += 4) {\n' +
-      '            dc.fillRectangle(ox + d[i], oy + d[i + 1], d[i + 2], d[i + 3]);\n' +
+      '        var b = s.toUtf8Array();\n' +
+      '        var n = b.size();\n' +
+      '        for (var i = 0; i + 7 < n; i += 8) {\n' +
+      '            dc.fillRectangle(ox + hexByte(b, i), oy + hexByte(b, i + 2), hexByte(b, i + 4), hexByte(b, i + 6));\n' +
       '        }\n' +
+      '    }\n\n' +
+      '    function hexByte(b, i) {\n' +
+      '        var a = b[i];\n' +
+      '        var c = b[i + 1];\n' +
+      '        return ((a < 58) ? a - 48 : a - 87) * 16 + ((c < 58) ? c - 48 : c - 87);\n' +
       '    }'
   };
 })(window.GW);
