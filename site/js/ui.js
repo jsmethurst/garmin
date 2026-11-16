@@ -856,6 +856,10 @@
     }
     p.appendChild(field('Background color', bg));
     p.appendChild(rotationField(d));
+    var aa = h('input', { type: 'checkbox' }); aa.checked = d.aa !== false;
+    aa.addEventListener('change', function () { d.aa = aa.checked; GW.commit(false); });
+    p.appendChild(h('div', { class: 'f' }, [h('label', { class: 'chk' }, [aa, 'Smooth edges (anti-aliasing)']),
+      h('p', { class: 'muted small', text: 'Arcs, circles, lines and drawn hands are drawn with softened edges instead of hard pixels. Needs Connect IQ 3.2 or newer (watches without it just show hard edges). It does not change text, and draws a little slower.' })]));
     // where sunrise / sunset and the world map put you until the watch has a position of its own
     p.appendChild(h('h4', { text: 'Default location' }));
     var dl = h('input', { type: 'checkbox' }); dl.checked = d.defLocOn !== false;

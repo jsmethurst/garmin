@@ -436,6 +436,7 @@
       '    function onUpdate(dc as Dc) as Void {\n' +
       (st.hooks.begin.length ? st.hooks.begin.map(function (l) { return '        ' + l + '\n'; }).join('')
         : '        dc.setColor(Graphics.COLOR_WHITE, ' + bgExpr + ');\n        dc.clear();\n') +
+      (design.aa !== false && !isField ? '        if (dc has :setAntiAlias) {\n            dc.setAntiAlias(true);                           // smooth edges on arcs, circles, lines and drawn hands (Connect IQ 3.2+)\n        }\n' : '') +
       (bg ? '        if (_bg != null) {\n            dc.drawBitmap(0, 0, _bg);\n        }\n' : '') +
       (init.length ? init.join('\n') + '\n' : '') +
       calls.join('\n') + '\n' +
