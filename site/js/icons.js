@@ -4,7 +4,14 @@
 (function (GW) {
   'use strict';
   var T = GW.types, N = Math.round;
-  GW.ICONS = GW.MDI;                       // name -> { label, cp }
+  GW.ICONS = GW.MDI;                       // the suggested icons: name -> { label, cp }
+  // any icon of the whole library (about 4000, from mdiall.js) by name: { label, cp }
+  var byName = null;
+  GW.mdiGet = function (name) {
+    if (GW.MDI[name]) return GW.MDI[name];
+    if (!byName) { byName = {}; (GW.MDI_ALL || []).forEach(function (r) { byName[r[0]] = { label: r[0].replace(/-/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); }), cp: r[1] }; }); }
+    return byName[name] || null;
+  };
   GW.ICON_SIZES = [16, 20, 24];            // the glyphs are designed on a 24 px grid
   // which icon matches which text source (used by the "Add matching icon" button; the pairs are those named in mdi_icons.json)
   GW.ICON_FOR = { steps: 'shoe-print', stepGoal: 'flag-checkered', calories: 'fire', floors: 'stairs', intMins: 'timer', distance: 'map-marker-distance',
@@ -19,7 +26,7 @@
     calendar: 'calendar', flag: 'flag-checkered', bluetooth: 'bluetooth', moon: 'weather-night' };
 
   function glyphOf(el) {   // the character, refusing anything outside the basic plane
-    var ic = GW.MDI[el.kind]; if (!ic || ic.cp > 0xFFFF) return null;
+    var ic = GW.mdiGet(el.kind); if (!ic || ic.cp > 0xFFFF) return null;
     return String.fromCharCode(ic.cp);
   }
   // Where the glyph's pen goes so that the ink of the icon is centred on (x, y). Whole numbers: the same constants are written into the watch code.

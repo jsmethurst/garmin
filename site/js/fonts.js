@@ -49,7 +49,20 @@
   };
 
   // the icon typeface: private-use characters, one per icon (basic plane only). Not offered as a text character set.
-  Object.defineProperty(GW.GLYPH_SETS, 'icons', { value: { label: 'Icons', chars: Object.keys(GW.MDI).map(function (k) { return String.fromCharCode(GW.MDI[k].cp); }).join('') }, enumerable: false });
+  // The glyph set is the suggested icons plus every icon the design actually uses (the whole library is ~4000 icons: measuring all of them would be slow).
+  var iconSetVer = 0, iconSetCache = null, iconSetFor = -1, curated = Object.keys(GW.MDI).map(function (k) { return String.fromCharCode(GW.MDI[k].cp); }).join('');
+  GW.on('change', function () { iconSetVer++; }); GW.on('structure', function () { iconSetVer++; });
+  function iconChars() {
+    if (iconSetCache !== null && iconSetFor === iconSetVer) return iconSetCache;
+    var seen = {}, out = curated; curated.split('').forEach(function (c) { seen[c] = 1; });
+    ((GW.design && GW.design.elements) || []).forEach(function (e) {
+      if (e.type !== 'icon') return; var ic = GW.mdiGet && GW.mdiGet(e.kind); if (!ic || ic.cp > 0xFFFF) return;
+      var c = String.fromCharCode(ic.cp); if (!seen[c]) { seen[c] = 1; out += c; }
+    });
+    iconSetFor = iconSetVer; return (iconSetCache = out);
+  }
+  GW.iconChars = iconChars;
+  Object.defineProperty(GW.GLYPH_SETS, 'icons', { value: { label: 'Icons', get chars() { return iconChars(); } }, enumerable: false });
   // Characters above U+FFFF are two UTF-16 units and would break the per-unit glyph walk used everywhere: leave them out.
   GW.bmpOnly = function (str) {
     var out = '', refused = 0;
@@ -74,7 +87,7 @@
     GW.FONT_FAMILIES.forEach(function (f) {
       f.weights.forEach(function (w) { jobs.push(document.fonts.load(w + ' 20px "' + f.family + '"')); jobs.push(document.fonts.load(w + ' 20px "' + f.family + '"', 'İŞĞÜ')); });
     });
-    jobs.push(document.fonts.load('24px "MDI Icons"', GW.GLYPH_SETS.icons.chars));
+    jobs.push(document.fonts.load('24px "MDI Icons"', GW.GLYPH_SETS.icons.chars.slice(0, 60)));
     return Promise.all(jobs).catch(function () { });
   };
   // `weight` is the weight the font FILE has (400 for a Regular, 300 for a Light ...); registering it explicitly means the browser matches the
@@ -156,7 +169,7 @@
   var scratch = document.createElement('canvas').getContext('2d');
   var cache = {};
   function pkey(f) { var p = f.prebuilt; if (p._h == null) { var h = 5381, t = p.fnt + p.png.length; for (var i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0; Object.defineProperty(p, '_h', { value: h, enumerable: false, writable: true }); } return 'pre|' + f.id + '|' + p._h; }
-  function key(f) { if (f.prebuilt) return pkey(f); return [f.family, f.weight, f.px, f.glyphs, f.spacing || 0, f.bold || 0, f.tabular ? 1 : 0, f.uniform ? 1 : 0].join('|'); }
+  function key(f) { if (f.prebuilt) return pkey(f); return [f.family, f.weight, f.px, f.glyphs === 'icons' ? 'icons' + iconChars().length + ':' + iconChars().slice(-40) : f.glyphs, f.spacing || 0, f.bold || 0, f.tabular ? 1 : 0, f.uniform ? 1 : 0].join('|'); }
 
   // A prebuilt bitmap font (a BMFont .fnt text and its .png atlas, e.g. one drawn by hand for a particular watch): the metrics are read from the .fnt,
   // the glyph images are cut out of the atlas, and the very same two files are exported, so the face is pixel-for-pixel what its maker drew.

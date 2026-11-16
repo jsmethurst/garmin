@@ -554,6 +554,53 @@
     return h('div', { class: 'f' }, [h('label', { text: 'Image' }), dz, file]);
   }
 
+  // ---------- icon picker: the suggested watch icons, or search the whole Material Design Icons library (about 4000) ----------
+  var iconQ = '', iconCat = 'suggested', iconShown = 96;
+  function iconPicker(el) {
+    var cur = GW.mdiGet(el.kind), box = h('div', { class: 'f' }), grid = h('div', { class: 'mdigrid' }), more = h('div', {});
+    var q = h('input', { type: 'search', placeholder: 'Search icons: heart, battery, sun, run…', value: iconQ, 'aria-label': 'Search icons', style: 'flex:1;min-width:0' });
+    var cat = h('select', { class: 'sel', 'aria-label': 'Icon group', style: 'width:auto;max-width:48%' });
+    cat.appendChild(h('option', { value: 'suggested', text: 'Suggested for watch faces' }));
+    cat.appendChild(h('option', { value: 'all', text: 'All icons' }));
+    (GW.MDI_TAGS || []).forEach(function (t, i) { cat.appendChild(h('option', { value: 't' + i, text: t })); });
+    cat.value = iconCat;
+    function list() {
+      var words = iconQ.toLowerCase().split(/\s+/).filter(Boolean), out = [];
+      if (iconCat === 'suggested' && !words.length) return Object.keys(GW.MDI).map(function (k) { return [k, GW.MDI[k].cp, GW.MDI[k].label]; });
+      var tag = /^t\d+$/.test(iconCat) ? +iconCat.slice(1) : -1;
+      (GW.MDI_ALL || []).forEach(function (r) {
+        if (tag >= 0 && r[2].indexOf(tag) < 0) return;
+        if (words.length) {
+          var hay = r[0].replace(/-/g, ' ') + ' ' + (r[3] || '') + ' ' + r[2].map(function (t) { return GW.MDI_TAGS[t]; }).join(' ').toLowerCase();
+          if (!words.every(function (w) { return hay.indexOf(w) >= 0; })) return;
+        }
+        out.push([r[0], r[1], r[0].replace(/-/g, ' ')]);
+      });
+      if (iconCat === 'suggested' && words.length) {   // the suggestions first
+        var sug = Object.keys(GW.MDI); out.sort(function (a, b) { return (sug.indexOf(b[0]) >= 0) - (sug.indexOf(a[0]) >= 0); });
+      }
+      return out;
+    }
+    function fill() {
+      grid.innerHTML = ''; more.innerHTML = '';
+      var L = list();
+      L.slice(0, iconShown).forEach(function (r) {
+        var b = h('button', { type: 'button', title: r[2] + ' (' + r[0] + ')', text: String.fromCharCode(r[1]), class: r[0] === el.kind ? 'on' : '' });
+        b.addEventListener('click', function () { el.kind = r[0]; if (/^(Icon|.* icon)$/.test(el.name || '')) el.name = (GW.mdiGet(r[0]) || { label: r[0] }).label + ' icon'; fireChange(true); });
+        grid.appendChild(b);
+      });
+      if (!L.length) more.appendChild(h('p', { class: 'muted small', text: 'No icon matches. Try another word (in English).' }));
+      else more.appendChild(h('p', { class: 'muted small', text: L.length > iconShown ? 'Showing ' + iconShown + ' of ' + L.length + ' icons.' : L.length + (L.length === 1 ? ' icon' : ' icons') }));
+      if (L.length > iconShown) more.appendChild(h('button', { class: 'btn sm', type: 'button', text: 'Show more', onclick: function () { iconShown += 120; fill(); } }));
+    }
+    q.addEventListener('input', function () { iconQ = q.value; iconShown = 96; fill(); });
+    cat.addEventListener('change', function () { iconCat = cat.value; iconShown = 96; fill(); });
+    box.appendChild(h('label', { text: 'Icon: ' + (cur ? cur.label : el.kind) }));
+    box.appendChild(h('div', { style: 'display:flex;gap:6px;margin:4px 0' }, [q, cat]));
+    box.appendChild(grid); box.appendChild(more); fill();
+    return box;
+  }
+
   function renderField(el, f) {
     switch (f.t) {
       case 'h': return h('h4', { text: f.label });
@@ -564,15 +611,7 @@
       case 'dfsrc': return fDfSrc(el, f);
       case 'sysfont': return fSysFont(el, f);
       case 'glyphs': return fGlyphs(el);
-      case 'iconpick': {
-        var grid = h('div', { class: 'mdigrid' });
-        Object.keys(GW.MDI).forEach(function (k) {
-          var b = h('button', { type: 'button', title: GW.MDI[k].label + ' (' + k + ')', text: String.fromCharCode(GW.MDI[k].cp), class: k === el.kind ? 'on' : '' });
-          b.addEventListener('click', function () { el.kind = k; if (/^(Icon|.* icon)$/.test(el.name || '')) el.name = GW.MDI[k].label + ' icon'; fireChange(true); });
-          grid.appendChild(b);
-        });
-        return h('div', { class: 'f' }, [h('label', { text: 'Icon: ' + ((GW.MDI[el.kind] || {}).label || '') }), grid]);
-      }
+      case 'iconpick': return iconPicker(el);
       case 'iconpreview': {   // the very glyph image that goes into the watch font, at its real size and enlarged without smoothing
         var s0 = el.size || 20, cv = h('canvas', { width: s0 * 2 + 8, height: s0 }), cx = cv.getContext('2d');
         GW.fontsReady().then(function () {
