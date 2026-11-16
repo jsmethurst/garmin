@@ -214,7 +214,7 @@
       ctx.save();
       [0, 1, 2, 3].forEach(function (pos) {
         if (d[pos] < 0) return;
-        ctx.fillStyle = q(pos < 2 ? el.colorH : el.colorM);
+        ctx.fillStyle = q(el.colorD && el.colorD[pos] ? el.colorD[pos] : (pos < 2 ? el.colorH : el.colorM));   // colorD: one color for each of the four digits (optional)
         GW.slabShape(d[pos], pos, el).rects.forEach(function (r) { ctx.fillRect(r.x, r.y, r.w, r.h); });
       });
       ctx.restore();
@@ -252,7 +252,8 @@
       cg.need('clk'); cg.helper('hourNum'); cg.helper('drawSlab');
       var mode = { h24: 1, h12: 2 }[el.hmode] || 0, fg = GW.mcColor(el.colorH), fm = GW.mcColor(el.colorM), L = [];
       L.push('var _sh = hourNum(' + mode + ');', 'var _sm = _clk.min;');
-      var seq = [[0, '(_sh / 10)', fg], [1, '(_sh % 10)', fg], [2, '(_sm / 10)', fm], [3, '(_sm % 10)', fm]];
+      var cd = function (i, d) { return el.colorD && el.colorD[i] ? GW.mcColor(el.colorD[i]) : d; };
+      var seq = [[0, '(_sh / 10)', cd(0, fg)], [1, '(_sh % 10)', cd(1, fg)], [2, '(_sm / 10)', cd(2, fm)], [3, '(_sm % 10)', cd(3, fm)]];
       seq.forEach(function (s) {
         var call = 'drawSlab(dc, SLAB_' + id + '[' + (s[0] * 10) + ' + ' + s[1] + '], SLAB_' + id + '_X[' + (s[0] * 10) + ' + ' + s[1] + '], SLAB_' + id + '_Y[' + (s[0] * 10) + ' + ' + s[1] + '], ' + s[2] + ');';
         L.push(s[0] === 0 && el.lz === false ? 'if (_sh >= 10) { ' + call + ' }' : call);
