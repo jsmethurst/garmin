@@ -17,7 +17,7 @@
     var wt = el.weight || 0;
     return { sc: (el.size || 87) / 100, gap: el.gap == null ? 9 : el.gap, rd: el.rd == null ? 3.4 : el.rd, W: 124, H: 94, R: 129, T: 18 + wt, Tm: 16 + wt, V: 27 + wt };
   }
-  function keyOf(el) { var p = params(el); return [GW.SIZE, p.sc, p.gap, p.rd, p.T, p.V].join('|'); }
+  function keyOf(el) { var p = params(el); return [GW.SIZE, p.sc, p.gap, p.rd, p.T, p.V, el.roundAll ? 1 : 0].join('|'); }
 
   // ---------- blur (three box passes ~ a Gaussian) ----------
   function boxes(sigma, n) {
@@ -60,12 +60,13 @@
     c.fillStyle = c.strokeStyle = '#fff';
     var outer = right ? 'R' : 'L', T = p.T, Tm = p.Tm, V = p.V;
     function rect(x, y, ww, hh) {
-      var xa = x <= 0 ? -P : x, xb = x + ww >= W ? W + P : x + ww, ya = y <= 0 ? (bottom ? -P : 0) : y, yb = y + hh >= H ? (bottom ? H : H + P) : y + hh;
+      var ra = el.roundAll;   // every corner rounded: nothing runs past the sides that face the centre either
+      var xa = x <= 0 ? (ra && right ? 0 : -P) : x, xb = x + ww >= W ? (ra && !right ? W : W + P) : x + ww, ya = y <= 0 ? (bottom && !ra ? -P : 0) : y, yb = y + hh >= H ? (bottom || ra ? H : H + P) : y + hh;
       c.fillRect(x0 + xa, y0 + ya, xb - xa, yb - ya);
     }
     function stem(side, ya, yb) {
       if (side !== outer) { rect(side === 'L' ? 0 : W - V, ya, V, yb - ya); return; }
-      var ta = ya <= 0 ? (bottom ? -P : 0) : ya, tb = yb >= H ? (bottom ? H : H + P) : yb;      // a ring piece along the circle
+      var ta = ya <= 0 ? (bottom && !el.roundAll ? -P : 0) : ya, tb = yb >= H ? (bottom || el.roundAll ? H : H + P) : yb;      // a ring piece along the circle
       c.save(); c.beginPath(); c.rect(x0 - P, y0 + ta, W + 2 * P, tb - ta); c.clip();
       c.lineWidth = V + 1; c.beginPath(); c.arc(140, 140, p.R - V / 2, 0, Math.PI * 2); c.stroke(); c.restore();
     }
