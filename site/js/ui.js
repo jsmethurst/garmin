@@ -893,6 +893,7 @@
       p.appendChild(field('Colour scheme', sel));
       if (d.s34.set === 'mk2') p.appendChild(field('Clock style', segCtl([['34', '34 segments'], ['17', '17 segments (blockier)']], String(d.s34.clock || 34), function (v) { GW.s34Clock(d, +v); GW.commit(true); GW.fontsReady && GW.fontsReady(); })));
     }
+    p.appendChild(GW.budgetBox());
     p.appendChild(field('Background color', bg));
     p.appendChild(rotationField(d));
     var aa = h('input', { type: 'checkbox' }); aa.checked = d.aa !== false;
