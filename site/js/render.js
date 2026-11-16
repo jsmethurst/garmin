@@ -50,12 +50,12 @@
 
   // ---------- the preview as the watch really shows it ----------
   // The watch draws on a grid of whole pixels, with no smoothing, in 64 colours (0, 85, 170 or 255 for red, green and blue). So: draw at 1:1,
-  // make every shape edge hard (a pixel is either on or off), let letters keep only a few steps of edge blending (the screen can show 4),
+  // make every shape edge hard (a pixel is either on or off; with Smooth edges on, shapes keep a blended edge like the watch's anti-aliasing), let letters keep only a few steps of edge blending (the screen can show 4),
   // snap every colour to the 64 the screen has, cut the circle with hard edges, and let the caller enlarge it with no smoothing.
   var scratch = null, scratchCtx = null;
   var SOFT = { text: 1, icon: 1, image: 1, worldmap: 1, dfcell: 1 };   // keep the edge steps (letters, pictures); everything else gets hard edges
   GW.renderExact = function (ctx, design, env, withRef) {
-    var S = GW.SIZE;
+    var S = GW.SIZE, smooth = design.aa !== false;   // the watch draws arcs, circles, lines and hands with soft edges when the face turns anti-aliasing on
     if (design.kind === 'datafield') { GW.renderDesign(ctx, design, env, withRef); return; }   // data fields are drawn in boxes: no difference worth the cost
     (design.fonts || []).forEach(function (f) { GW.previewFonts[f.id] = f; });
     if (!scratch || scratch.width !== S) { scratch = document.createElement('canvas'); scratch.width = scratch.height = S; scratchCtx = scratch.getContext('2d', { willReadFrequently: true }); }
@@ -70,7 +70,8 @@
       try { t.draw(scratchCtx, el, env); } catch (e) { if (window.console) console.error('draw failed', el.type, e); }
       scratchCtx.restore();
       var im = scratchCtx.getImageData(0, 0, S, S), d = im.data, soft = SOFT[el.type];
-      for (var i = 3; i < d.length; i += 4) {
+      if (!soft && smooth) { /* anti-aliasing on: the edge keeps its blend with what is behind it, and the colors are snapped to the 64 at the end */ }
+      else for (var i = 3; i < d.length; i += 4) {
         var a = d[i]; if (!a) continue;
         d[i] = soft ? Math.round(Math.round(a / 255 * 3) / 3 * 255) : (a >= 128 ? 255 : 0);
       }
