@@ -645,6 +645,7 @@
       case 'datefmt': return fDateFmt(el);
       case 'imagepick': return fImagePick(el);
     }
+    if (/^fx/.test(f.t) && GW.fx) return GW.fx.field(el, f);   // gradient presets, gradient colors and hints (fx.js)
     return null;
   }
 
@@ -679,6 +680,7 @@
         GW.addElement('icon', { name: GW.ICONS[GW.ICON_FOR[el.source]].label + ' icon', kind: GW.ICON_FOR[el.source], size: sz, x: cx, y: cy, color: el.color });
       } }));
     }
+    if (GW.fx && el.type !== 'dfcell') p.appendChild(GW.fx.condsBox(el));   // "show only when" rules, for every kind of layer
     p.appendChild(h('div', { class: 'row' }, [
       h('button', { class: 'btn sm', text: '↑ Bring forward', onclick: function () { GW.moveLayer(el.id, 1); } }),
       h('button', { class: 'btn sm', text: '↓ Send back', onclick: function () { GW.moveLayer(el.id, -1); } })

@@ -19,6 +19,7 @@
     ns: { code: 'function ns(v) {\n        return (v == null) ? "--" : v.toString();\n    }' },
     ang: { code: 'function ang(a) {\n        a = a % 360;\n        if (a < 0) { a += 360; }\n        return a;\n    }' },
     prog: { code: 'function prog(v, mn, mx) {\n        if (v == null || mx <= mn) { return 0.0f; }\n        var p = (v.toFloat() - mn.toFloat()) / (mx.toFloat() - mn.toFloat());\n        if (p < 0.0f) { p = 0.0f; }\n        if (p > 1.0f) { p = 1.0f; }\n        return p;\n    }' },
+    arcMark: { code: 'function arcMark(dc, k, cx, cy, rr, a, s, d) {\n        var t = a * Math.PI / 180.0;\n        var ux = Math.cos(t);\n        var uy = -Math.sin(t);\n        if (k == 1) {\n            dc.fillCircle(cx + (rr * ux).toNumber(), cy + (rr * uy).toNumber(), s);\n        } else if (k == 2) {\n            dc.setPenWidth(3);\n            dc.drawLine(cx + ((rr - s) * ux).toNumber(), cy + ((rr - s) * uy).toNumber(), cx + ((rr + s) * ux).toNumber(), cy + ((rr + s) * uy).toNumber());\n            dc.setPenWidth(1);\n        } else {\n            var w = s * 0.9;\n            var bx = cx + (rr - d * s) * ux;\n            var by = cy + (rr - d * s) * uy;\n            var tx = cx + (rr + d * s) * ux;\n            var ty = cy + (rr + d * s) * uy;\n            dc.fillPolygon([[tx.toNumber(), ty.toNumber()], [(bx - uy * w).toNumber(), (by + ux * w).toNumber()], [(bx + uy * w).toNumber(), (by - ux * w).toNumber()]]);\n        }\n    }', imports: ['Toybox.Math'] },
     cap: { code: 'function cap(dc, cx, cy, r, deg, hw) {\n        var a = deg * Math.PI / 180.0;\n        dc.fillCircle(cx + (r * Math.cos(a)).toNumber(), cy - (r * Math.sin(a)).toNumber(), hw);\n    }', imports: ['Toybox.Math'] },
     drawHand: {
       imports: ['Toybox.Math'],
@@ -355,6 +356,7 @@
       var t = GW.types[e.type]; if (!t) return;
       var lines = GW.genWithSettings ? GW.genWithSettings(e, t, cg, design) : t.gen(e, cg);
       if (!lines || !lines.length) return;
+      if (GW.fx && GW.fx.hasConds(e)) lines = GW.fx.condGuard(e, cg).concat(lines);   // "show only when" rules end the drawing early when they are not met
       var n = 'drawEl' + i;
       methods.push('    // ' + (e.name || e.type).replace(/[\r\n]/g, ' ') + '\n    function ' + n + '(dc as Dc) as Void {\n' +
         lines.map(function (l) { return '        ' + l; }).join('\n') + '\n    }');

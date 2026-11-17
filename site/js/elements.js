@@ -73,6 +73,7 @@
           ctx.restore();
         }
       }
+      if (GW.fx.textStyled(el)) { GW.fx.drawText(ctx, el, env, T.text.string(el, env), T); return; }
       GW.drawText(ctx, GW.fontFor(el), T.text.string(el, env), el.x, el.y, el.justify, q(el.color), el.vtop);
     },
     box: function (el, env, ctx) { return GW.layoutText(ctx, GW.fontFor(el), T.text.string(el, env), el.x, el.y, el.justify, el.vtop); },
@@ -102,6 +103,7 @@
       }
       f.push({ k: 'vtop', t: 'check', label: 'Y is the top of the line (like Garmin’s own drawText), not its middle' });
       f.push({ k: 'color', t: 'color', label: 'Color' });
+      GW.fx.textFields(el).forEach(function (x) { f.push(x); });
       f.push({ k: 'justify', t: 'seg', label: 'Align on X', opts: [['L', 'Left'], ['C', 'Centre'], ['R', 'Right']] });
       f.push({ t: 'row', fields: [{ k: 'prefix', t: 'text', label: 'Before' }, { k: 'suffix', t: 'text', label: 'After' }] });
       f.push({ k: 'upper', t: 'check', label: 'UPPERCASE' });
@@ -140,6 +142,7 @@
         cg.member('    const HALO_' + hw + ' = [' + GW.haloOffsets(hw).map(function (d) { return '[' + d[0] + ', ' + d[1] + ']'; }).join(', ') + '];');
         out.push('hugText(dc, ' + expr + ', ' + cg.font(fid) + ', ' + N(el.x) + ', ' + N(el.y) + ', Graphics.TEXT_JUSTIFY_' + j + (el.vtop ? '' : ' | Graphics.TEXT_JUSTIFY_VCENTER') + ', ' + GW.mcColor(el.halo) + ', ' + offs + ');');
       }
+      if (GW.fx.textStyled(el)) return GW.fx.genText(el, cg, expr, cg.font(fid), 'Graphics.TEXT_JUSTIFY_' + j + (el.vtop ? '' : ' | Graphics.TEXT_JUSTIFY_VCENTER'), out);
       out.push('dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);',
         'dc.drawText(' + N(el.x) + ', ' + N(el.y) + ', ' + cg.font(fid) + ', ' + expr + ', Graphics.TEXT_JUSTIFY_' + j + (el.vtop ? '' : ' | Graphics.TEXT_JUSTIFY_VCENTER') + ');');
       return out;
@@ -171,6 +174,7 @@
   function segArcDraw(ctx, el, env) {
     var p = arcProgress(el, env), sl = arcSlices(el), n = sl.length, cw = el.dir !== 'ccw', sgn = cw ? 1 : -1, hw = capHw(el) + 0.5;
     var col = q(el.color), trk = el.track === 'none' ? null : (el.track === 'auto' ? GW.dim(el.color) : q(el.track));
+    var cols = GW.fx.isGrad(el) ? GW.fx.ramp(el.color, el.color2 || '#0000ff', el.grad, n) : null, lastEnd = el.start, lastCol = cols ? cols[0] : col;
     ctx.lineCap = 'butt';
     function arcTo(s0, deg, color) {
       ctx.strokeStyle = color; ctx.lineWidth = el.pen;
@@ -178,21 +182,22 @@
     }
     function cap(deg, color) { var pt = arcPoint(el.cx, el.cy, el.r, deg); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(pt[0], pt[1], hw, 0, Math.PI * 2); ctx.fill(); }
     sl.forEach(function (c, i) {
-      var f = clamp(p * n - i, 0, 1), fl = Math.floor(c.len * f);
+      var f = clamp(p * n - i, 0, 1), fl = Math.floor(c.len * f), ci = cols ? cols[i] : col;
       if (trk) arcTo(c.s, c.len, trk);
-      if (fl > 0) arcTo(c.s, fl, col);
+      if (fl > 0) { arcTo(c.s, fl, ci); lastEnd = c.s + sgn * fl; lastCol = ci; }
       if (el.round && c.len < 359) {
         if (trk) cap(c.s + sgn * c.len, trk);
-        if (fl > 0) cap(c.s, col); else if (trk) cap(c.s, trk);
-        if (fl > 0) cap(c.s + sgn * fl, col);
+        if (fl > 0) cap(c.s, ci); else if (trk) cap(c.s, trk);
+        if (fl > 0) cap(c.s + sgn * fl, ci);
       }
     });
+    GW.fx.drawMarker(ctx, el, lastEnd, el.mkColor ? q(el.mkColor) : lastCol);
   }
   T.arc = {
     label: 'Arc gauge', icon: '◠',
     defaults: function () {
       return { type: 'arc', name: 'Arc', cx: 140, cy: 140, r: 128, pen: 9, start: 225, sweep: 270, dir: 'cw', source: 'steps',
-        min: null, max: null, color: '#00ffff', track: 'auto', round: true };
+        min: null, max: null, color: '#00ffff', track: 'auto', round: true, grad: 'none', mk: 'none', mks: 5, mkp: 'on' };
     },
     pos: [['cx', 'cy']],
     draw: function (ctx, el, env) {
@@ -205,20 +210,28 @@
         ctx.strokeStyle = color; ctx.lineWidth = el.pen;
         ctx.beginPath(); ctx.arc(el.cx, el.cy, el.r, a0, a0 + sgn * rad(deg), !cw); ctx.stroke();
       }
-      var fill = Math.floor(el.sweep * p);
+      var fill = Math.floor(el.sweep * p), gr = GW.fx.isGrad(el) ? GW.fx.arcBands(el) : null, colS = col, colE = col;
       if (trk) arcTo(Math.min(el.sweep, 359), trk);
-      if (fill > 0) arcTo(fill, col);
+      if (gr) {   // a gradient fixed along the sweep, revealed by the fill; each band is drawn a degree long so no seam shows
+        colS = q(gr.c[0]); colE = colS;
+        for (var gi = 0; gi < gr.n && gr.d[gi] < fill; gi++) {
+          var g0 = gr.d[gi], g1 = Math.min(gr.b[gi], fill);
+          ctx.strokeStyle = q(gr.c[gi]); ctx.lineWidth = el.pen; colE = q(gr.c[gi]);
+          ctx.beginPath(); ctx.arc(el.cx, el.cy, el.r, a0 + sgn * rad(g0), a0 + sgn * rad(g1), !cw); ctx.stroke();
+        }
+      } else if (fill > 0) arcTo(fill, col);
       function cap(deg, color) {
         var pt = arcPoint(el.cx, el.cy, el.r, el.start + sgn * deg);
         ctx.fillStyle = color; ctx.beginPath(); ctx.arc(pt[0], pt[1], hw, 0, Math.PI * 2); ctx.fill();
       }
       if (el.round && el.sweep < 359) {
         if (trk) cap(el.sweep, trk);
-        if (fill > 0) cap(0, col); else if (trk) cap(0, trk);
-        if (fill > 0) cap(fill, col);
+        if (fill > 0) cap(0, colS); else if (trk) cap(0, trk);
+        if (fill > 0) cap(fill, colE);
       } else if (el.round && fill > 0 && fill < 359) {   // a full ring has no ends of its own: only the filled part gets round ends
-        cap(0, col); cap(fill, col);
+        cap(0, colS); cap(fill, colE);
       }
+      GW.fx.drawMarker(ctx, el, el.start + sgn * fill, el.mkColor ? q(el.mkColor) : colE);
     },
     box: function (el) { var r = el.r + el.pen / 2; return { x: el.cx - r, y: el.cy - r, w: r * 2, h: r * 2 }; },
     hit: function (el, x, y) {
@@ -229,13 +242,16 @@
       return off <= el.sweep + 6 || off >= 354;
     },
     fields: function (el) {
-      var s = GW.sources[el.source] || {};
+      var s = GW.sources[el.source] || {}, gr = GW.fx.isGrad(el);
       return [
         { k: 'source', t: 'source', label: 'Measures', kinds: ['num'] },
         { t: 'row', fields: [{ k: 'min', t: 'numopt', label: 'Empty at', ph: s.goal || s.mcGoal ? '0' : String((s.range || [0])[0]) },
           { k: 'max', t: 'numopt', label: 'Full at', ph: s.mcGoal ? 'daily goal' : String((s.range || [0, 100])[1]) }] },
         { t: 'h', label: 'Look' },
-        { k: 'color', t: 'color', label: 'Fill color' },
+        { k: 'color', t: 'color', label: gr ? 'Gradient: start color' : 'Fill color' },
+        { t: 'fxpresets', ks: { on: 'grad', c1: 'color', c2: 'color2' } },
+        { k: 'grad', t: 'seg', label: 'Color style', opts: [['none', 'Solid'], ['rainbow', 'Rainbow'], ['blend', 'Blend']] },
+        gr ? { t: 'row', fields: [{ k: 'color2', t: 'fxcolor', label: 'Gradient: end color' }, { k: 'gsteps', t: 'num', label: 'Steps', min: 2, max: 48 }] } : null,
         { k: 'track', t: 'track', label: 'Track' },
         { k: 'round', t: 'check', label: 'Rounded ends' },
         { t: 'row', fields: [{ k: 'segs', t: 'num', label: 'Segments (1 = one arc)', min: 1, max: 60 }, (el.segs || 1) > 1 ? { k: 'segGap', t: 'num', label: 'Gap (px)', min: 0, max: 20 } : null].filter(Boolean) },
@@ -246,7 +262,7 @@
         { k: 'dir', t: 'seg', label: 'Direction', opts: [['cw', 'Clockwise'], ['ccw', 'Counter-clockwise']] },
         { t: 'h', label: 'Centre' },
         { t: 'row', fields: [{ k: 'cx', t: 'num', label: 'X', min: -50, max: 330 }, { k: 'cy', t: 'num', label: 'Y', min: -50, max: 330 }] }
-      ];
+      ].filter(Boolean).concat(GW.fx.markerFields(el));
     },
     gen: function (el, cg) {
       var s = GW.sources[el.source]; if (!s || !s.mcNum) return [];
@@ -259,7 +275,8 @@
       var mx = el.max != null ? String(el.max) : (s.mcGoal ? s.mcGoal(el, cg) : String(r[1]));
       var track = el.track === 'none' ? null : GW.mcColor(el.track === 'auto' ? GW.dim(el.color) : el.track);
       var fc = GW.mcColor(el.color), cx = N(el.cx), cy = N(el.cy), R = N(el.r), hw = capHw(el);
-      var L = [];
+      var L = [], grad = GW.fx.isGrad(el), aid = String(el.id).replace(/[^A-Za-z0-9]/g, ''), mk = el.mk && el.mk !== 'none';
+      var mkCol = el.mkColor ? GW.mcColor(el.mkColor) : null;
       if ((el.segs || 1) > 1) {
         // the slice angles are class constants built once; the loop below only reads them
         var sl = arcSlices(el), n = sl.length, id = String(el.id).replace(/[^A-Za-z0-9]/g, '');
@@ -267,22 +284,32 @@
         cg.member('    const ARC_' + id + '_E = [' + sl.map(function (c) { return GW.garminAngle(c.s + (cw ? 1 : -1) * c.len); }).join(', ') + '];');
         cg.member('    const ARC_' + id + '_L = [' + sl.map(function (c) { return c.len; }).join(', ') + '];');
         var S = 'ARC_' + id + '_S[i]', E = 'ARC_' + id + '_E[i]', Ln = 'ARC_' + id + '_L[i]';
+        var fcI = fc;
+        if (grad) {   // each slice has its own color from the gradient
+          cg.member('    const ARC_' + id + '_C = [' + GW.fx.ramp(el.color, el.color2 || '#0000ff', el.grad, n).map(GW.mcColor).join(', ') + '];');
+          fcI = 'ARC_' + id + '_C[i]';
+        }
         L.push('var q = prog(' + s.mcNum(el, cg) + ', ' + mn + ', ' + mx + ') * ' + n + '.0f;');
+        if (mk) L.push('var ma = ' + sg + ';', 'var mc = ' + (grad ? 'ARC_' + id + '_C[0]' : fc) + ';');
         L.push('dc.setPenWidth(' + N(el.pen) + ');');
         L.push('for (var i = 0; i < ' + n + '; i++) {');
         L.push('    var f = q - i;', '    if (f < 0.0f) { f = 0.0f; }', '    if (f > 1.0f) { f = 1.0f; }', '    var fl = (' + Ln + ' * f).toNumber();');
         if (track) L.push('    dc.setColor(' + track + ', Graphics.COLOR_TRANSPARENT);', '    dc.drawArc(' + cx + ', ' + cy + ', ' + R + ', ' + dirC + ', ' + S + ', ' + E + ');');
-        L.push('    if (fl > 0) {', '        dc.setColor(' + fc + ', Graphics.COLOR_TRANSPARENT);', '        dc.drawArc(' + cx + ', ' + cy + ', ' + R + ', ' + dirC + ', ' + S + ', ang(' + S + (cw ? ' - ' : ' + ') + 'fl));', '    }');
+        L.push('    if (fl > 0) {', '        dc.setColor(' + fcI + ', Graphics.COLOR_TRANSPARENT);', '        dc.drawArc(' + cx + ', ' + cy + ', ' + R + ', ' + dirC + ', ' + S + ', ang(' + S + (cw ? ' - ' : ' + ') + 'fl));');
+        if (mk) L.push('        ma = ang(' + S + (cw ? ' - ' : ' + ') + 'fl);', '        mc = ' + fcI + ';');
+        L.push('    }');
         if (el.round) {
           cg.helper('cap');
           var ok = sl[0].len < 359;
           if (ok) {
             if (track) L.push('    dc.setColor(' + track + ', Graphics.COLOR_TRANSPARENT);', '    cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ' + E + ', ' + hw + ');');
-            L.push('    dc.setColor(' + (track ? '(fl > 0) ? ' + fc + ' : ' + track : fc) + ', Graphics.COLOR_TRANSPARENT);', '    cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ' + S + ', ' + hw + ');');
-            L.push('    if (fl > 0) {', '        dc.setColor(' + fc + ', Graphics.COLOR_TRANSPARENT);', '        cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ang(' + S + (cw ? ' - ' : ' + ') + 'fl), ' + hw + ');', '    }');
+            L.push('    dc.setColor(' + (track ? '(fl > 0) ? ' + fcI + ' : ' + track : fcI) + ', Graphics.COLOR_TRANSPARENT);', '    cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ' + S + ', ' + hw + ');');
+            L.push('    if (fl > 0) {', '        dc.setColor(' + fcI + ', Graphics.COLOR_TRANSPARENT);', '        cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ang(' + S + (cw ? ' - ' : ' + ') + 'fl), ' + hw + ');', '    }');
           }
         }
-        L.push('}', 'dc.setPenWidth(1);');
+        L.push('}');
+        if (mk) L.push('dc.setColor(' + (mkCol || 'mc') + ', Graphics.COLOR_TRANSPARENT);', GW.fx.genMarker(el, cg, 'ma'));
+        L.push('dc.setPenWidth(1);');
         return L;
       }
       L.push('var p = prog(' + s.mcNum(el, cg) + ', ' + mn + ', ' + mx + ');');
@@ -292,30 +319,44 @@
         L.push('dc.setColor(' + track + ', Graphics.COLOR_TRANSPARENT);');
         L.push('dc.drawArc(' + cx + ', ' + cy + ', ' + R + ', ' + dirC + ', ' + sg + ', ' + endT + ');');
       }
-      L.push('if (f > 0) {');
-      L.push('    dc.setColor(' + fc + ', Graphics.COLOR_TRANSPARENT);');
-      L.push('    dc.drawArc(' + cx + ', ' + cy + ', ' + R + ', ' + dirC + ', ' + sg + ', ang(' + sg + (cw ? ' - ' : ' + ') + 'f));');
-      L.push('}');
+      var fcS = fc, fcE = fc, ending = '(f > 0)';
+      if (grad) {   // a gradient fixed along the sweep: one short arc per band, each a degree long so no seam shows
+        var gr = GW.fx.arcBands(el), P = 'ARC_' + aid;
+        cg.member('    const ' + P + '_C = [' + gr.c.map(GW.mcColor).join(', ') + '];');
+        cg.member('    const ' + P + '_D = [' + gr.d.join(', ') + '];');
+        cg.member('    const ' + P + '_B = [' + gr.b.join(', ') + '];');
+        L.push('var gi = 0;', 'for (var i = 0; i < ' + gr.n + '; i++) {', '    if (' + P + '_D[i] >= f) { break; }', '    var gb = ' + P + '_B[i];', '    if (gb > f) { gb = f; }',
+          '    dc.setColor(' + P + '_C[i], Graphics.COLOR_TRANSPARENT);',
+          '    dc.drawArc(' + cx + ', ' + cy + ', ' + R + ', ' + dirC + ', ang(' + sg + (cw ? ' - ' : ' + ') + P + '_D[i]), ang(' + sg + (cw ? ' - ' : ' + ') + 'gb));', '    gi = i;', '}');
+        fcS = P + '_C[0]'; fcE = P + '_C[gi]';
+      } else {
+        L.push('if (f > 0) {');
+        L.push('    dc.setColor(' + fc + ', Graphics.COLOR_TRANSPARENT);');
+        L.push('    dc.drawArc(' + cx + ', ' + cy + ', ' + R + ', ' + dirC + ', ' + sg + ', ang(' + sg + (cw ? ' - ' : ' + ') + 'f));');
+        L.push('}');
+      }
       if (el.round && sw < 359) {
         cg.helper('cap');
         if (track) {
           L.push('dc.setColor(' + track + ', Graphics.COLOR_TRANSPARENT);');
           L.push('cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ' + endT + ', ' + hw + ');');
         }
-        L.push('dc.setColor(' + (track ? '(f > 0) ? ' + fc + ' : ' + track : fc) + ', Graphics.COLOR_TRANSPARENT);');
+        L.push('dc.setColor(' + (track ? '(f > 0) ? ' + fcS + ' : ' + track : fcS) + ', Graphics.COLOR_TRANSPARENT);');
         L.push('cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ' + sg + ', ' + hw + ');');
         L.push('if (f > 0) {');
-        L.push('    dc.setColor(' + fc + ', Graphics.COLOR_TRANSPARENT);');
+        L.push('    dc.setColor(' + fcE + ', Graphics.COLOR_TRANSPARENT);');
         L.push('    cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ang(' + sg + (cw ? ' - ' : ' + ') + 'f), ' + hw + ');');
         L.push('}');
       } else if (el.round) {   // a full ring: only the filled part gets round ends
         cg.helper('cap');
         L.push('if (f > 0 && f < 359) {');
-        L.push('    dc.setColor(' + fc + ', Graphics.COLOR_TRANSPARENT);');
+        L.push('    dc.setColor(' + fcS + ', Graphics.COLOR_TRANSPARENT);');
         L.push('    cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ' + sg + ', ' + hw + ');');
+        L.push('    dc.setColor(' + fcE + ', Graphics.COLOR_TRANSPARENT);');
         L.push('    cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ang(' + sg + (cw ? ' - ' : ' + ') + 'f), ' + hw + ');');
         L.push('}');
       }
+      if (mk) L.push('dc.setColor(' + (mkCol || fcE) + ', Graphics.COLOR_TRANSPARENT);', GW.fx.genMarker(el, cg, 'ang(' + sg + (cw ? ' - ' : ' + ') + 'f)'));
       L.push('dc.setPenWidth(1);');
       return L;
     }
@@ -604,8 +645,16 @@
   // ================= SHAPE =================
   // a pointy-top hexagon with whole-pixel corners (so the preview matches the watch exactly)
   function hexPts(x, y, r) { var o = []; for (var k = 0; k < 6; k++) { var a = rad(30 + 60 * k); o.push([Math.round(x) + Math.round(r * Math.cos(a)), Math.round(y) + Math.round(r * Math.sin(a))]); } return o; }
+  // a triangle in a w x h box, the tip pointing up, down, left or right (whole pixels)
+  function triPts(el) {
+    var x = Math.round(el.x), y = Math.round(el.y), hw = Math.round(el.w / 2), hh = Math.round(el.h / 2), d = el.tdir || 'up';
+    if (d === 'down') return [[x, y + hh], [x + hw, y - hh], [x - hw, y - hh]];
+    if (d === 'left') return [[x - hw, y], [x + hw, y - hh], [x + hw, y + hh]];
+    if (d === 'right') return [[x + hw, y], [x - hw, y - hh], [x - hw, y + hh]];
+    return [[x, y - hh], [x + hw, y + hh], [x - hw, y + hh]];
+  }
   T.shape = {
-    label: 'Line / box / circle / hexagon', icon: '▭',
+    label: 'Line / box / circle / hexagon / triangle', icon: '▭',
     defaults: function () {
       return { type: 'shape', name: 'Shape', kind: 'rect', x: 140, y: 140, x2: 200, y2: 140, w: 80, h: 40, r: 30, fill: true, pen: 2, rad: 0, color: '#ffffff' };
     },
@@ -615,6 +664,7 @@
       ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineWidth = el.pen; ctx.lineCap = 'butt';
       if (el.kind === 'line') { ctx.beginPath(); ctx.moveTo(el.x, el.y); ctx.lineTo(el.x2, el.y2); ctx.stroke(); }
       else if (el.kind === 'circle') { ctx.beginPath(); ctx.arc(el.x, el.y, el.r, 0, Math.PI * 2); el.fill ? ctx.fill() : ctx.stroke(); }
+      else if (el.kind === 'tri') { ctx.beginPath(); triPts(el).forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); el.fill ? ctx.fill() : ctx.stroke(); }
       else if (el.kind === 'hex') { ctx.beginPath(); hexPts(el.x, el.y, el.r).forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); el.fill ? ctx.fill() : ctx.stroke(); }
       else if (el.rot) {
         var c = GW.rectPts(el); ctx.beginPath(); c.forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); el.fill ? ctx.fill() : ctx.stroke();
@@ -646,12 +696,13 @@
       return x >= b.x - o && x <= b.x + b.w + o && y >= b.y - o && y <= b.y + b.h + o && !(x > b.x + o && x < b.x + b.w - o && y > b.y + o && y < b.y + b.h - o);
     },
     fields: function (el) {
-      var f = [{ k: 'kind', t: 'seg', label: 'Shape', opts: [['rect', 'Box'], ['circle', 'Circle'], ['hex', 'Hexagon'], ['line', 'Line']] }, { k: 'color', t: 'color', label: 'Color' }];
+      var f = [{ k: 'kind', t: 'seg', label: 'Shape', opts: [['rect', 'Box'], ['circle', 'Circle'], ['hex', 'Hexagon'], ['tri', 'Triangle'], ['line', 'Line']] }, { k: 'color', t: 'color', label: 'Color' }];
       if (el.kind !== 'line') f.push({ k: 'fill', t: 'check', label: 'Filled' });
       if (el.kind === 'line' || !el.fill) f.push({ k: 'pen', t: 'num', label: 'Line width', min: 1, max: 30 });
-      if (el.kind === 'rect') {
+      if (el.kind === 'rect' || el.kind === 'tri') {
         f.push({ t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 1, max: 400 }, { k: 'h', t: 'num', label: 'Height', min: 1, max: 400 }] });
-        f.push({ k: 'rad', t: 'num', label: 'Corner radius', min: 0, max: 100 });
+        if (el.kind === 'tri') f.push({ k: 'tdir', t: 'seg', label: 'Tip points', opts: [['up', 'Up'], ['down', 'Down'], ['left', 'Left'], ['right', 'Right']] });
+        else f.push({ k: 'rad', t: 'num', label: 'Corner radius', min: 0, max: 100 });
       }
       if (el.kind === 'circle' || el.kind === 'hex') f.push({ k: 'r', t: 'range', label: el.kind === 'hex' ? 'Size (centre to corner)' : 'Radius', min: 1, max: 200 });
       f.push({ t: 'h', label: el.kind === 'line' ? 'Start point' : 'Centre' });
@@ -671,6 +722,10 @@
       } else if (el.kind === 'circle') {
         if (el.fill) L.push('dc.fillCircle(' + N(el.x) + ', ' + N(el.y) + ', ' + N(el.r) + ');');
         else { L.push('dc.setPenWidth(' + N(el.pen) + ');'); L.push('dc.drawCircle(' + N(el.x) + ', ' + N(el.y) + ', ' + N(el.r) + ');'); L.push('dc.setPenWidth(1);'); }
+      } else if (el.kind === 'tri') {
+        var tp = triPts(el).map(function (p) { return '[' + p[0] + ', ' + p[1] + ']'; }).join(', ');
+        if (el.fill) L.push('dc.fillPolygon([' + tp + ']);');
+        else { L.push('dc.setPenWidth(' + N(el.pen) + ');'); L.push('var tp = [' + tp + '];'); L.push('for (var i = 0; i < 3; i++) { dc.drawLine(tp[i][0], tp[i][1], tp[(i + 1) % 3][0], tp[(i + 1) % 3][1]); }'); L.push('dc.setPenWidth(1);'); }
       } else if (el.kind === 'hex') {
         var hp = hexPts(el.x, el.y, el.r).map(function (p) { return '[' + p[0] + ', ' + p[1] + ']'; }).join(', ');
         if (el.fill) L.push('dc.fillPolygon([' + hp + ']);');
@@ -1086,6 +1141,10 @@
       }
       var mx = x0 + (env.sim.lon + 180) / 360 * el.w, my = y0 + (L[0] - env.sim.lat) / (L[0] - L[1]) * el.h;
       ctx.fillStyle = q(el.marker); ctx.strokeStyle = q(el.marker); ctx.lineWidth = 2;
+      if (el.mshape === 'tri' || el.mshape === 'triup') {   // a triangle whose tip is on the spot
+        var hw = Math.round(el.msize * 1.5) + 1, ht = Math.round(el.msize * 3) + 2, dy = el.mshape === 'tri' ? -ht : ht;
+        ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx - hw, my + dy); ctx.lineTo(mx + hw, my + dy); ctx.closePath(); ctx.fill(); return;
+      }
       ctx.beginPath(); ctx.arc(mx, my, el.msize, 0, Math.PI * 2); ctx.fill();
       if (el.ring !== false) { ctx.beginPath(); ctx.arc(mx, my, el.msize + 3, 0, Math.PI * 2); ctx.stroke(); }
     },
@@ -1095,8 +1154,9 @@
         { t: 'note', text: 'Shows where you are on a flat world map. The location comes from your phone (the weather location) or a GPS fix, and is Istanbul until the watch has one. Drag a corner grip on the map to resize it (the proportions stay); the map is redrawn sharp at any size.' },
         { k: 'land', t: 'color', label: 'Land color' },
         { k: 'marker', t: 'color', label: 'Dot color' },
-        { k: 'msize', t: 'num', label: 'Dot size', min: 1, max: 12 },
-        { k: 'ring', t: 'check', label: 'Ring around the dot' },
+        { k: 'mshape', t: 'seg', label: 'Marker shape', opts: [['dot', 'Dot'], ['tri', 'Triangle ▼'], ['triup', 'Triangle ▲']] },
+        { k: 'msize', t: 'num', label: 'Marker size', min: 1, max: 12 },
+        { k: 'ring', t: 'check', label: 'Ring around the dot (dot shape only)' },
         { k: 'crisp', t: 'check', label: 'Hard pixel edges (no blending)' },
         { t: 'row', fields: [{ k: 'w', t: 'num', label: 'Width', min: 20, max: 280 }, { k: 'h', t: 'num', label: 'Height', min: 10, max: 280 }] },
         { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] },
@@ -1118,6 +1178,11 @@
       L.push('    var mx = ' + x0 + ' + ((loc[1] + 180.0) / 360.0 * ' + w + '.0).toNumber();');
       L.push('    var my = ' + y0 + ' + (((' + ml[0] + '.0 - loc[0]) / ' + (ml[0] - ml[1]) + '.0) * ' + h + '.0).toNumber();');
       L.push('    dc.setColor(' + GW.mcColor(el.marker) + ', Graphics.COLOR_TRANSPARENT);');
+      if (el.mshape === 'tri' || el.mshape === 'triup') {
+        var thw = Math.round(el.msize * 1.5) + 1, tht = Math.round(el.msize * 3) + 2, tdy = el.mshape === 'tri' ? -tht : tht;
+        L.push('    dc.fillPolygon([[mx, my], [mx - ' + thw + ', my + (' + tdy + ')], [mx + ' + thw + ', my + (' + tdy + ')]]);', '}');
+        return L;
+      }
       L.push('    dc.fillCircle(mx, my, ' + m + ');');
       if (el.ring !== false) { L.push('    dc.setPenWidth(2);', '    dc.drawCircle(mx, my, ' + (m + 3) + ');', '    dc.setPenWidth(1);'); }
       L.push('}');

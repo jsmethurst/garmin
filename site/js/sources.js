@@ -10,7 +10,7 @@
     var s = GW.sim, now = new Date(), h, m, sec;
     if (s.live) { h = now.getHours(); m = now.getMinutes(); sec = now.getSeconds(); }
     else { h = Math.floor(s.minutes / 60); m = s.minutes % 60; sec = s.seconds; }
-    return { sim: s, h: h, m: m, sec: sec, y: now.getFullYear(), mo: now.getMonth() + 1, day: now.getDate(), dow: now.getDay(), now: now };
+    return { sim: s, h: h, m: m, sec: sec, y: now.getFullYear(), mo: now.getMonth() + 1, day: now.getDate(), dow: (s.dow != null && s.dow >= 0) ? s.dow : now.getDay(), now: now };
   };
 
   function isLeap(y) { return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
