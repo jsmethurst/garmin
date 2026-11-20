@@ -74,9 +74,12 @@
     return { chars: out, refused: refused };
   };
   // one bitmap font per icon size (16, 20, 24); the icons used at that size are the only glyphs exported
-  GW.iconFont = function (size) {
-    var id = 'ico' + size;
-    if (!GW.previewFonts[id]) GW.previewFonts[id] = { id: id, family: 'MDI Icons', weight: 400, px: size, glyphs: 'icons', spacing: 0, aa: 'mip' };
+  // `wt` is the icon weight: 0 as drawn, 1 light, 2 extra light (the strokes are thinned by 0.4 / 0.8 px, which the 24 px designs need at small sizes)
+  GW.ICON_THIN = [0, 0.4, 0.8];
+  GW.iconFont = function (size, wt) {
+    wt = wt === 1 || wt === 2 ? wt : 0;
+    var id = 'ico' + size + (wt ? 't' + wt : '');
+    if (!GW.previewFonts[id]) GW.previewFonts[id] = { id: id, family: 'MDI Icons', weight: 400, px: size, glyphs: 'icons', spacing: 0, aa: 'mip', thin: GW.ICON_THIN[wt] };
     return id;
   };
   Object.defineProperty(GW.GLYPH_SETS, 'tr', { value: GW.GLYPH_SETS.basic, enumerable: false }); // older designs used this id for the Turkish set
@@ -112,7 +115,7 @@
     if (cap > 0) px = GW.pxForCap(f.family, f.weight, cap);
     return px || f.px;
   }
-  function groupKey(f) { return f.family + '|' + f.weight + '|' + (f.bold || 0) + '|' + (f.spacing || 0) + '|' + f.glyphs + '|' + (f.tabular ? 1 : 0) + '|' + (f.uniform ? 1 : 0); }
+  function groupKey(f) { return f.family + '|' + f.weight + '|' + (f.bold || 0) + '|' + (f.thin || 0) + '|' + (f.spacing || 0) + '|' + f.glyphs + '|' + (f.tabular ? 1 : 0) + '|' + (f.uniform ? 1 : 0); }
   function snapMap() {
     if (snapCache && snapFor === GW.design && snapCache.ver === snapVer) return snapCache.map;
     var groups = {};
@@ -169,7 +172,7 @@
   var scratch = document.createElement('canvas').getContext('2d');
   var cache = {};
   function pkey(f) { var p = f.prebuilt; if (p._h == null) { var h = 5381, t = p.fnt + p.png.length; for (var i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0; Object.defineProperty(p, '_h', { value: h, enumerable: false, writable: true }); } return 'pre|' + f.id + '|' + p._h; }
-  function key(f) { if (f.prebuilt) return pkey(f); return [f.family, f.weight, f.px, f.glyphs === 'icons' ? 'icons' + iconChars().length + ':' + iconChars().slice(-40) : f.glyphs, f.spacing || 0, f.bold || 0, f.tabular ? 1 : 0, f.uniform ? 1 : 0].join('|'); }
+  function key(f) { if (f.prebuilt) return pkey(f); return [f.family, f.weight, f.px, f.glyphs === 'icons' ? 'icons' + iconChars().length + ':' + iconChars().slice(-40) : f.glyphs, f.spacing || 0, f.bold || 0, f.tabular ? 1 : 0, f.uniform ? 1 : 0, f.thin || 0].join('|'); }
 
   // A prebuilt bitmap font (a BMFont .fnt text and its .png atlas, e.g. one drawn by hand for a particular watch): the metrics are read from the .fnt,
   // the glyph images are cut out of the atlas, and the very same two files are exported, so the face is pixel-for-pixel what its maker drew.
@@ -276,6 +279,20 @@
     var k = key(f) + '|' + ch + '|' + (f.aa || '') + '|' + (rot || 0); if (glyphCache[k]) return glyphCache[k];
     var c = document.createElement('canvas'); c.width = rinfo ? bb.w : g.w; c.height = rinfo ? bb.h : g.h;
     var x = c.getContext('2d');
+    if (f.thin && !rinfo) {   // a lighter icon: draw at 4x, shave `thin` px off the outline, then average down to the real size (so the thinner edge keeps its soft shades)
+      var S = 4, big = document.createElement('canvas'); big.width = c.width * S; big.height = c.height * S;
+      var bx = big.getContext('2d'); bx.font = f.weight + ' ' + (f.px * S) + 'px "' + f.family + '"'; bx.textBaseline = 'alphabetic'; bx.textAlign = 'left'; bx.fillStyle = '#ffffff';
+      bx.fillText(ch, -g.x0 * S, -g.y0 * S);
+      bx.globalCompositeOperation = 'destination-out'; bx.lineWidth = f.thin * S; bx.lineJoin = 'round'; bx.strokeStyle = '#000000'; bx.strokeText(ch, -g.x0 * S, -g.y0 * S);
+      var cur = big;
+      while (cur.width > c.width) {
+        var h2 = document.createElement('canvas'); h2.width = Math.max(c.width, cur.width / 2); h2.height = Math.max(c.height, cur.height / 2);
+        var hx = h2.getContext('2d'); hx.imageSmoothingEnabled = true; hx.imageSmoothingQuality = 'high'; hx.drawImage(cur, 0, 0, h2.width, h2.height); cur = h2;
+      }
+      x.drawImage(cur, 0, 0);
+      if (f.aa === 'mip') quantize(c, 4);
+      return (glyphCache[k] = c);
+    }
     x.font = GW.fontCss(f); x.fillStyle = '#ffffff'; x.textBaseline = 'alphabetic'; x.textAlign = 'left';
     if (f.bold) { x.lineWidth = f.bold; x.lineJoin = 'round'; x.strokeStyle = '#ffffff'; }
     if (rinfo) { x.translate(-bb.bx, -bb.by); x.rotate(rot * Math.PI / 180); x.fillText(ch, g.dx || 0, 0); if (f.bold) x.strokeText(ch, g.dx || 0, 0); }

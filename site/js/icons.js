@@ -12,7 +12,7 @@
     if (!byName) { byName = {}; (GW.MDI_ALL || []).forEach(function (r) { byName[r[0]] = { label: r[0].replace(/-/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); }), cp: r[1] }; }); }
     return byName[name] || null;
   };
-  GW.ICON_SIZES = [16, 20, 24];            // the glyphs are designed on a 24 px grid
+  GW.ICON_SIZES = [12, 14, 16, 18, 20, 24, 28, 32];   // the glyphs are designed on a 24 px grid
   // which icon matches which text source (used by the "Add matching icon" button; the pairs are those named in mdi_icons.json)
   GW.ICON_FOR = { steps: 'shoe-print', stepGoal: 'flag-checkered', calories: 'fire', floors: 'stairs', intMins: 'timer', distance: 'map-marker-distance',
     workoutDist: 'map-marker-distance', altitude: 'image-filter-hdr', battery: 'battery', batteryDays: 'battery', bodyBat: 'flash-circle', hr: 'heart',
@@ -32,7 +32,7 @@
   // Where the glyph's pen goes so that the ink of the icon is centred on (x, y). Whole numbers: the same constants are written into the watch code.
   function place(el) {
     var ch = glyphOf(el); if (!ch) return null;
-    var fid = GW.iconFont(el.size || 20), f = GW.customFont(fid), met = GW.fontMetrics(f), g = met.glyphs[ch];
+    var fid = GW.iconFont(el.size || 20, el.iw), f = GW.customFont(fid), met = GW.fontMetrics(f), g = met.glyphs[ch];
     if (!g || g.blank) return null;
     var top = N(el.y - (met.asc + g.y0 + g.h / 2));       // top of the font's line box
     return { fid: fid, ch: ch, x: N(el.x - (g.x0 + g.w / 2)), top: top, yc: top + Math.ceil(met.lineHeight / 2), g: g, met: met };
@@ -41,7 +41,7 @@
 
   T.icon = {
     label: 'Icon', icon: '★',
-    defaults: function () { return { type: 'icon', name: 'Icon', x: 140, y: 140, kind: 'heart', size: 20, color: '#ffffff' }; },
+    defaults: function () { return { type: 'icon', name: 'Icon', x: 140, y: 140, kind: 'heart', size: 20, iw: 0, color: '#ffffff' }; },
     pos: [['x', 'y']],
     draw: function (ctx, el) {
       var p = place(el); if (!p) return;
@@ -52,6 +52,7 @@
       return [
         { t: 'iconpick' },
         { k: 'size', t: 'seg', label: 'Size (px)', opts: GW.ICON_SIZES.map(function (v) { return [v, String(v)]; }), num: true },
+        { k: 'iw', t: 'seg', label: 'Stroke weight (lighter = thinner lines, more detail)', opts: [[0, 'Normal'], [1, 'Light'], [2, 'Extra light']], num: true },
         { k: 'color', t: 'color', label: 'Colour' },
         { t: 'iconpreview' },
         { t: 'row', fields: [{ k: 'x', t: 'num', label: 'X (centre)', min: -50, max: 330 }, { k: 'y', t: 'num', label: 'Y (centre)', min: -50, max: 330 }] },

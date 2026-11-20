@@ -33,7 +33,7 @@
     return { sorted: s, pitch: m, dev: dev, regular: p.length >= 2 && dev <= Math.max(1.5, 0.12 * m) };
   }
   function iconMatches(region, P) {
-    var sizes = GW.ICON_SIZES || [16, 20, 24], out = [], m1 = P.mask1, w1 = P.w1, h1 = P.h1, i;
+    var sizes = [16, 20, 24], out = [], m1 = P.mask1, w1 = P.w1, h1 = P.h1, i;
     var rb = { x0: w1, y0: h1, x1: -1, y1: -1 };
     for (var yy = 0; yy < h1; yy++) for (var xx = 0; xx < w1; xx++) if (m1[yy * w1 + xx]) { if (xx < rb.x0) rb.x0 = xx; if (xx > rb.x1) rb.x1 = xx; if (yy < rb.y0) rb.y0 = yy; if (yy > rb.y1) rb.y1 = yy; }
     if (rb.x1 < 0) return [];
