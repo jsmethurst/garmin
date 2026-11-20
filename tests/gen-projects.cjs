@@ -35,6 +35,8 @@ for (const p of GW.PRESETS) {
   const d = p.build();
   const custom = new Set(d.fonts.map((f) => f.id));
   d.fonts = []; d.elements.forEach((e) => { if (e.font && custom.has(e.font)) e.font = 'FONT_NUMBER_MEDIUM'; });
+  // exercise every arc-marker variant (circle / tick / triangle, on / outside / inside the arc, with and without outline) so compile tests cover them
+  d.elements.filter((e) => e.type === 'arc').forEach((e, i) => { e.mk = ['circle', 'tick', 'tri'][i % 3]; e.mkp = ['on', 'out', 'in', 'out'][i % 4]; e.mkOut = i % 2 ? '#000000' : ''; });
   GW.design = d;
   const src = GW.generateSource(d), dir = path.join(out, p.id);
   const w = (f, t) => { fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true }); fs.writeFileSync(path.join(dir, f), t); };

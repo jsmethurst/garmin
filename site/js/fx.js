@@ -85,7 +85,8 @@
     cg.helper('arcMark');
     var k = { circle: 1, tick: 2, tri: 3 }[el.mk] || 1, s = Math.max(1, N(el.mks || 5)), pos = el.mkp || 'on', pen = el.pen || 9, rr = el.r;
     if (pos === 'out') rr += pen / 2 + s + 1; else if (pos === 'in') rr -= pen / 2 + s + 1;
-    return 'arcMark(dc, ' + k + ', ' + N(el.cx) + ', ' + N(el.cy) + ', ' + rr.toFixed(1) + ', ' + angExpr + ', ' + s + ', ' + (pos === 'out' ? -1 : 1) + ', ' + colExpr + ', ' + (el.mkOut ? GW.mcColor(el.mkOut) : '-1') + ');';
+    if (k === 3 && pos === 'out') k = 4;   // 4 = triangle pointing inward (the direction rides in k so the helper stays within Monkey C's 9-argument limit)
+    return 'arcMark(dc, ' + k + ', ' + N(el.cx) + ', ' + N(el.cy) + ', ' + rr.toFixed(1) + ', ' + angExpr + ', ' + s + ', ' + colExpr + ', ' + (el.mkOut ? GW.mcColor(el.mkOut) : '-1') + ');';
   };
   fx.markerFields = function (el) {
     var f = [{ t: 'h', label: 'End marker' }, { k: 'mk', t: 'seg', label: 'Marker at the end of the fill', opts: fx.MARKERS }];
