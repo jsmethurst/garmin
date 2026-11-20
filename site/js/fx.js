@@ -66,17 +66,26 @@
   fx.drawMarker = function (ctx, el, clockDeg, color) {
     if (!el.mk || el.mk === 'none') return;
     var g = fx.markerGeom(el, clockDeg);
-    ctx.fillStyle = color; ctx.strokeStyle = color;
-    if (g.k === 'circle') { ctx.beginPath(); ctx.arc(g.x, g.y, g.r, 0, Math.PI * 2); ctx.fill(); }
-    else if (g.k === 'tick') { ctx.lineWidth = 3; ctx.lineCap = 'butt'; ctx.beginPath(); ctx.moveTo(g.a[0], g.a[1]); ctx.lineTo(g.b[0], g.b[1]); ctx.stroke(); }
-    else { ctx.beginPath(); g.pts.forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); ctx.fill(); }
+    var out = el.mkOut ? GW.q(el.mkOut) : null;   // a thin outline: the same shape one pixel bigger, drawn first
+    ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
+    function shape(col, grow) {
+      ctx.fillStyle = col; ctx.strokeStyle = col;
+      if (g.k === 'circle') { ctx.beginPath(); ctx.arc(g.x, g.y, g.r + grow, 0, Math.PI * 2); ctx.fill(); }
+      else if (g.k === 'tick') { ctx.lineWidth = 3 + 2 * grow; ctx.beginPath(); ctx.moveTo(g.a[0], g.a[1]); ctx.lineTo(g.b[0], g.b[1]); ctx.stroke(); }
+      else {
+        ctx.beginPath(); g.pts.forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); ctx.fill();
+        if (grow) { ctx.lineWidth = 3; ctx.stroke(); }
+      }
+    }
+    if (out) shape(out, 1);
+    shape(color, 0);
   };
   // Monkey C: the call that draws the marker at Garmin angle `ang` (an expression)
-  fx.genMarker = function (el, cg, angExpr) {
+  fx.genMarker = function (el, cg, angExpr, colExpr) {
     cg.helper('arcMark');
     var k = { circle: 1, tick: 2, tri: 3 }[el.mk] || 1, s = Math.max(1, N(el.mks || 5)), pos = el.mkp || 'on', pen = el.pen || 9, rr = el.r;
     if (pos === 'out') rr += pen / 2 + s + 1; else if (pos === 'in') rr -= pen / 2 + s + 1;
-    return 'arcMark(dc, ' + k + ', ' + N(el.cx) + ', ' + N(el.cy) + ', ' + rr.toFixed(1) + ', ' + angExpr + ', ' + s + ', ' + (pos === 'out' ? -1 : 1) + ');';
+    return 'arcMark(dc, ' + k + ', ' + N(el.cx) + ', ' + N(el.cy) + ', ' + rr.toFixed(1) + ', ' + angExpr + ', ' + s + ', ' + (pos === 'out' ? -1 : 1) + ', ' + colExpr + ', ' + (el.mkOut ? GW.mcColor(el.mkOut) : '-1') + ');';
   };
   fx.markerFields = function (el) {
     var f = [{ t: 'h', label: 'End marker' }, { k: 'mk', t: 'seg', label: 'Marker at the end of the fill', opts: fx.MARKERS }];
@@ -84,6 +93,7 @@
       f.push({ k: 'mkp', t: 'seg', label: 'Placed', opts: [['on', 'On the arc'], ['out', 'Outside'], ['in', 'Inside']] });
       f.push({ t: 'row', fields: [{ k: 'mks', t: 'num', label: 'Size', min: 1, max: 20 }] });
       f.push({ k: 'mkColor', t: 'optcolor', label: 'Marker color (none = the fill color)' });
+      f.push({ k: 'mkOut', t: 'optcolor', label: 'Thin outline (none = no outline)' });
     }
     return f;
   };

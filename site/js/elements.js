@@ -308,7 +308,7 @@
           }
         }
         L.push('}');
-        if (mk) L.push('dc.setColor(' + (mkCol || 'mc') + ', Graphics.COLOR_TRANSPARENT);', GW.fx.genMarker(el, cg, 'ma'));
+        if (mk) L.push('dc.setColor(' + (mkCol || 'mc') + ', Graphics.COLOR_TRANSPARENT);', GW.fx.genMarker(el, cg, 'ma', mkCol || 'mc'));
         L.push('dc.setPenWidth(1);');
         return L;
       }
@@ -356,7 +356,7 @@
         L.push('    cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ang(' + sg + (cw ? ' - ' : ' + ') + 'f), ' + hw + ');');
         L.push('}');
       }
-      if (mk) L.push('dc.setColor(' + (mkCol || fcE) + ', Graphics.COLOR_TRANSPARENT);', GW.fx.genMarker(el, cg, 'ang(' + sg + (cw ? ' - ' : ' + ') + 'f)'));
+      if (mk) L.push('dc.setColor(' + (mkCol || fcE) + ', Graphics.COLOR_TRANSPARENT);', GW.fx.genMarker(el, cg, 'ang(' + sg + (cw ? ' - ' : ' + ') + 'f)', mkCol || fcE));
       L.push('dc.setPenWidth(1);');
       return L;
     }
