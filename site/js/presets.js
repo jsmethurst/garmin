@@ -324,6 +324,43 @@
         ];
         return d;
       } },
+    { id: 'panels', name: 'Colour panels', blurb: 'Rounded colour panels fill the round screen: calories, temperature range, steps, heart rate, watch battery and the date around a big serif time with seconds, AM/PM and a Bluetooth icon. Built for 260 and 280 px watches.',
+      build: function () {
+        var dark = '#101418';
+        var fN = 'fPanN', fT = 'fPanT', fS = 'fPanS';
+        var fonts = [font(fN, 'Bebas Neue', 400, 32, 'digits', 1), font(fT, 'Libre Baskerville', 700, 44, 'nums', -2), font(fS, 'DM Sans', 700, 13, 'basic', 0)];
+        function panel(x, y, w, h, c, n) { return rect(x + w / 2, y + h / 2, w, h, c, { name: n, rad: 16 }); }
+        function ico(kind, x, y, c, n) { return E('icon', { name: n, kind: kind, x: x, y: y, size: 24, color: c }); }
+        var els = [
+          panel(-10, -10, 146, 104, '#ff6f61', 'Calories panel'),
+          panel(140, -10, 150, 104, '#59a8f5', 'Weather panel'),
+          panel(-10, 98, 116, 44, '#2ec4b6', 'Steps panel'),
+          panel(-10, 146, 116, 50, '#ffb36b', 'Heart panel'),
+          panel(110, 98, 180, 98, '#d9f5e4', 'Time panel'),
+          panel(-10, 200, 146, 90, '#7ed56f', 'Battery panel'),
+          panel(140, 200, 150, 90, '#ffd84d', 'Date panel'),
+          ico('fire', 72, 38, dark, 'Calories icon'),
+          txt(90, 68, 'calories', fN, dark, { name: 'Calories', fontSize: 40 }),
+          ico('weather-sunny', 168, 38, dark, 'Weather icon'),
+          txt(208, 50, 'temp', fN, dark, { name: 'Temperature', suffix: '', fontSize: 40 }),
+          txt(204, 78, 'tempLow', fS, dark, { name: 'Today low', suffix: '/', justify: 'R', fontSize: 15 }),
+          txt(204, 78, 'tempHigh', fS, dark, { name: 'Today high', suffix: '°C', justify: 'L', fontSize: 15 }),
+          ico('shoe-print', 26, 120, dark, 'Steps icon'),
+          txt(68, 121, 'steps', fN, dark, { name: 'Steps', fontSize: 34 }),
+          ico('heart-pulse', 26, 171, dark, 'Heart icon'),
+          txt(68, 172, 'hr', fN, dark, { name: 'Heart rate', fontSize: 34 }),
+          txt(176, 124, 'hour', fT, dark, { name: 'Hour', hmode: 'h24', lz: true, fontSize: 52 }),
+          txt(176, 172, 'minute', fT, dark, { name: 'Minute', fontSize: 52 }),
+          ico('bluetooth', 248, 118, '#e02424', 'Bluetooth icon'),
+          txt(248, 146, 'ampm', fS, dark, { name: 'AM / PM', fontSize: 15 }),
+          txt(248, 172, 'second', fS, dark, { name: 'Seconds', fontSize: 15 }),
+          txt(60, 226, 'battery', fN, dark, { name: 'Battery', suffix: '%', fontSize: 36 }),
+          ico('battery', 112, 226, dark, 'Battery icon'),
+          txt(194, 222, 'date', fN, dark, { name: 'Date', fmt: 'DD/MM', fontSize: 36 }),
+          txt(194, 248, 'date', fS, dark, { name: 'Weekday', fmt: 'ddd', upper: true, fontSize: 15 })
+        ];
+        return D('Colour panels', '#000000', fonts, els);
+      } },
     { id: 'blankfield', name: 'Blank field', kind: 'datafield', blurb: 'Start from an empty screen and add your own cells.',
       build: function () { return cellDesign('My Data Field', []); } },
     { id: 'blank', name: 'Blank', blurb: 'Start from nothing.', build: function () { return D('My Watchface', '#000000', [], []); } }
