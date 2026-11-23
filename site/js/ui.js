@@ -251,7 +251,7 @@
     sel.appendChild(settingOpt('__new', '◐ New color role…'));
     sel.addEventListener('change', function () {
       var v = sel.value, was = el.set && el.set[f.k];
-      if (v === '__new') { var ns = GW.settings.addColor(((el.name || '') + ' ' + (f.label || 'color')).trim().slice(0, 28), el[f.k]); v = ns.id; }
+      if (v === '__new') { var ns = GW.settings.addColor(((el.name || '') + ' ' + (f.label || 'color')).trim().slice(0, 28), el[f.k]); ns.keep = false; v = ns.id; }   // made for this layer: it goes again when the layer stops using it
       else if (v === 'cmain' || v === 'chi' || v === 'ctext') { var ex = GW.settings.find(v); if (!ex) GW.settings.ensureRole(v === 'cmain' ? 'main' : (v === 'chi' ? 'hi' : 'text'), el[f.k]); }
       if (v) { el.set = el.set || {}; el.set[f.k] = v; var st = GW.settings.find(v); if (st) el[f.k] = st.def; }
       else if (el.set) { delete el.set[f.k]; if (!Object.keys(el.set).length) delete el.set; }

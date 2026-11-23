@@ -97,7 +97,7 @@
     },
     addColor: function (label, def, d) {
       d = d || GW.design;
-      var s = { id: S.nextId('c', d), kind: 'color', label: label || 'Color ' + (S.colors(d).length + 1), def: GW.q(def || '#ffffff') };
+      var s = { id: S.nextId('c', d), kind: 'color', label: label || 'Color ' + (S.colors(d).length + 1), def: GW.q(def || '#ffffff'), keep: true };   // keep: a color added by hand stays even before anything uses it (the clean-up of unused settings would drop it at once)
       S.all(d).push(s); if (!d.colorMode) d.colorMode = 'theme'; return s;
     },
     // every place that uses a color role takes its starting color (so the preview shows what the watch shows before anyone changes a setting)
