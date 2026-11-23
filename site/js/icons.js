@@ -110,6 +110,23 @@
     }
     return out;
   }
+  // 3D look: a light line along the top of a segment (two rows when it is tall enough) and a dark one along the bottom; the x range of each row follows the slanted sides
+  function rowSpan(t, y) {
+    var lo = 1e9, hi = -1e9;
+    for (var k = 0; k < t.length; k++) {
+      var a = t[k], b = t[(k + 1) % t.length]; if (a[1] === b[1]) continue;
+      var u = (y + 0.5 - a[1]) / (b[1] - a[1]); if (u < 0 || u > 1) continue;
+      var x = a[0] + (b[0] - a[0]) * u; lo = Math.min(lo, x); hi = Math.max(hi, x);
+    }
+    return lo > hi ? null : [Math.round(lo), Math.max(Math.round(lo), Math.round(hi) - 1)];
+  }
+  function shadeRows(t) {   // [[y, x1, x2] x3]: top, second (= top again for a short segment), bottom
+    var y0 = 1e9, y1 = -1e9; t.forEach(function (p) { y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); });
+    var ys = [y0, y1 - y0 >= 6 ? y0 + 1 : y0, y1 - 1], out = [];
+    for (var i = 0; i < 3; i++) { var sp = rowSpan(t, ys[i]) || rowSpan(t, ys[i] + 1); if (!sp) return null; out.push([ys[i], sp[0], sp[1]]); }
+    return out;
+  }
+  function is3d(el) { return el.look === '3d' && el.shape !== 'hex' && segN(el) > 1; }
   function segGeom(el) { return el.shape === 'hex' ? hexTris(el) : barSegs(el); }
   GW.segGeom = segGeom;
   function bounds(polys) {
@@ -153,7 +170,15 @@
         return;
       }
       var v = p * n, cols = grad ? GW.fx.ramp(el.color, el.color2 || '#0000ff', el.grad, n) : null;
-      polys.forEach(function (t, i) { path(ctx, t); ctx.fillStyle = q((el.partial ? v > i : v >= i + 1) ? (cols ? cols[i] : el.color) : el.unlit); ctx.fill(); });
+      var d3 = is3d(el);
+      polys.forEach(function (t, i) {
+        var col = q((el.partial ? v > i : v >= i + 1) ? (cols ? cols[i] : el.color) : el.unlit);
+        path(ctx, t); ctx.fillStyle = col; ctx.fill();
+        if (d3) {
+          var rw = shadeRows(t); if (!rw) return;
+          [[0, 1], [1, 1], [2, -1]].forEach(function (z) { var r = rw[z[0]]; ctx.fillStyle = GW.fx.shade(col, z[1]); ctx.fillRect(r[1], r[0], r[2] - r[1] + 1, 1); });
+        }
+      });
       if (el.shape === 'hex' && el.owidth > 0) {
         ctx.strokeStyle = q(el.outline); ctx.lineWidth = el.owidth; ctx.lineCap = 'butt';
         polys.forEach(function (t) { path(ctx, t); ctx.stroke(); });
@@ -173,7 +198,8 @@
       f.push({ t: 'row', fields: [{ k: 'color', t: 'color', label: gr ? 'Lit: start color' : 'Lit' }, { k: 'unlit', t: 'color', label: 'Unlit' }] });
       f.push({ t: 'fxpresets', ks: { on: 'grad', c1: 'color', c2: 'color2' } });
       f.push({ k: 'grad', t: 'seg', label: 'Color style', opts: [['none', 'Solid'], ['rainbow', 'Rainbow'], ['blend', 'Blend']] });
-      if (gr) f.push({ k: 'color2', t: 'fxcolor', label: 'Gradient: end color' });
+      if (gr) f.push({ k: 'color2', t: 'color', label: 'Gradient: end color' });
+      if (!hex && (el.n || 1) > 1) f.push({ k: 'look', t: 'seg', label: 'Look', opts: [['flat', 'Flat'], ['3d', '3D (light top, dark underside)']] });
       if (hex) {
         f.push({ k: 'partial', t: 'check', label: 'Light a triangle as soon as its share starts' });
         f.push({ t: 'row', fields: [{ k: 'outline', t: 'color', label: 'Outline' }, { k: 'owidth', t: 'num', label: 'Outline width (0 = none)', min: 0, max: 6 }] });
@@ -229,6 +255,27 @@
         return L;
       }
       L.push('var n = p * ' + n + '.0f;');
+      var rt = el._rt, d3 = is3d(el), blendRt = rt && GW.fx.isGrad(el) && el.grad === 'blend';
+      if (d3 || blendRt) {   // one loop over the segments: the colour of each (a ramp worked out on the watch, a fixed table, or one colour), then the light and dark lines
+        var P = polys.map(function (t) { return '[' + t.map(function (p) { return '[' + p[0] + ', ' + p[1] + ']'; }).join(', ') + ']'; });
+        cg.member('    const SG_' + id + '_P = [' + P.join(', ') + '];');
+        var litX = lit;
+        if (blendRt) { cg.helper('lerpCol'); litX = 'lerpCol(' + (rt.color || lit) + ', ' + (rt.color2 || GW.mcColor(el.color2 || '#0000ff')) + ', i.toFloat() / ' + (n - 1) + '.0f)'; }
+        else if (GW.fx.isGrad(el)) { cg.member('    const SG_' + id + '_C = [' + GW.fx.ramp(el.color, el.color2 || '#0000ff', el.grad, n).map(GW.mcColor).join(', ') + '];'); litX = 'SG_' + id + '_C[i]'; }
+        L.push('var sc;', 'for (var i = 0; i < ' + n + '; i++) {',
+          '    sc = (n ' + (el.partial ? '> i.toFloat()' : '>= i + 1.0f') + ') ? ' + litX + ' : ' + unlit + ';',
+          '    dc.setColor(sc, Graphics.COLOR_TRANSPARENT);', '    dc.fillPolygon(SG_' + id + '_P[i]);');
+        if (d3) {
+          cg.helper('shade');
+          var H = polys.map(function (t) { var r = shadeRows(t) || [[0, 0, 0], [0, 0, 0], [0, 0, 0]]; return '[' + r.map(function (z) { return z[1] + ', ' + z[0] + ', ' + z[2]; }).join(', ') + ']'; });
+          cg.member('    const SG_' + id + '_H = [' + H.join(', ') + '];');
+          L.push('    var hh = SG_' + id + '_H[i];', '    dc.setColor(shade(sc, 1), Graphics.COLOR_TRANSPARENT);',
+            '    dc.drawLine(hh[0], hh[1], hh[2], hh[1]);', '    dc.drawLine(hh[3], hh[4], hh[5], hh[4]);',
+            '    dc.setColor(shade(sc, -1), Graphics.COLOR_TRANSPARENT);', '    dc.drawLine(hh[6], hh[7], hh[8], hh[7]);');
+        }
+        L.push('}');
+        return L;
+      }
       var segCols = GW.fx.isGrad(el) ? GW.fx.ramp(el.color, el.color2 || '#0000ff', el.grad, n) : null;
       polys.forEach(function (t, i) {
         L.push('dc.setColor((n ' + (el.partial ? '> ' + i + '.0f' : '>= ' + (i + 1) + '.0f') + ') ? ' + (segCols ? GW.mcColor(segCols[i]) : lit) + ' : ' + unlit + ', Graphics.COLOR_TRANSPARENT);');

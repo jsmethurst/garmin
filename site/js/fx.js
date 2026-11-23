@@ -28,6 +28,12 @@
     }
     return hex(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t);
   };
+  // one palette step lighter (d = 1) or darker (d = -1) per channel: the highlight and shadow lines of a 3D segment
+  fx.shade = function (c, d) {
+    var v = rgb(c), o = [];
+    for (var i = 0; i < 3; i++) o.push(Math.max(0, Math.min(255, v[i] + d * 85)));
+    return hex(o[0], o[1], o[2]);
+  };
   // n colors, the first exactly c1 and the last exactly c2
   fx.ramp = function (c1, c2, mode, n) {
     var out = [];

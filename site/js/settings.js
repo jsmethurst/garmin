@@ -297,10 +297,11 @@
   // the generated lines of one element, with its role colors replaced by the setting variables
   function colored(el, lines, cg, d) {
     var map = el.set; if (!map || !lines || !lines.length || S.mode(d) === 'none') return lines;
-    if ((el.type === 'arc' || el.type === 'seggauge') && GW.fx && GW.fx.isGrad(el)) return lines;   // a gradient keeps its own fixed colors
+    if ((el.type === 'arc' || el.type === 'seggauge') && GW.fx && GW.fx.isGrad(el) && !el._rt) return lines;   // a gradient keeps its own fixed colors (a blend on segments is worked out on the watch from the role colors instead: _rt)
     var pairs = [], seen = {};
     function add(lit, rep) { if (!seen[lit]) { seen[lit] = 1; pairs.push([lit, rep]); } }
     Object.keys(map).forEach(function (k) {
+      if (el._rt && (k === 'color' || k === 'color2')) return;   // the gradient's two ends are the role variables themselves
       var s = S.find(map[k], d), v = el[k];
       if (!s || s.kind !== 'color' || typeof v !== 'string' || v[0] !== '#') return;
       cg.setUse(s.id);
@@ -309,8 +310,15 @@
     });
     return swap(lines, pairs);
   }
+  // a blended segment gauge whose colors follow color roles: the watch blends the two role colors itself, so a color scheme restyles the gradient too
+  function withRt(e, cg, d) {
+    if (e.type !== 'seggauge' || !e.set || S.mode(d) === 'none' || !GW.fx || !GW.fx.isGrad(e) || e.grad !== 'blend' || e.shape === 'hex' || (e.n || 1) < 2) return e;
+    var rt = {}, any = false;
+    ['color', 'color2'].forEach(function (k) { var s = e.set[k] && S.find(e.set[k], d); if (s && s.kind === 'color') { rt[k] = '_s_' + s.id; cg.setUse(s.id); any = true; } });
+    return any ? Object.assign({}, e, { _rt: rt }) : e;
+  }
   GW.genWithSettings = function (el, t, cg, d) {
-    var one = function (e) { return colored(e, t.gen(e, cg), cg, d); };
+    var one = function (e) { e = withRt(e, cg, d); return colored(e, t.gen(e, cg), cg, d); };
     var s = el.srcSet && S.find(el.srcSet, d);
     if (!s || s.kind !== 'source' || !s.choices || s.choices.length < 2 || !S.roleOf(el)) return one(el);
     var start = S.startChoice(s, d);
