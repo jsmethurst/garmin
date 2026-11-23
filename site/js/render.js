@@ -18,9 +18,9 @@
         ctx.fillStyle = GW.q(GW.dfTheme(design).bg); ctx.fillRect(0, 0, r[2], r[3]);
         els.forEach(function (el) {
           var t = GW.types[el.type]; if (!t) return;
-          if (GW.fx && GW.fx.hasConds(el) && !GW.fx.condsOk(el, env)) return;
+          if (GW.ex && GW.ex.hidden(el, env)) return;
           ctx.save();
-          try { t.draw(ctx, el, env); } catch (e) { if (window.console) console.error('draw failed', el.type, e); }
+          try { t.draw(ctx, GW.ex ? GW.ex.resolve(el, env) : el, env); } catch (e) { if (window.console) console.error('draw failed', el.type, e); }
           ctx.restore();
         });
         ctx.restore();
@@ -39,10 +39,10 @@
     design.elements.forEach(function (el) {
       if (el.hidden) return;
       var t = GW.types[el.type]; if (!t) return;
-      var off = GW.fx && GW.fx.hasConds(el) && !GW.fx.condsOk(el, env);
+      var off = GW.ex && GW.ex.hidden(el, env);
       if (off && !(GW.selected && GW.selected() === el)) return;   // a rule that is not met hides the layer (the selected one stays faintly visible so it can still be moved)
       ctx.save(); if (off) ctx.globalAlpha = 0.3;
-      try { t.draw(ctx, el, env); } catch (e) { if (window.console) console.error('draw failed', el.type, e); }
+      try { t.draw(ctx, GW.ex ? GW.ex.resolve(el, env) : el, env); } catch (e) { if (window.console) console.error('draw failed', el.type, e); }
       ctx.restore();
     });
     if (inSlot) {
@@ -69,9 +69,9 @@
     design.elements.forEach(function (el) {
       if (el.hidden) return;
       var t = GW.types[el.type]; if (!t) return;
-      if (GW.fx && GW.fx.hasConds(el) && !GW.fx.condsOk(el, env)) return;
+      if (GW.ex && GW.ex.hidden(el, env)) return;
       scratchCtx.setTransform(1, 0, 0, 1, 0, 0); scratchCtx.clearRect(0, 0, S, S); scratchCtx.save(); scratchCtx.imageSmoothingEnabled = false;
-      try { t.draw(scratchCtx, el, env); } catch (e) { if (window.console) console.error('draw failed', el.type, e); }
+      try { t.draw(scratchCtx, GW.ex ? GW.ex.resolve(el, env) : el, env); } catch (e) { if (window.console) console.error('draw failed', el.type, e); }
       scratchCtx.restore();
       var im = scratchCtx.getImageData(0, 0, S, S), d = im.data, soft = SOFT[el.type];
       if (!soft && smooth) { /* anti-aliasing on: the edge keeps its blend with what is behind it, and the colors are snapped to the 64 at the end */ }

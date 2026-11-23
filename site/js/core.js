@@ -194,6 +194,7 @@ window.GW = window.GW || {};
         if (e.type === 'icon' && GW.ICON_LEGACY && GW.ICON_LEGACY[e.kind]) { e.kind = GW.ICON_LEGACY[e.kind]; e.size = e.size <= 16 ? 16 : (e.size <= 20 ? 20 : 24); delete e.accent; }
       });
       (d.elements || []).forEach(function (e) { if (e.type === 'hexgauge') { e.type = 'seggauge'; e.shape = 'hex'; } });   // the hexagon gauge became a shape of the segment gauge
+      if (GW.ex) GW.ex.migrate(d);   // older "show only when" rules become a formula
       GW.design = Object.assign(GW.blankDesign(), d, { size: drawnAt });
       if (GW.design.kind === 'datafield') GW.design.elements.forEach(function (e) { if (e.slot == null) e.slot = GW.design.dfSlot || 0; });
       if (GW.design.kind === 'datafield' && !GW.design.dfEdgesApplied) { GW.applyEdges(GW.design); GW.design.dfEdgesApplied = true; }   // older designs: put the layout's dividing lines on the cells once

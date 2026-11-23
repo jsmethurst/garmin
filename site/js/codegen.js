@@ -354,9 +354,10 @@
     var methods = [], calls = [];
     els.forEach(function (e, i) {
       var t = GW.types[e.type]; if (!t) return;
-      var lines = GW.genWithSettings ? GW.genWithSettings(e, t, cg, design) : t.gen(e, cg);
+      var one = function (x) { return GW.genWithSettings ? GW.genWithSettings(x, t, cg, design) : t.gen(x, cg); };
+      var lines = GW.ex ? GW.ex.gen(e, cg, one) : one(e);   // a field with a formula is written out once per outcome
       if (!lines || !lines.length) return;
-      if (GW.fx && GW.fx.hasConds(e)) lines = GW.fx.condGuard(e, cg).concat(lines);   // "show only when" rules end the drawing early when they are not met
+      if (GW.ex && GW.ex.hasAny(e)) lines = GW.ex.prelude(e, cg).concat(GW.ex.hasShow(e) ? GW.ex.guard(e, cg) : [], lines);   // readings first, then the "Show this layer" formula (ends the drawing early when the layer is hidden now)
       var n = 'drawEl' + i;
       methods.push('    // ' + (e.name || e.type).replace(/[\r\n]/g, ' ') + '\n    function ' + n + '(dc as Dc) as Void {\n' +
         lines.map(function (l) { return '        ' + l; }).join('\n') + '\n    }');

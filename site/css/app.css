@@ -264,3 +264,17 @@ body[data-mode=field] .tgl.live, body[data-mode=field] #tabs [data-tab=face] { d
 .mdigrid button.on { border-color: var(--accent, #4af); background: rgba(80,160,255,.18); }
 .reftip { position: fixed; z-index: 50; background: #111; color: #fff; font: 11px/1.3 ui-monospace, monospace; padding: 4px 7px; border-radius: 4px; pointer-events: none; white-space: nowrap; }
 .refmenu { position: fixed; z-index: 60; background: var(--panel, #fff); border: 1px solid var(--line2, #ccc); border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.25); min-width: 170px; }
+
+/* formulas (ƒ) */
+.exbtn { float: right; font: italic 700 13px/1 Georgia, serif; padding: 1px 7px; margin-left: 6px; border: 1px solid var(--line2); border-radius: 10px; background: var(--panel); color: var(--muted); cursor: pointer; }
+.exbtn.on { background: var(--accent, #2b6cb0); color: #fff; border-color: transparent; }
+.exed { margin: 4px 0 6px; }
+.exta { width: 100%; font-family: var(--mono); font-size: 12px; background: var(--panel); border: 1px solid var(--line2); border-radius: var(--radius); padding: 6px 8px; resize: vertical; }
+.exstat { font-size: 12px; margin: 3px 0; color: var(--muted); }
+.exstat.ok { color: #1a7f37; }
+.exstat.bad { color: #c62828; }
+.exhelp { font-size: 12.5px; border: 1px solid var(--line2); border-radius: var(--radius); padding: 8px 10px; background: var(--panel2); margin-top: 4px; }
+.exhelp pre, .exhelp code { font-family: var(--mono); font-size: 12px; }
+.exhelp pre { background: var(--panel); padding: 6px 8px; border-radius: 4px; white-space: pre-wrap; }
+.exgrid td { vertical-align: top; padding: 2px 8px 2px 0; }
+.exvars { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 0; }

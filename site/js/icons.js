@@ -135,19 +135,25 @@
   T.seggauge = {
     label: 'Segment gauge', icon: '▰',
     defaults: function () { return { type: 'seggauge', name: 'Segment gauge', shape: 'bar', x: 140, y: 140, source: 'steps', min: null, max: null,
-      color: '#00ffaa', unlit: '#333333', partial: false, calFallback: 2200,
+      color: '#00ffaa', unlit: '#333333', partial: false, calFallback: 2200, grad: 'none',
       n: 7, w: 120, h: 16, gap: 3, slant: 6, orient: 'h', dir: 'ltr', r: 60, rot: 0, outline: '#000000', owidth: 0 }; },
     pos: [['x', 'y']],
     draw: function (ctx, el, env) {
-      var p = progress(el, env), n = segN(el), polys = segGeom(el);
+      var p = progress(el, env), n = segN(el), polys = segGeom(el), grad = GW.fx.isGrad(el);
       if (el.shape !== 'hex' && n === 1) {
         path(ctx, polys[0]); ctx.fillStyle = q(el.unlit); ctx.fill();
         var c = clipRect(el, bounds(polys), p);
-        if (c.w > 0 && c.h > 0) { ctx.save(); ctx.beginPath(); ctx.rect(c.x, c.y, c.w, c.h); ctx.clip(); path(ctx, polys[0]); ctx.fillStyle = q(el.color); ctx.fill(); ctx.restore(); }
+        if (c.w > 0 && c.h > 0) {
+          ctx.save(); ctx.beginPath(); ctx.rect(c.x, c.y, c.w, c.h); ctx.clip(); path(ctx, polys[0]);
+          if (grad) {   // a color gradient along the bar, built from short dithered bands clipped to the lit part
+            ctx.clip(); var bb = bounds(polys); GW.fx.smoothBarBands(el, bb).forEach(function (r) { ctx.fillStyle = q(r.c); ctx.fillRect(r.x, r.y, r.w, r.h); });
+          } else { ctx.fillStyle = q(el.color); ctx.fill(); }
+          ctx.restore();
+        }
         return;
       }
-      var v = p * n;
-      polys.forEach(function (t, i) { path(ctx, t); ctx.fillStyle = q((el.partial ? v > i : v >= i + 1) ? el.color : el.unlit); ctx.fill(); });
+      var v = p * n, cols = grad ? GW.fx.ramp(el.color, el.color2 || '#0000ff', el.grad, n) : null;
+      polys.forEach(function (t, i) { path(ctx, t); ctx.fillStyle = q((el.partial ? v > i : v >= i + 1) ? (cols ? cols[i] : el.color) : el.unlit); ctx.fill(); });
       if (el.shape === 'hex' && el.owidth > 0) {
         ctx.strokeStyle = q(el.outline); ctx.lineWidth = el.owidth; ctx.lineCap = 'butt';
         polys.forEach(function (t) { path(ctx, t); ctx.stroke(); });
@@ -163,7 +169,11 @@
       ];
       if (el.source === 'calories') f.push({ k: 'calFallback', t: 'num', label: 'Goal if the watch has none', min: 100, max: 10000 });
       f.push({ t: 'h', label: 'Look' });
-      f.push({ t: 'row', fields: [{ k: 'color', t: 'color', label: 'Lit' }, { k: 'unlit', t: 'color', label: 'Unlit' }] });
+      var gr = GW.fx.isGrad(el);
+      f.push({ t: 'row', fields: [{ k: 'color', t: 'color', label: gr ? 'Lit: start color' : 'Lit' }, { k: 'unlit', t: 'color', label: 'Unlit' }] });
+      f.push({ t: 'fxpresets', ks: { on: 'grad', c1: 'color', c2: 'color2' } });
+      f.push({ k: 'grad', t: 'seg', label: 'Color style', opts: [['none', 'Solid'], ['rainbow', 'Rainbow'], ['blend', 'Blend']] });
+      if (gr) f.push({ k: 'color2', t: 'fxcolor', label: 'Gradient: end color' });
       if (hex) {
         f.push({ k: 'partial', t: 'check', label: 'Light a triangle as soon as its share starts' });
         f.push({ t: 'row', fields: [{ k: 'outline', t: 'color', label: 'Outline' }, { k: 'owidth', t: 'num', label: 'Outline width (0 = none)', min: 0, max: 6 }] });
@@ -204,12 +214,24 @@
         } else {
           L.push('var h = (' + bb.h + '.0f * p).toNumber();', 'if (h > 0) {', '    dc.setClip(' + bb.x + ', ' + (rev ? bb.y : (bb.y + bb.h) + ' - h') + ', ' + bb.w + ', h);');
         }
+        if (GW.fx.isGrad(el)) {   // gradient along the bar: short dithered bands, each clipped to the lit part (the loop is closed below)
+          var bands = GW.fx.smoothBarBands(el, bb, true), nmb = 'SG_' + id;
+          cg.member('    const ' + nmb + '_A = [' + bands.map(function (r) { return r.a; }).join(', ') + '];');
+          cg.member('    const ' + nmb + '_Z = [' + bands.map(function (r) { return r.z; }).join(', ') + '];');
+          cg.member('    const ' + nmb + '_C = [' + bands.map(function (r) { return GW.mcColor(r.c); }).join(', ') + '];');
+          var lim = vert ? 'h' : 'w', ln = vert ? bb.w : bb.h;
+          L.push('    for (var i = 0; i < ' + bands.length + '; i++) {', '        var z = ' + nmb + '_Z[i];', '        if (z > ' + lim + ') { z = ' + lim + '; }', '        var a = ' + nmb + '_A[i];', '        if (z <= a) { break; }');
+          var cx2 = !vert ? (rev ? (bb.x + bb.w) + ' - z' : bb.x + ' + a') : bb.x, cy2 = !vert ? bb.y : (rev ? bb.y + ' + a' : (bb.y + bb.h) + ' - z');
+          L.push('        dc.setClip(' + cx2 + ', ' + cy2 + ', ' + (vert ? bb.w : 'z - a') + ', ' + (vert ? 'z - a' : bb.h) + ');', '        dc.setColor(' + nmb + '_C[i], Graphics.COLOR_TRANSPARENT);', '        dc.fillPolygon(' + nm0 + ');', '    }', '    dc.setClip(0, 0, dc.getWidth(), dc.getHeight());', '}');
+          return L;
+        }
         L.push('    dc.setColor(' + lit + ', Graphics.COLOR_TRANSPARENT);', '    dc.fillPolygon(' + nm0 + ');', '    dc.setClip(0, 0, dc.getWidth(), dc.getHeight());', '}');
         return L;
       }
       L.push('var n = p * ' + n + '.0f;');
+      var segCols = GW.fx.isGrad(el) ? GW.fx.ramp(el.color, el.color2 || '#0000ff', el.grad, n) : null;
       polys.forEach(function (t, i) {
-        L.push('dc.setColor((n ' + (el.partial ? '> ' + i + '.0f' : '>= ' + (i + 1) + '.0f') + ') ? ' + lit + ' : ' + unlit + ', Graphics.COLOR_TRANSPARENT);');
+        L.push('dc.setColor((n ' + (el.partial ? '> ' + i + '.0f' : '>= ' + (i + 1) + '.0f') + ') ? ' + (segCols ? GW.mcColor(segCols[i]) : lit) + ' : ' + unlit + ', Graphics.COLOR_TRANSPARENT);');
         L.push('dc.fillPolygon(' + pc(t, i) + ');');
       });
       if (el.shape === 'hex' && el.owidth > 0) {

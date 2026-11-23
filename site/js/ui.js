@@ -602,6 +602,10 @@
   }
 
   function renderField(el, f) {
+    var n = renderField0(el, f);
+    return GW.ex && n && GW.ex.wants(el, f) ? GW.ex.wrap(el, f, n) : n;   // every field can follow a formula (the ƒ button)
+  }
+  function renderField0(el, f) {
     switch (f.t) {
       case 'h': return h('h4', { text: f.label });
       case 'note': return null;
@@ -680,7 +684,7 @@
         GW.addElement('icon', { name: GW.ICONS[GW.ICON_FOR[el.source]].label + ' icon', kind: GW.ICON_FOR[el.source], size: sz, x: cx, y: cy, color: el.color });
       } }));
     }
-    if (GW.fx && el.type !== 'dfcell') p.appendChild(GW.fx.condsBox(el));   // "show only when" rules, for every kind of layer
+    if (GW.ex && GW.modeOf() === 'watch' && el.type !== 'dfcell') p.appendChild(GW.ex.showBox(el));   // "Show this layer": a formula, for every kind of layer
     p.appendChild(h('div', { class: 'row' }, [
       h('button', { class: 'btn sm', text: '↑ Bring forward', onclick: function () { GW.moveLayer(el.id, 1); } }),
       h('button', { class: 'btn sm', text: '↓ Send back', onclick: function () { GW.moveLayer(el.id, -1); } })

@@ -262,7 +262,7 @@
     variant: function (el, s, c, start, d) {
       var r = S.roleOf(el), v = Object.assign({}, el), a = c === start ? { prefix: el.prefix || '', suffix: el.suffix || '' } : ((s.affix && s.affix[c]) || { prefix: '', suffix: '' });
       if (r === 'value') { v.source = c; v.prefix = a.prefix || ''; v.suffix = S.hasUnit(s, d) ? '' : (a.suffix || ''); }
-      else if (r === 'gauge') { v.source = c; if (el.type === 'arc') { v.min = null; v.max = null; } }
+      else if (r === 'gauge') { v.source = c; if ((el.type === 'arc' || el.type === 'seggauge') && c !== start) { v.min = null; v.max = null; } }   // the reading shown from the start keeps its own range; another reading uses its own
       else if (r === 'icon') { var ic = GW.ICON_FOR && GW.ICON_FOR[c]; if (ic && GW.ICONS && GW.ICONS[ic]) v.kind = ic; }
       else if (r === 'unit') { v.text = c === start ? el.text : (((s.affix && s.affix[c]) || {}).suffix || AFFIX[c] || ''); }
       else if (r === 'label') { v.text = c === start ? el.text : ((s.labels && s.labels[c] != null) ? s.labels[c] : GW.sourceShort(c)); }
@@ -296,6 +296,7 @@
   // the generated lines of one element, with its role colors replaced by the setting variables
   function colored(el, lines, cg, d) {
     var map = el.set; if (!map || !lines || !lines.length || S.mode(d) === 'none') return lines;
+    if ((el.type === 'arc' || el.type === 'seggauge') && GW.fx && GW.fx.isGrad(el)) return lines;   // a gradient keeps its own fixed colors
     var pairs = [], seen = {};
     function add(lit, rep) { if (!seen[lit]) { seen[lit] = 1; pairs.push([lit, rep]); } }
     Object.keys(map).forEach(function (k) {

@@ -20,7 +20,7 @@
     return hex((r + m) * 255, (g + m) * 255, (b + m) * 255);
   }
   // t = 0..1 between two colors. "rainbow" walks the hue wheel the short way through the spectrum (red to blue passes yellow, green and cyan); "blend" mixes the colors straight.
-  fx.mix = function (c1, c2, t, mode) {
+  fx.mix = function (c1, c2, t, mode, raw) {
     var a = rgb(c1), b = rgb(c2);
     if (mode === 'rainbow') {
       var ha = toHsv(a), hb = toHsv(b);
@@ -45,11 +45,60 @@
   // ---------------------------------------------------------------- gradient arcs
   // The gradient is fixed along the sweep (the color at an angle never changes); the fill reveals it. Whole-degree bands, each drawn 1° long so there is no seam.
   fx.isGrad = function (el) { return !!el.grad && el.grad !== 'none'; };
-  fx.arcBands = function (el) {
-    var sw = Math.min(N(el.sweep), 359), n = Math.max(2, Math.min(sw, Math.min(48, N(el.gsteps || 24)))), d = [], b = [];
-    for (var i = 0; i < n; i++) { d.push(N(sw * i / n)); b.push(Math.min(sw, N(sw * (i + 1) / n) + 1)); }
-    return { n: n, d: d, b: b, c: fx.ramp(el.color, el.color2 || '#0000ff', el.grad, n) };
+  // The watch shows 64 colors (four levels per channel), so a plain ramp comes out as a handful of flat bands. To look smooth the ramp is DITHERED:
+  // each 1-degree slice gets the exact blend color, then every channel is rounded up or down to a palette level by a repeating threshold, so the two
+  // nearest palette colors alternate in the right proportion and the eye blends them. The numbers are worked out here, so the preview and the watch agree.
+  var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  fx.dither = function (rgbv, i) {
+    var out = [0, 0, 0];
+    for (var ch = 0; ch < 3; ch++) {
+      var th = (BAYER[((i % 16) + 16) % 16] + 0.5) / 16, lv = Math.min(3, Math.max(0, Math.floor(rgbv[ch] / 85 + th)));
+      out[ch] = lv * 85;
+    }
+    return hex(out[0], out[1], out[2]);
   };
+  fx.exactMix = function (c1, c2, t, mode) { return rgb(fx.mix(c1, c2, t, mode)); };   // note: mix() returns hex, which is not yet snapped to the palette
+  fx.coarse = function (el) { return !!el.gcoarse; };
+  fx.arcBands = function (el) {
+    var sw = Math.min(N(el.sweep), 359), c2 = el.color2 || '#0000ff';
+    if (!fx.coarse(el)) {       // smooth: one slice per degree, dithered, then neighbours of the same color are joined into one run
+      var cols = [];
+      for (var k = 0; k < sw; k++) cols.push(fx.dither(rgbOf(fx.mixRaw(el.color, c2, sw > 1 ? k / (sw - 1) : 0, el.grad)), k));
+      var d = [], b = [], c = [];
+      for (var i = 0; i < sw; i++) {
+        if (c.length && c[c.length - 1] === cols[i]) { b[b.length - 1] = Math.min(sw, i + 2); continue; }
+        d.push(i); b.push(Math.min(sw, i + 2)); c.push(cols[i]);   // each run is drawn one degree long past its end so no seam shows; the next run paints over that degree
+      }
+      return { n: d.length, d: d, b: b, c: c };
+    }
+    var n = Math.max(2, Math.min(sw, Math.min(48, N(el.gsteps || 24)))), d2 = [], b2 = [];
+    for (var j = 0; j < n; j++) { d2.push(N(sw * j / n)); b2.push(Math.min(sw, N(sw * (j + 1) / n) + 1)); }
+    return { n: n, d: d2, b: b2, c: fx.ramp(el.color, c2, el.grad, n) };
+  };
+  // `count` equal slices of a ramp, dithered, with neighbours of one color joined: [{ d: first slice, e: one past the last, c: color }]
+  fx.ditherRuns = function (c1, c2, mode, count) {
+    var runs = [];
+    for (var k = 0; k < count; k++) {
+      var col = fx.dither(rgbOf(fx.mix(c1, c2, count > 1 ? k / (count - 1) : 0, mode)), k), last = runs[runs.length - 1];
+      if (last && last.c === col) last.e = k + 1; else runs.push({ d: k, e: k + 1, c: col });
+    }
+    return runs;
+  };
+  // A smooth (one-piece) bar with a gradient: dithered bands across the bar, in lighting order from the end it fills from.
+  // For the preview: rectangles {x,y,w,h,c}. For the watch (asOffsets): {a,z,c} = start and end distance along the bar.
+  fx.smoothBarBands = function (el, bb, asOffsets) {
+    var vert = el.orient === 'v', rev = el.dir === 'rtl', along = vert ? bb.h : bb.w, cnt = Math.max(4, Math.min(60, N(along / 3))), out = [];
+    fx.ditherRuns(el.color, el.color2 || '#0000ff', el.grad, cnt).forEach(function (r) {
+      var a = N(along * r.d / cnt), z = N(along * r.e / cnt);
+      if (asOffsets) { out.push({ a: a, z: z, c: r.c }); return; }
+      if (!vert) out.push({ x: rev ? bb.x + bb.w - z : bb.x + a, y: bb.y, w: z - a, h: bb.h, c: r.c });
+      else out.push({ x: bb.x, y: rev ? bb.y + a : bb.y + bb.h - z, w: bb.w, h: z - a, c: r.c });
+    });
+    return out;
+  };
+  // the exact (unsnapped) color along a ramp, as [r,g,b]
+  function rgbOf(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+  fx.mixRaw = function (c1, c2, t, mode) { return fx.mix(c1, c2, t, mode, true); };
 
   // ---------------------------------------------------------------- arc / map markers
   // kinds: circle (a dot), tick (a short line across the arc), tri (a triangle). pos: on the arc, outside it or inside it.
@@ -276,49 +325,9 @@
     letters.forEach(function (c, i) {
       var x = Math.round(cx + (i - 3) * step);
       d.elements.push(GW.newElement('text', { name: 'Day ' + names[i], source: 'custom', text: c, font: 'FONT_XTINY', x: x, y: y, justify: 'C', color: '#ffffff' }));
-      last = GW.newElement('shape', { name: 'Today marker ' + names[i], kind: 'tri', tdir: 'down', fill: true, w: 9, h: 7, x: x, y: y - 14, color: '#ffcc00', conds: [{ src: 'dow', op: '=', a: i + 1, b: 7 }] });
+      last = GW.newElement('shape', { name: 'Today marker ' + names[i], kind: 'tri', tdir: 'down', fill: true, w: 9, h: 7, x: x, y: y - 14, color: '#ffcc00', ex: { show: 'if {dow} == ' + (i + 1) + ' then true else false' } });
       d.elements.push(last);
     });
     GW.selId = last.id; GW.setTab('inspect'); GW.commit(true); GW.emit('select', last.id);
-  };
-  // "Show only when…" for the selected element
-  fx.condsBox = function (el) {
-    var h = ui().h, box = h('div', { class: 'f', style: 'margin-top:14px;padding-top:10px;border-top:1px solid var(--line2)' });
-    box.appendChild(h('h4', { text: 'Show only when… (if / then)' }));
-    var list = el.conds || [];
-    if (!list.length) box.appendChild(h('p', { class: 'muted small', text: 'Always shown. Add a rule to show this layer only when something is true, such as one weekday, a low battery or a time of day.' }));
-    list.forEach(function (c, i) {
-      var row = h('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0' });
-      var src = h('select', { class: 'sel', 'aria-label': 'Reading', style: 'max-width:100%' });
-      var g1 = h('optgroup', { label: 'Time and date' }); fx.CLOCK.forEach(function (d) { g1.appendChild(opt(d[0], d[1])); }); src.appendChild(g1);
-      var groups = {}; fx.numSources().forEach(function (s) { (groups[s.group] = groups[s.group] || []).push(s); });
-      Object.keys(groups).forEach(function (g) { var og = h('optgroup', { label: g }); groups[g].forEach(function (s) { og.appendChild(opt(s.id, s.label)); }); src.appendChild(og); });
-      src.value = c.src;
-      src.addEventListener('change', function () { var d = clockDef(src.value); c.src = src.value; c.a = d ? d[2] : 0; c.b = d ? d[3] : 100; GW.commit(true); });
-      var op = h('select', { class: 'sel', 'aria-label': 'Comparison' }, fx.OPS.map(function (o) { return opt(o[0], o[1]); })); op.value = c.op || '=';
-      op.addEventListener('change', function () { c.op = op.value; GW.commit(true); });
-      var del = h('button', { class: 'btn sm danger', type: 'button', title: 'Remove this rule', text: '✕' });
-      del.addEventListener('click', function () { el.conds.splice(i, 1); if (!el.conds.length) delete el.conds; GW.commit(true); });
-      row.appendChild(src); row.appendChild(op); row.appendChild(valueInput(c, 'a', function () { GW.commit(false); }));
-      if (c.op === 'in' || c.op === 'out') { row.appendChild(h('span', { class: 'muted small', text: 'and' })); row.appendChild(valueInput(c, 'b', function () { GW.commit(false); })); }
-      row.appendChild(del); box.appendChild(row);
-    });
-    if (!list.length) {
-      var ex = h('button', { class: 'btn sm', type: 'button', style: 'margin-right:6px', text: 'Example: add a weekday strip' });
-      var yin = h('input', { type: 'number', value: Math.round(GW.SIZE * 0.3), style: 'width:64px', 'aria-label': 'Row height (Y)' });
-      ex.addEventListener('click', function () { fx.addWeekdayStrip(Number(yin.value) || 0); });
-      box.appendChild(h('div', { style: 'margin:4px 0 8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center' }, [ex, h('span', { class: 'muted small', text: 'at Y' }), yin, h('span', { class: 'muted small', text: 'M T W T F S S with a triangle over today' })]));
-    }
-    var add = h('button', { class: 'btn sm', type: 'button', text: list.length ? '+ Another rule (all must be true)' : '+ Add a rule' });
-    add.addEventListener('click', function () { el.conds = (el.conds || []).concat([{ src: 'dow', op: '=', a: 1, b: 7 }]); GW.commit(true); });
-    box.appendChild(add);
-    if (list.some(function (c) { return c.src === 'dow'; })) {
-      var cur = GW.sim.dow, day = h('select', { class: 'sel', 'aria-label': 'Pretend today is' }, [opt('-1', 'today (real)')].concat(DAYS.map(function (n, i) { return opt(String((i + 1) % 7), n); })));
-      day.value = cur == null ? '-1' : String(cur);
-      day.addEventListener('change', function () { GW.sim.dow = Number(day.value); GW.commit(false); });
-      box.appendChild(ui().field('Preview: pretend today is', day));
-    }
-    box.appendChild(h('p', { class: 'muted small', text: 'For a different look in the other case (say a red battery when it is low), copy the layer and give the copy the opposite rule.' }));
-    return box;
   };
 })(window.GW);
