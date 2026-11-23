@@ -126,7 +126,7 @@
     for (var i = 0; i < 3; i++) { var sp = rowSpan(t, ys[i]) || rowSpan(t, ys[i] + 1); if (!sp) return null; out.push([ys[i], sp[0], sp[1]]); }
     return out;
   }
-  function is3d(el) { return (el.look === '3d' || el.look === 'sunk') && el.shape !== 'hex' && segN(el) > 1; }   // '3d' = raised (light top, dark underside), 'sunk' = sunken (shadow on the top, a lesser one on the underside)
+  function is3d(el) { return (el.look === '3d' || el.look === 'sunk') && el.shape !== 'hex' && segN(el) > 1; }   // '3d' = raised (light top, dark underside), 'sunk' = sunken (shadow along the top and down the left side)
   function segGeom(el) { return el.shape === 'hex' ? hexTris(el) : barSegs(el); }
   GW.segGeom = segGeom;
   function bounds(polys) {
@@ -176,7 +176,11 @@
         path(ctx, t); ctx.fillStyle = col; ctx.fill();
         if (d3) {
           var rw = shadeRows(t); if (!rw) return;
-          (el.look === 'sunk' ? [[0, -1], [1, -1], [2, -1]] : [[0, 1], [1, 1], [2, -1]]).forEach(function (z) { var r = rw[z[0]]; ctx.fillStyle = GW.fx.shade(col, z[1]); ctx.fillRect(r[1], r[0], r[2] - r[1] + 1, 1); });
+          (el.look === 'sunk' ? [[0, -1], [1, -1]] : [[0, 1], [1, 1], [2, -1]]).forEach(function (z) { var r = rw[z[0]]; ctx.fillStyle = GW.fx.shade(col, z[1]); ctx.fillRect(r[1], r[0], r[2] - r[1] + 1, 1); });
+          if (el.look === 'sunk') {   // sunken: the left (leading) edge is shadowed too, one pixel per row from the top row's first pixel to the bottom row's
+            ctx.fillStyle = GW.fx.shade(col, -1); var ra = rw[0], rb = rw[2], ny = rb[0] - ra[0];
+            for (var yy = 0; yy <= ny; yy++) ctx.fillRect(Math.round(ra[1] + (rb[1] - ra[1]) * (ny ? yy / ny : 0)), ra[0] + yy, 1, 1);
+          }
         }
       });
       if (el.shape === 'hex' && el.owidth > 0) {
@@ -199,7 +203,7 @@
       f.push({ t: 'fxpresets', ks: { on: 'grad', c1: 'color', c2: 'color2' } });
       f.push({ k: 'grad', t: 'seg', label: 'Color style', opts: [['none', 'Solid'], ['rainbow', 'Rainbow'], ['blend', 'Blend']] });
       if (gr) f.push({ k: 'color2', t: 'color', label: 'Gradient: end color' });
-      if (!hex && (el.n || 1) > 1) f.push({ k: 'look', t: 'seg', label: 'Look', opts: [['flat', 'Flat'], ['3d', '3D raised'], ['sunk', '3D sunken']] });
+      if (!hex && (el.n || 1) > 1) f.push({ k: 'look', t: 'seg', label: 'Look', opts: [['flat', 'Flat'], ['3d', '3D raised'], ['sunk', '3D sunken (shadow top and left)']] });
       if (hex) {
         f.push({ k: 'partial', t: 'check', label: 'Light a triangle as soon as its share starts' });
         f.push({ t: 'row', fields: [{ k: 'outline', t: 'color', label: 'Outline' }, { k: 'owidth', t: 'num', label: 'Outline width (0 = none)', min: 0, max: 6 }] });
@@ -270,7 +274,7 @@
           var H = polys.map(function (t) { var r = shadeRows(t) || [[0, 0, 0], [0, 0, 0], [0, 0, 0]]; return '[' + r.map(function (z) { return z[1] + ', ' + z[0] + ', ' + z[2]; }).join(', ') + ']'; });
           cg.member('    const SG_' + id + '_H = [' + H.join(', ') + '];');
           if (el.look === 'sunk') L.push('    var hh = SG_' + id + '_H[i];', '    dc.setColor(shade(sc, -1), Graphics.COLOR_TRANSPARENT);',
-            '    dc.drawLine(hh[0], hh[1], hh[2], hh[1]);', '    dc.drawLine(hh[3], hh[4], hh[5], hh[4]);', '    dc.drawLine(hh[6], hh[7], hh[8], hh[7]);');
+            '    dc.drawLine(hh[0], hh[1], hh[2], hh[1]);', '    dc.drawLine(hh[3], hh[4], hh[5], hh[4]);', '    dc.drawLine(hh[0], hh[1], hh[6], hh[7]);');   // two rows along the top, then the left edge from the top row's first pixel to the bottom row's
           else L.push('    var hh = SG_' + id + '_H[i];', '    dc.setColor(shade(sc, 1), Graphics.COLOR_TRANSPARENT);',
             '    dc.drawLine(hh[0], hh[1], hh[2], hh[1]);', '    dc.drawLine(hh[3], hh[4], hh[5], hh[4]);',
             '    dc.setColor(shade(sc, -1), Graphics.COLOR_TRANSPARENT);', '    dc.drawLine(hh[6], hh[7], hh[8], hh[7]);');
