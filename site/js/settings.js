@@ -79,11 +79,18 @@
     slots: function (d) { return S.all(d).filter(function (s) { return s.kind === 'source'; }); },
     theme: function (d) { return S.all(d).filter(function (s) { return s.kind === 'theme'; })[0] || null; },
     mode: function (d) { d = d || GW.design; return d.colorMode || 'each'; },
+    // on / off switches the wearer can flip in the phone app (a text gradient, say): { id, kind:'switch', label, def: 1 (starts on) | 0 }; a layer follows one through its `gsw`
+    switches: function (d) { return S.all(d || GW.design).filter(function (s) { return s.kind === 'switch'; }); },
+    addSwitch: function (label, def, d) {
+      d = d || GW.design; var s = { id: S.nextId('sw', d), kind: 'switch', label: label || 'Switch ' + (S.switches(d).length + 1), def: def === 0 ? 0 : 1, keep: true };
+      S.all(d).push(s); return s;
+    },
+    switchOn: function (el, d) { var s = el.gsw && S.find(el.gsw, d); return !s || s.kind !== 'switch' || !!s.def; },   // what the preview shows: the switch's starting state
     nextId: function (p, d) { var n = 1; d = d || GW.design; while (S.find(p + n, d)) n++; return p + n; },
     // how many places use a setting
     uses: function (id, d) {
       d = d || GW.design; var n = 0;
-      d.elements.forEach(function (e) { if (e.srcSet === id) n++; if (e.set) Object.keys(e.set).forEach(function (k) { if (e.set[k] === id) n++; }); });
+      d.elements.forEach(function (e) { if (e.srcSet === id) n++; if (e.gsw === id) n++; if (e.set) Object.keys(e.set).forEach(function (k) { if (e.set[k] === id) n++; }); });
       if (d.bgSet === id) n++;
       return n;
     },
@@ -110,6 +117,7 @@
       d = d || GW.design;
       d.elements.forEach(function (e) {
         if (e.srcSet === id) delete e.srcSet;
+        if (e.gsw === id) delete e.gsw;
         if (e.set) { Object.keys(e.set).forEach(function (k) { if (e.set[k] === id) delete e.set[k]; }); if (!Object.keys(e.set).length) delete e.set; }
       });
       if (d.bgSet === id) delete d.bgSet;
@@ -125,6 +133,7 @@
       d.settings = S.all(d).filter(function (s) {
         if (s.kind === 'color') return S.uses(s.id, d) > 0 || s.keep;
         if (s.kind === 'source') return S.uses(s.id, d) > 0;
+        if (s.kind === 'switch') return S.uses(s.id, d) > 0 || s.keep;
         return true;
       });
       if (!S.colors(d).length) d.settings = d.settings.filter(function (s) { return s.kind !== 'theme'; });
@@ -348,8 +357,9 @@
     var mode = S.mode(d), th = S.theme(d);
     var all = S.all(d), roles = all.filter(function (s) { return s.kind === 'color' && used[s.id]; });
     var slots = all.filter(function (s) { return s.kind === 'source' && used[s.id]; });
+    var switches = all.filter(function (s) { return s.kind === 'switch' && used[s.id]; });
     var useTheme = mode === 'theme' && th && th.themes.length && roles.length;
-    if (!roles.length && !slots.length) return null;
+    if (!roles.length && !slots.length && !switches.length) return null;
     var members = [], load = [], props = [], sets = [], strings = {};
     function entryList(id, labels) { return labels.map(function (l, i) { return '            <listEntry value="' + i + '">@Strings.' + l + '</listEntry>'; }).join('\n'); }
     roles.forEach(function (s) {
@@ -383,6 +393,13 @@
       strings['S_' + s.id] = s.label || s.id;
       var labs = s.choices.map(function (c, i) { strings['S_' + s.id + '_' + i] = (GW.sources[c] || { label: c }).label; return 'S_' + s.id + '_' + i; });
       sets.push('    <setting propertyKey="@Properties.' + s.id + '" title="@Strings.S_' + s.id + '">\n        <settingConfig type="list">\n' + entryList(s.id, labs) + '\n        </settingConfig>\n    </setting>');
+    });
+    switches.forEach(function (s) {
+      members.push('    var _s_' + s.id + ' = ' + (s.def ? 1 : 0) + ';');
+      load.push('            v = Application.Properties.getValue("' + s.id + '");', '            if (v instanceof Boolean) {', '                _s_' + s.id + ' = v ? 1 : 0;', '            }');
+      props.push('    <property id="' + s.id + '" type="boolean">' + (s.def ? 'true' : 'false') + '</property>');
+      strings['S_' + s.id] = s.label || s.id;
+      sets.push('    <setting propertyKey="@Properties.' + s.id + '" title="@Strings.S_' + s.id + '">\n        <settingConfig type="boolean" />\n    </setting>');
     });
     members.push('    function loadSettings() as Void {', '        try {', '            var v = null;', load.join('\n'), '        } catch (ex) {', '        }', '    }');
     if (needDim) members.push('    function dimCol(c as Number) as Number {\n        var r = (((c >> 16) & 255) >= 170) ? 85 : 0;\n        var g = (((c >> 8) & 255) >= 170) ? 85 : 0;\n        var b = ((c & 255) >= 170) ? 85 : 0;\n        return (r << 16) | (g << 8) | b;\n    }');

@@ -168,6 +168,7 @@
         f.push({ k: 'tg1', t: 'color', label: 'From' }, { k: 'tg2', t: 'color', label: 'To' });
       } else f.push({ t: 'row', fields: [{ k: 'tg1', t: 'fxcolor', label: 'From' }, { k: 'tg2', t: 'fxcolor', label: 'To' }] });
       f.push({ k: 'tgd', t: 'seg', label: 'Direction', opts: [['v', 'Top to bottom'], ['h', 'Left to right']] });
+      if (GW.modeOf() === 'watch') f.push({ t: 'fxswitch' });
     }
     f.push({ k: 'tol', t: 'optcolor', label: 'Outline color (none = no outline)' });
     if (el.tol) f.push({ k: 'tolw', t: 'seg', num: true, label: 'Outline width', opts: [[1, '1 px'], [2, '2 px'], [3, '3 px']] });
@@ -178,7 +179,7 @@
     var font = GW.fontFor(el), j = el.justify, w = el.tolw || 1;
     if (el.tol) GW.haloOffsets(w).forEach(function (d) { GW.drawText(ctx, font, str, el.x + d[0], el.y + d[1], j, GW.q(el.tol), el.vtop); });
     if (el.tfill === 'none') { GW.drawText(ctx, font, str, el.x, el.y, j, GW.q(bgOf()), el.vtop); return; }
-    if (el.tfill !== 'gradient') { GW.drawText(ctx, font, str, el.x, el.y, j, GW.q(el.color), el.vtop); return; }
+    if (el.tfill !== 'gradient' || (GW.settings && !GW.settings.switchOn(el))) { GW.drawText(ctx, font, str, el.x, el.y, j, GW.q(el.color), el.vtop); return; }   // (a switch that starts off shows the plain color)
     var b = T.text.box(el, env, ctx), cols = fx.ramp(el.tg1 || '#ff0000', el.tg2 || '#0000ff', el.tgm || 'rainbow', TEXT_BANDS), n = TEXT_BANDS, horiz = el.tgd === 'h';
     for (var i = 0; i < n; i++) {
       var a0 = horiz ? b.x + b.w * i / n : b.y + b.h * i / n, a1 = horiz ? b.x + b.w * (i + 1) / n : b.y + b.h * (i + 1) / n;
@@ -206,7 +207,7 @@
       out.push('dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);', 'dc.drawText(' + x + ', ' + y + ', ' + fontExpr + ', tx, ' + just + ');');
       return out;
     }
-    var n = TEXT_BANDS, horiz = el.tgd === 'h', cols = fx.ramp(el.tg1 || '#ff0000', el.tg2 || '#0000ff', el.tgm || 'rainbow', n);
+    var g0 = out.length, n = TEXT_BANDS, horiz = el.tgd === 'h', cols = fx.ramp(el.tg1 || '#ff0000', el.tg2 || '#0000ff', el.tgm || 'rainbow', n);
     var rt = el._rt && el.tgm === 'blend' && (el._rt.tg1 || el._rt.tg2), bandCol;
     if (rt) { cg.helper('lerpCol'); bandCol = 'lerpCol(' + (el._rt.tg1 || GW.mcColor(el.tg1 || '#ff0000')) + ', ' + (el._rt.tg2 || GW.mcColor(el.tg2 || '#0000ff')) + ', i.toFloat() / ' + (n - 1) + '.0f)'; }   // the two ends follow color roles: blended on the watch
     else { cg.member('    const TXG_' + id + ' = [' + cols.map(GW.mcColor).join(', ') + '];'); bandCol = 'TXG_' + id + '[i]'; }
@@ -223,6 +224,14 @@
     }
     out.push('    dc.setColor(' + bandCol + ', Graphics.COLOR_TRANSPARENT);', '    dc.drawText(' + x + ', ' + y + ', ' + fontExpr + ', tx, ' + just + ');', '}',
       'dc.setClip(0, 0, dc.getWidth(), dc.getHeight());');
+    var sw = el.gsw && cg.design && GW.settings && GW.settings.find(el.gsw, cg.design);
+    if (sw && sw.kind === 'switch' && GW.settings.mode(cg.design) !== 'none') {   // the wearer can turn the gradient off: then the text is drawn in its plain color
+      cg.setUse(sw.id);
+      var grad = out.splice(g0), ind = function (l) { return '    ' + l; };
+      out.push('if (_s_' + sw.id + ' == 0) {', '    dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);', '    dc.drawText(' + x + ', ' + y + ', ' + fontExpr + ', tx, ' + just + ');', '} else {');
+      grad.forEach(function (l) { out.push(ind(l)); });
+      out.push('}');
+    }
     return out;
   };
 
@@ -305,6 +314,20 @@
     var h = ui().h;
     if (f.t === 'fxcolor') return colorBtn(el, { k: f.k, label: f.label, def: f.k === 'tg1' ? '#ff0000' : (f.k === 'tg2' ? '#0000ff' : '#ffffff') });
     if (f.t === 'fxhint') return h('p', { class: 'muted small', text: f.text });
+    if (f.t === 'fxswitch') {   // the wearer can turn the gradient off in the phone app (the text then shows its plain color)
+      var sel = h('select', { class: 'sel', 'aria-label': 'Wearer can turn the gradient off' }), cur = el.gsw && GW.settings.find(el.gsw);
+      sel.appendChild(h('option', { value: '', text: 'Always on' }));
+      GW.settings.switches().forEach(function (s) { var o = h('option', { value: s.id, text: 'Wearer switch: ' + s.label }); if (cur && cur.id === s.id) o.selected = true; sel.appendChild(o); });
+      sel.appendChild(h('option', { value: '__new', text: '+ New wearer switch…' }));
+      sel.addEventListener('change', function () {
+        var v = sel.value, was = el.gsw;
+        if (v === '__new') v = GW.settings.addSwitch('Text gradient').id;
+        if (v) el.gsw = v; else delete el.gsw;
+        if (was && was !== v) { var ws = GW.settings.find(was); if (ws && !GW.settings.uses(was) && !ws.keep) GW.settings.remove(was); }
+        GW.commit(true);
+      });
+      return ui().field('Wearer can switch it off', sel);
+    }
     if (f.t === 'fxpresets') {
       var box = h('div', { class: 'f' }, [h('label', { text: 'Color ready-mades' })]), row = h('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;margin-top:4px' });
       fx.PRESETS.forEach(function (p) {

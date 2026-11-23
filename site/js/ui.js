@@ -345,6 +345,20 @@
       }
     }
 
+    // ----- on / off switches -----
+    p.appendChild(h('h4', { text: 'Switches the wearer can flip' }));
+    var sws = GW.settings.switches(d);
+    if (!sws.length) p.appendChild(h('p', { class: 'muted small', text: 'None yet. Select a text with a gradient fill and choose “Wearer can switch it off” in the Inspector.' }));
+    sws.forEach(function (s) {
+      var nm = h('input', { type: 'text', value: s.label, maxlength: 30, 'aria-label': 'Name in the phone app', style: 'flex:1;min-width:110px' });
+      nm.addEventListener('input', function () { s.label = nm.value; }); nm.addEventListener('change', function () { GW.commit(false); });
+      var st = h('select', { class: 'sel', 'aria-label': 'Starts', style: 'width:auto' }); st.appendChild(settingOpt('1', 'Starts on', !!s.def)); st.appendChild(settingOpt('0', 'Starts off', !s.def));
+      st.addEventListener('change', function () { s.def = +st.value; GW.commit(true); GW.renderPanel(); });
+      p.appendChild(h('div', { style: FLEX }, [nm, st, h('span', { class: 'muted small', text: GW.settings.uses(s.id) + ' use' + (GW.settings.uses(s.id) === 1 ? '' : 's') }),
+        h('button', { class: 'btn sm danger', text: '×', title: 'Remove this switch (the layers stay as they are)', onclick: function () { s.keep = false; GW.settings.remove(s.id); GW.commit(true); GW.renderPanel(); } })]));
+    });
+    p.appendChild(h('button', { class: 'btn sm', text: '+ Add a switch', onclick: function () { GW.settings.addSwitch(null, 1, d); GW.commit(false); GW.renderPanel(); } }));
+
     // ----- data slots -----
     p.appendChild(h('h4', { text: 'Data the wearer can choose' }));
     var slots = GW.settings.slots(d);

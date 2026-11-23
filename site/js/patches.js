@@ -33,5 +33,9 @@
       {"addColors":{"after":"cend","roles":[{"id":"ctgs","kind":"color","label":"Text gradient: start","def":"#ff0000","keep":true},{"id":"ctge","kind":"color","label":"Text gradient: end","def":"#ffaa00","keep":true}],"themes":{"Ice":{"ctgs":"#ffffff","ctge":"#00aaff"},"Rose":{"ctgs":"#ff0000","ctge":"#ffaa00"},"Mono":{"ctgs":"#ffffff","ctge":"#aaaaaa"},"Daylight":{"ctgs":"#ff0000","ctge":"#ffaa00"},"Amber":{"ctgs":"#ffff55","ctge":"#ff5500"},"Ice blue":{"ctgs":"#00aaff","ctge":"#00ffff"},"Orange":{"ctgs":"#ff5500","ctge":"#ffaa00"},"Matrix green":{"ctgs":"#00ff00","ctge":"#aaff55"},"Cyan":{"ctgs":"#00ffff","ctge":"#00ffaa"},"Violet":{"ctgs":"#aa55ff","ctge":"#ff55ff"},"Magenta":{"ctgs":"#ff00aa","ctge":"#ffaa55"},"Yellow":{"ctgs":"#ffff00","ctge":"#ffaa00"},"Daylight blue":{"ctgs":"#0055ff","ctge":"#00aaff"},"Red on dark red":{"ctgs":"#ff5555","ctge":"#ffaa55"}}}},
       {"find":{"id":"f012"},"set":{"set":{"color":"chi","tg1":"ctgs","tg2":"ctge"}}}
     ] }
+    ,{ id: '2026-11-23-fenix7-options-text-gradient-switch', layout: 'Fenix7 Red (options)', kind: 'watch', ops: [
+      {"addColors":{"after":"ctext","roles":[{"id":"sw1","kind":"switch","label":"Text gradient","def":1,"keep":true}]}},
+      {"find":{"id":"f012"},"set":{"gsw":"sw1"}}
+    ] }
   ];
 })(window.GW);
