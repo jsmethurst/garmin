@@ -301,7 +301,8 @@
     var pairs = [], seen = {};
     function add(lit, rep) { if (!seen[lit]) { seen[lit] = 1; pairs.push([lit, rep]); } }
     Object.keys(map).forEach(function (k) {
-      if (el._rt && (k === 'color' || k === 'color2')) return;   // the gradient's two ends are the role variables themselves
+      if (el._rt && el._rt[k]) return;   // the gradient's two ends are the role variables themselves
+      if (k === 'tg1' || k === 'tg2') return;   // a text gradient that is not blended on the watch is a fixed table of colors
       var s = S.find(map[k], d), v = el[k];
       if (!s || s.kind !== 'color' || typeof v !== 'string' || v[0] !== '#') return;
       cg.setUse(s.id);
@@ -312,9 +313,13 @@
   }
   // a blended segment gauge whose colors follow color roles: the watch blends the two role colors itself, so a color scheme restyles the gradient too
   function withRt(e, cg, d) {
-    if (e.type !== 'seggauge' || !e.set || S.mode(d) === 'none' || !GW.fx || !GW.fx.isGrad(e) || e.grad !== 'blend' || e.shape === 'hex' || (e.n || 1) < 2) return e;
+    if (!e.set || S.mode(d) === 'none' || !GW.fx) return e;
+    var keys = null;
+    if (e.type === 'seggauge' && GW.fx.isGrad(e) && e.grad === 'blend' && e.shape !== 'hex' && (e.n || 1) >= 2) keys = ['color', 'color2'];
+    else if (e.type === 'text' && e.tfill === 'gradient' && e.tgm === 'blend') keys = ['tg1', 'tg2'];   // blended text: the same
+    if (!keys) return e;
     var rt = {}, any = false;
-    ['color', 'color2'].forEach(function (k) { var s = e.set[k] && S.find(e.set[k], d); if (s && s.kind === 'color') { rt[k] = '_s_' + s.id; cg.setUse(s.id); any = true; } });
+    keys.forEach(function (k) { var s = e.set[k] && S.find(e.set[k], d); if (s && s.kind === 'color') { rt[k] = '_s_' + s.id; cg.setUse(s.id); any = true; } });
     return any ? Object.assign({}, e, { _rt: rt }) : e;
   }
   GW.genWithSettings = function (el, t, cg, d) {

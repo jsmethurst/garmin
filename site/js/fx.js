@@ -163,7 +163,10 @@
     if (el.tfill === 'gradient') {
       f.push({ t: 'fxpresets', ks: { on: 'tgm', c1: 'tg1', c2: 'tg2' } });
       f.push({ k: 'tgm', t: 'seg', label: 'Colors', opts: [['rainbow', 'Rainbow'], ['blend', 'Blend']] });
-      f.push({ t: 'row', fields: [{ k: 'tg1', t: 'fxcolor', label: 'From' }, { k: 'tg2', t: 'fxcolor', label: 'To' }] });
+      if (el.tgm === 'blend') {   // a blend is worked out on the watch, so its two colors can follow the face's color scheme (Fixed color / a color role)
+        if (!el.tg1) el.tg1 = '#ff0000'; if (!el.tg2) el.tg2 = '#0000ff';
+        f.push({ k: 'tg1', t: 'color', label: 'From' }, { k: 'tg2', t: 'color', label: 'To' });
+      } else f.push({ t: 'row', fields: [{ k: 'tg1', t: 'fxcolor', label: 'From' }, { k: 'tg2', t: 'fxcolor', label: 'To' }] });
       f.push({ k: 'tgd', t: 'seg', label: 'Direction', opts: [['v', 'Top to bottom'], ['h', 'Left to right']] });
     }
     f.push({ k: 'tol', t: 'optcolor', label: 'Outline color (none = no outline)' });
@@ -204,7 +207,9 @@
       return out;
     }
     var n = TEXT_BANDS, horiz = el.tgd === 'h', cols = fx.ramp(el.tg1 || '#ff0000', el.tg2 || '#0000ff', el.tgm || 'rainbow', n);
-    cg.member('    const TXG_' + id + ' = [' + cols.map(GW.mcColor).join(', ') + '];');
+    var rt = el._rt && el.tgm === 'blend' && (el._rt.tg1 || el._rt.tg2), bandCol;
+    if (rt) { cg.helper('lerpCol'); bandCol = 'lerpCol(' + (el._rt.tg1 || GW.mcColor(el.tg1 || '#ff0000')) + ', ' + (el._rt.tg2 || GW.mcColor(el.tg2 || '#0000ff')) + ', i.toFloat() / ' + (n - 1) + '.0f)'; }   // the two ends follow color roles: blended on the watch
+    else { cg.member('    const TXG_' + id + ' = [' + cols.map(GW.mcColor).join(', ') + '];'); bandCol = 'TXG_' + id + '[i]'; }
     out.push('var td = dc.getTextDimensions(tx, ' + fontExpr + ');', 'var tw = td[0];', 'var th = td[1];',
       'var tl = ' + (el.justify === 'L' ? x : (el.justify === 'R' ? x + ' - tw' : x + ' - tw / 2')) + ';',
       'var tt = ' + (el.vtop ? y : y + ' - th / 2') + ';');
@@ -216,7 +221,7 @@
       out.push('    var a0 = tt + th * i / ' + n + ';', '    var a1 = tt + th * (i + 1) / ' + n + ';',
         '    dc.setClip(tl - 4, a0 - ((i == 0) ? 4 : 0), tw + 8, a1 - a0 + 1 + ((i == 0) ? 4 : 0) + ((i == ' + (n - 1) + ') ? 4 : 0));');
     }
-    out.push('    dc.setColor(TXG_' + id + '[i], Graphics.COLOR_TRANSPARENT);', '    dc.drawText(' + x + ', ' + y + ', ' + fontExpr + ', tx, ' + just + ');', '}',
+    out.push('    dc.setColor(' + bandCol + ', Graphics.COLOR_TRANSPARENT);', '    dc.drawText(' + x + ', ' + y + ', ' + fontExpr + ', tx, ' + just + ');', '}',
       'dc.setClip(0, 0, dc.getWidth(), dc.getHeight());');
     return out;
   };

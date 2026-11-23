@@ -388,6 +388,13 @@
       else if (op.remove) design.elements = design.elements.filter(function (e) { return !matches(e, op.remove.find || op.remove); });
       else if (op.add) { if (!(op.once && design.elements.some(function (e) { return matches(e, op.once); }))) design.elements.push(GW.newElement(op.add.type, op.add)); }
       else if (op.design) Object.assign(design, op.design);
+      else if (op.addColors) {   // add color roles that are missing (after op.after) and fill in theme colors that are missing; nothing already there is changed
+        var st = design.settings || (design.settings = []), at = -1;
+        st.forEach(function (x, i) { if (x.id === op.addColors.after) at = i; });
+        (op.addColors.roles || []).forEach(function (r) { if (st.some(function (x) { return x.id === r.id; })) return; if (at >= 0) { st.splice(at + 1, 0, JSON.parse(JSON.stringify(r))); at++; } else st.push(JSON.parse(JSON.stringify(r))); });
+        var th = st.filter(function (x) { return x.kind === 'theme'; })[0];
+        if (th) th.themes.forEach(function (t) { var c = (op.addColors.themes || {})[t.name]; if (c) Object.keys(c).forEach(function (k) { if (!(k in t.colors)) t.colors[k] = c[k]; }); });
+      }
       else if (op.honeycombFills) honeycombFills(design, op.honeycombFills);
     });
     return JSON.stringify(design) !== before;
