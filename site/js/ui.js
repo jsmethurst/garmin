@@ -87,8 +87,24 @@
     else if (tab === 'face') renderFace(p);
     else if (tab === 'settings') renderSettingsTab(p);
     else if (tab === 'ref') GW.renderRefPanel(p);
+    else if (tab === 'changes') renderChanges(p);
     else renderSim(p);
   };
+
+  // ---------------------------------------------------------------- changes
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function when(t) { var m = /^(\d+)-(\d+)-(\d+) (\d+:\d+)/.exec(t); return m ? Number(m[3]) + ' ' + MONTHS[Number(m[2]) - 1] + ' ' + m[1] + ', ' + m[4] : t; }
+  function renderChanges(p) {
+    var list = GW.CHANGES || [];
+    p.appendChild(h('h3', { text: 'Changes' }));
+    p.appendChild(h('p', { class: 'muted small', text: 'Every update to Garmin Studio, newest first. Times are Istanbul time (+03:00).' + (list.length ? ' Latest: update ' + list[0].n + '.' : '') }));
+    list.forEach(function (c) {
+      p.appendChild(h('div', { class: 'f', style: 'margin-top:12px;padding-top:10px;border-top:1px solid var(--line2)' }, [
+        h('div', { style: 'display:flex;justify-content:space-between;gap:8px;align-items:baseline' }, [h('strong', { text: '#' + c.n + '  ' + c.title }), h('span', { class: 'muted small', text: when(c.t), style: 'white-space:nowrap' })]),
+        h('p', { class: 'small', style: 'margin:4px 0 0', text: c.text })
+      ]));
+    });
+  }
 
   // ---------------------------------------------------------------- fields
   function fireChange(structural) { GW.commit(!!structural); }
