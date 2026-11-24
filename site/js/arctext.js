@@ -128,18 +128,27 @@
       '            ck[0] = s;\n' +
       '            _glyT = System.getTimer();\n' +
       '        }\n' +
-      '        var L = ck[1];\n' +
-      '        if (L == null) {\n' +
+      '        var B = ck[1];\n' +
+      '        if (B == null) {\n' +
       '            return;\n' +
       '        }\n' +
-      '        var n = L.size();\n' +
+      '        var nb = B.size();\n' +
       '        var tog = (!aa) && (dc has :setAntiAlias);\n' +
       '        if (tog) {\n' +
       '            dc.setAntiAlias(false);\n' +
       '        }\n' +
-      '        for (var i = 0; i + 1 < n; i += 2) {\n' +
-      '            dc.setColor((L[i] == 0) ? fg : bg, Graphics.COLOR_TRANSPARENT);\n' +
-      '            dc.fillPolygon(L[i + 1]);\n' +
+      '        var i = 0;\n' +
+      '        while (i + 1 < nb) {\n' +
+      '            var cnt = B[i + 1];\n' +
+      '            var pts = new [cnt];\n' +
+      '            var o = i + 2;\n' +
+      '            for (var k = 0; k < cnt; k++) {\n' +
+      '                pts[k] = [(B[o] | (B[o + 1] << 8)) - 1024, (B[o + 2] | (B[o + 3] << 8)) - 1024];\n' +
+      '                o += 4;\n' +
+      '            }\n' +
+      '            dc.setColor((B[i] == 0) ? fg : bg, Graphics.COLOR_TRANSPARENT);\n' +
+      '            dc.fillPolygon(pts);\n' +
+      '            i = o;\n' +
       '        }\n' +
       '        if (tog) {\n' +
       '            dc.setAntiAlias(true);\n' +
@@ -152,6 +161,7 @@
       '        var n = chars.size();\n' +
       '        var gi = new [n];\n' +
       '        var tw = 0;\n' +
+      '        var total = 0;\n' +
       '        for (var i = 0; i < n; i++) {\n' +
       '            var code = chars[i].toNumber();\n' +
       '            var g = -1;\n' +
@@ -163,8 +173,18 @@
       '            }\n' +
       '            gi[i] = g;\n' +
       '            tw += (g >= 0) ? advs[g] : 8;\n' +
+      '            if (g >= 0) {\n' +
+      '                var dd = tab[2][g];\n' +
+      '                var dz = dd.size();\n' +
+      '                var f = 0;\n' +
+      '                while (dz > 1 && f + 1 < dz) {\n' +
+      '                    total += 2 + dd[f + 1] * 4;\n' +
+      '                    f += 2 + dd[f + 1] * 2;\n' +
+      '                }\n' +
+      '            }\n' +
       '        }\n' +
-      '        var out = [];\n' +
+      '        var out = new [total]b;\n' +
+      '        var w = 0;\n' +
       '        var x = 0;\n' +
       '        for (var j = 0; j < n; j++) {\n' +
       '            var g2 = gi[j];\n' +
@@ -188,14 +208,20 @@
       '                    while (e + 1 < dn) {\n' +
       '                        var cnt = d[e + 1];\n' +
       '                        if (d[e] == pass) {\n' +
-      '                            var pts = new [cnt];\n' +
+      '                            out[w] = pass;\n' +
+      '                            out[w + 1] = cnt;\n' +
+      '                            w += 2;\n' +
       '                            for (var m = 0; m < cnt; m++) {\n' +
       '                                var u = (d[e + 2 + m] - 64) / 4.0;\n' +
       '                                var v = (d[e + 2 + cnt + m] - 64) / 4.0;\n' +
-      '                                pts[m] = [(ox + u * c - v * sn).toNumber(), (oy + u * sn + v * c).toNumber()];\n' +
+      '                                var px = (ox + u * c - v * sn).toNumber() + 1024;\n' +
+      '                                var py = (oy + u * sn + v * c).toNumber() + 1024;\n' +
+      '                                out[w] = px & 255;\n' +
+      '                                out[w + 1] = (px >> 8) & 255;\n' +
+      '                                out[w + 2] = py & 255;\n' +
+      '                                out[w + 3] = (py >> 8) & 255;\n' +
+      '                                w += 4;\n' +
       '                            }\n' +
-      '                            out.add(pass);\n' +
-      '                            out.add(pts);\n' +
       '                        }\n' +
       '                        e += 2 + cnt * 2;\n' +
       '                    }\n' +

@@ -3,6 +3,7 @@
 (function (GW) {
   'use strict';
   GW.CHANGES = [
+    { n: 23, t: '2026-11-24 22:50', title: 'Curved text: far less memory', text: 'Your watch log showed “Out Of Memory”, caused by my earlier outline cache, which kept every letter point as a separate small array. The cache now packs the points into a few hundred bytes per label and makes the small arrays only while painting, so curved text uses a fraction of the memory.' },
     { n: 22, t: '2026-11-24 22:30', title: 'Curved text: “Sharp edges” option', text: 'Curved text has a new “Sharp edges” checkbox. Smoothing every letter edge is the slowest part of a redraw on the watch, so turning it off makes curved text much quicker and is the thing to try if a face shows “IQ!”.' },
     { n: 21, t: '2026-11-24 22:20', title: 'Curved text: one label per redraw', text: 'When several curved labels need building at once (the first screen after the face starts, or when many values change together), only one is built per redraw and the rest appear a moment later. This keeps each redraw short enough to avoid “IQ!”, even with large curved text.' },
     { n: 20, t: '2026-11-24 21:55', title: 'Curved text no longer trips “IQ!”', text: 'Curved text used to rebuild every letter’s outline on every redraw, which could take so long that the watch showed “IQ!” (the memory estimate does not cover this). It now builds them once and only again when the text changes, so each redraw just paints the saved shapes.' },
