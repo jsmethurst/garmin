@@ -210,7 +210,7 @@
         ctx.strokeStyle = color; ctx.lineWidth = el.pen;
         ctx.beginPath(); ctx.arc(el.cx, el.cy, el.r, a0, a0 + sgn * rad(deg), !cw); ctx.stroke();
       }
-      var fill = Math.floor(el.sweep * p), gr = GW.fx.isGrad(el) ? GW.fx.arcBands(el) : null, colS = col, colE = col;
+      var realFill = Math.floor(el.sweep * p), fill = (el.nofill && (el.segs || 1) <= 1) ? 0 : realFill, gr = GW.fx.isGrad(el) ? GW.fx.arcBands(el) : null, colS = col, colE = col;
       if (trk) arcTo(Math.min(el.sweep, 359), trk);
       if (gr) {   // a gradient fixed along the sweep, revealed by the fill; each band is drawn a degree long so no seam shows
         colS = q(gr.c[0]); colE = colS;
@@ -231,7 +231,7 @@
       } else if (el.round && fill > 0 && fill < 359) {   // a full ring has no ends of its own: only the filled part gets round ends
         cap(0, colS); cap(fill, colE);
       }
-      GW.fx.drawMarker(ctx, el, el.start + sgn * fill, el.mkColor ? q(el.mkColor) : colE);
+      GW.fx.drawMarker(ctx, el, el.start + sgn * realFill, el.mkColor ? q(el.mkColor) : colE);
     },
     box: function (el) { var r = el.r + el.pen / 2; return { x: el.cx - r, y: el.cy - r, w: r * 2, h: r * 2 }; },
     hit: function (el, x, y) {
@@ -254,6 +254,7 @@
         gr ? { k: 'color2', t: 'fxcolor', label: 'Gradient: end color' } : null,
         gr ? { k: 'gcoarse', t: 'check', label: 'Coarse bands (off = smooth: blends the watch’s 64 colours by dithering)' } : null,
         gr && el.gcoarse ? { k: 'gsteps', t: 'num', label: 'Bands', min: 2, max: 48 } : null,
+        (el.segs || 1) <= 1 ? { k: 'nofill', t: 'check', label: 'No fill (hide the filled arc; only the track and the end marker show)' } : null,
         { k: 'track', t: 'track', label: 'Track' },
         { k: 'round', t: 'check', label: 'Rounded ends' },
         { t: 'row', fields: [{ k: 'segs', t: 'num', label: 'Segments (1 = one arc)', min: 1, max: 60 }, (el.segs || 1) > 1 ? { k: 'segGap', t: 'num', label: 'Gap (px)', min: 0, max: 20 } : null].filter(Boolean) },
@@ -316,6 +317,8 @@
       }
       L.push('var p = prog(' + s.mcNum(el, cg) + ', ' + mn + ', ' + mx + ');');
       L.push('var f = (' + sw + '.0 * p).toNumber();');
+      var nf = !!el.nofill, FM = nf ? 'fm' : 'f';
+      if (nf) L.push('var fm = f;', 'f = 0;');
       L.push('dc.setPenWidth(' + N(el.pen) + ');');
       if (track) {
         L.push('dc.setColor(' + track + ', Graphics.COLOR_TRANSPARENT);');
@@ -358,7 +361,7 @@
         L.push('    cap(dc, ' + cx + ', ' + cy + ', ' + R + ', ang(' + sg + (cw ? ' - ' : ' + ') + 'f), ' + hw + ');');
         L.push('}');
       }
-      if (mk) L.push('dc.setColor(' + (mkCol || fcE) + ', Graphics.COLOR_TRANSPARENT);', GW.fx.genMarker(el, cg, 'ang(' + sg + (cw ? ' - ' : ' + ') + 'f)', mkCol || fcE));
+      if (mk) L.push('dc.setColor(' + (mkCol || fcE) + ', Graphics.COLOR_TRANSPARENT);', GW.fx.genMarker(el, cg, 'ang(' + sg + (cw ? ' - ' : ' + ') + FM + ')', mkCol || fcE));
       L.push('dc.setPenWidth(1);');
       return L;
     }
