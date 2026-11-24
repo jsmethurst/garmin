@@ -364,4 +364,99 @@
     });
     GW.selId = last.id; GW.setTab('inspect'); GW.commit(true); GW.emit('select', last.id);
   };
+
+  // ---------------------------------------------------------------- see-through (a screen-door pattern over a layer)
+  // The watch cannot blend, so "see through" means painting the background color back over some of the layer's pixels in a regular pattern:
+  // el.see = { m: 0 scanlines | 1 vertical lines | 2 diagonal hatch | 3 checkerboard, s: 1 light (1/4) | 2 medium (1/2) | 3 heavy (3/4), z: pattern size 1-3 px }.
+  // The pattern is anchored to the screen (pixel 0,0), so it lines up the same on every layer. It only looks right over a plain background (it paints background color, not the layers beneath).
+  var SEE_NAMES = ['Scanlines', 'Vertical lines', 'Diagonal hatch', 'Checkerboard'];
+  fx.seeOn = function (el) { return !!(el && el.see && el.see.m != null && el.see.m >= 0 && el.see.m <= 3); };
+  // is the screen pixel at (u, v) painted over?
+  fx.seeHidden = function (see, u, v) {
+    var s = see.s || 2, z = Math.max(1, see.z || 1), m = see.m;
+    if (m === 3) {
+      var a = Math.floor(u / z), b = Math.floor(v / z);
+      return s === 2 ? ((a + b) % 2 === 0) : (s === 1 ? (a % 2 === 0 && b % 2 === 0) : !(a % 2 === 1 && b % 2 === 1));
+    }
+    var p = (s === 2 ? 2 : 4) * z, k = (s === 3 ? 3 : 1) * z, d = m === 0 ? v : (m === 1 ? u : u + v);
+    return d % p < k;
+  };
+  var seeCtx = null;
+  fx.seeBox = function (el, env) {
+    var t = GW.types[el.type]; if (!t || !t.box) return null;
+    try {
+      if (!seeCtx && typeof document !== 'undefined') seeCtx = document.createElement('canvas').getContext('2d');
+      var r = GW.ex ? GW.ex.resolve(el, env) : el, b = t.box(r, env, seeCtx);
+      if (!b || !(b.w > 0) || !(b.h > 0)) return null;
+      return { x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.h };
+    } catch (e) { return null; }
+  };
+  // the box a layer can fill, over a few different times and readings (text changes width), with a little margin
+  fx.seeBoxAll = function (el) {
+    var out = null, t0 = GW.env && GW.env();
+    var times = [[10, 9, 36], [0, 0, 0], [8, 8, 8], [11, 59, 59], [23, 59, 59], [12, 34, 56]];
+    times.forEach(function (tm) {
+      var env = GW.fixedEnv ? GW.fixedEnv() : t0; if (!env) return; env.h = tm[0]; env.m = tm[1]; env.sec = tm[2];
+      var b = fx.seeBox(el, env); if (!b) return;
+      out = out ? { x0: Math.min(out.x0, b.x0), y0: Math.min(out.y0, b.y0), x1: Math.max(out.x1, b.x1), y1: Math.max(out.y1, b.y1) } : b;
+    });
+    return out ? { x: Math.floor(out.x0) - 2, y: Math.floor(out.y0) - 2, w: Math.ceil(out.x1 - out.x0) + 5, h: Math.ceil(out.y1 - out.y0) + 5 } : null;
+  };
+  // preview: paint the pattern in the background color over the layer that was just drawn
+  fx.seePaint = function (ctx, el, env, color) {
+    if (!fx.seeOn(el)) return;
+    var b = fx.seeBox(el, env); if (!b) return;
+    var x = Math.floor(b.x0) - 2, y = Math.floor(b.y0) - 2, w = Math.ceil(b.x1 - b.x0) + 5, h = Math.ceil(b.y1 - b.y0) + 5, see = el.see;
+    x = Math.max(0, x); y = Math.max(0, y); w = Math.min(GW.SIZE - x, w); h = Math.min(GW.SIZE - y, h);
+    if (w <= 0 || h <= 0) return;
+    ctx.save(); ctx.fillStyle = color; ctx.beginPath();
+    for (var v = 0; v < h; v++) {
+      var run = -1;
+      for (var u = 0; u <= w; u++) {
+        var hid = u < w && fx.seeHidden(see, x + u, y + v);
+        if (hid && run < 0) run = u; else if (!hid && run >= 0) { ctx.rect(x + run, y + v, u - run, 1); run = -1; }
+      }
+    }
+    ctx.fill(); ctx.restore();
+  };
+  fx.genSee = function (el, cg) {
+    if (!fx.seeOn(el)) return [];
+    var b = fx.seeBoxAll(el);
+    if (!b) b = { x: 0, y: 0, w: GW.SIZE, h: GW.SIZE };   // (no way to measure here: cover the whole face)
+    var x = Math.max(0, b.x), y = Math.max(0, b.y), w = Math.min(GW.SIZE - x, b.w - (x - b.x)), h = Math.min(GW.SIZE - y, b.h - (y - b.y));
+    cg.helper('seeMask');
+    var bgc = GW.bgExpr ? GW.bgExpr(cg.design, cg) : GW.mcColor(cg.design.bg);
+    return ['seeMask(dc, ' + x + ', ' + y + ', ' + w + ', ' + h + ', ' + el.see.m + ', ' + (el.see.s || 2) + ', ' + Math.max(1, el.see.z || 1) + ', ' + bgc + ');'];
+  };
+  // how many drawing calls the pattern costs on the watch (a checkerboard of single pixels is the expensive one)
+  fx.seeCost = function (el) {
+    var b = fx.seeBoxAll(el); if (!b || !fx.seeOn(el)) return 0;
+    var see = el.see, s = see.s || 2, z = Math.max(1, see.z || 1);
+    if (see.m === 3) return Math.round(b.w * b.h / (z * z) * (s === 2 ? .5 : (s === 1 ? .25 : .75)));
+    var p = (s === 2 ? 2 : 4) * z, k = (s === 3 ? 3 : 1) * z;
+    return see.m === 2 ? Math.ceil((b.w + b.h) / p) * k : Math.ceil((see.m === 0 ? b.h : b.w) / p);
+  };
+  fx.seeBoxUI = function (el) {
+    var h = ui().h, box = h('div', { class: 'f', style: 'margin-top:14px;padding-top:10px;border-top:1px solid var(--line2)' });
+    var see = el.see || {}, on = fx.seeOn(el);
+    box.appendChild(h('label', { text: 'See-through' }));
+    var mode = h('select', { class: 'sel', 'aria-label': 'See-through pattern' }, [h('option', { value: '-1', text: 'Off (solid)' })].concat(SEE_NAMES.map(function (n, i) { var o = h('option', { value: String(i), text: n }); return o; })));
+    mode.value = on ? String(see.m) : '-1';
+    function apply() { var m = Number(mode.value); if (m < 0) delete el.see; else el.see = { m: m, s: Number(st && st.value || 2), z: Number(zz && zz.value || 1) }; GW.commit(true); }
+    var st = null, zz = null;
+    mode.addEventListener('change', function () { var m = Number(mode.value); if (m < 0) { delete el.see; GW.commit(true); return; } el.see = { m: m, s: (el.see && el.see.s) || 2, z: (el.see && el.see.z) || 1 }; GW.commit(true); });
+    box.appendChild(mode);
+    if (on) {
+      st = h('select', { class: 'sel', 'aria-label': 'How much is hidden' }, [['1', 'Light (¼ hidden)'], ['2', 'Medium (½ hidden)'], ['3', 'Heavy (¾ hidden)']].map(function (a) { return h('option', { value: a[0], text: a[1] }); }));
+      st.value = String(see.s || 2);
+      zz = h('select', { class: 'sel', 'aria-label': 'Pattern size' }, [['1', '1 px (finest)'], ['2', '2 px'], ['3', '3 px (coarse)']].map(function (a) { return h('option', { value: a[0], text: a[1] }); }));
+      zz.value = String(see.z || 1);
+      [st, zz].forEach(function (n) { n.addEventListener('change', function () { el.see.s = Number(st.value); el.see.z = Number(zz.value); GW.commit(true); }); });
+      box.appendChild(h('div', { style: 'display:flex;gap:6px;margin-top:6px' }, [st, zz]));
+      var c = fx.seeCost(el);
+      box.appendChild(h('p', { class: 'muted small', text: 'Paints the background color back over part of the layer, so it looks like it is see-through. Works best on a plain background: whatever sits underneath this layer gets the pattern too.' + (c ? ' About ' + c + ' drawing steps each time the face redraws.' : '') }));
+      if (c > 2500) box.appendChild(h('div', { class: 'note warn', text: 'That is a lot of drawing for the watch. A bigger pattern size, or lines instead of a checkerboard, is much lighter.' }));
+    }
+    return box;
+  };
 })(window.GW);

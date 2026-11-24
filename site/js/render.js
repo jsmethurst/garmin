@@ -44,6 +44,7 @@
       ctx.save(); if (off) ctx.globalAlpha = 0.3;
       try { t.draw(ctx, GW.ex ? GW.ex.resolve(el, env) : el, env); } catch (e) { if (window.console) console.error('draw failed', el.type, e); }
       ctx.restore();
+      if (GW.fx && GW.fx.seeOn(el) && !off) GW.fx.seePaint(ctx, el, env, GW.q(design.bg));
     });
     if (inSlot) {
       ctx.restore();
@@ -81,6 +82,7 @@
       }
       scratchCtx.putImageData(im, 0, 0);
       ctx.drawImage(scratch, 0, 0);
+      if (GW.fx && GW.fx.seeOn(el)) GW.fx.seePaint(ctx, el, env, GW.q(design.bg));
     });
     var out = ctx.getImageData(0, 0, S, S), o = out.data, r2 = S * S / 4, c0 = S / 2;
     for (var y = 0; y < S; y++) for (var x = 0; x < S; x++) {

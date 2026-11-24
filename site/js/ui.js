@@ -698,6 +698,7 @@
         GW.addElement('icon', { name: GW.ICONS[GW.ICON_FOR[el.source]].label + ' icon', kind: GW.ICON_FOR[el.source], size: sz, x: cx, y: cy, color: el.color });
       } }));
     }
+    if (GW.fx && GW.fx.seeBoxUI && GW.modeOf() === 'watch' && el.type !== 'dfcell') p.appendChild(GW.fx.seeBoxUI(el));   // see-through: a screen-door pattern over the layer
     if (GW.ex && GW.modeOf() === 'watch' && el.type !== 'dfcell') p.appendChild(GW.ex.showBox(el));   // "Show this layer": a formula, for every kind of layer
     p.appendChild(h('div', { class: 'row' }, [
       h('button', { class: 'btn sm', text: '↑ Bring forward', onclick: function () { GW.moveLayer(el.id, 1); } }),
