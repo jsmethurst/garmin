@@ -113,14 +113,24 @@
     return ['arcGly(dc, [GC_' + id + ', GA_' + id + ', GL_' + id + ', GK_' + id + '], AC_' + id + ', ' + expr + ', ' + GW.mcColor(el.color) + ', ' + bgx + ');'];
   };
   if (GW.MC_HELPERS) GW.MC_HELPERS.arcGly = {
-    imports: ['Toybox.Math'],
+    imports: ['Toybox.Math', 'Toybox.System', 'Toybox.WatchUi'],
+    members: ['    var _glyT = 0;'],
     code: 'function arcGly(dc, tab, cfg, s, fg, bg) {\n' +
       '        var ck = tab[3];\n' +
       '        if (!s.equals(ck[0])) {\n' +
-      '            ck[0] = s;\n' +
+      '            var now = System.getTimer();\n' +
+      '            if (now >= _glyT && now - _glyT < 300) {\n' +
+      '                WatchUi.requestUpdate();\n' +
+      '                return;\n' +
+      '            }\n' +
       '            ck[1] = glyphBuild(tab, cfg, s);\n' +
+      '            ck[0] = s;\n' +
+      '            _glyT = System.getTimer();\n' +
       '        }\n' +
       '        var L = ck[1];\n' +
+      '        if (L == null) {\n' +
+      '            return;\n' +
+      '        }\n' +
       '        var n = L.size();\n' +
       '        for (var i = 0; i + 1 < n; i += 2) {\n' +
       '            dc.setColor((L[i] == 0) ? fg : bg, Graphics.COLOR_TRANSPARENT);\n' +

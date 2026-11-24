@@ -3,6 +3,7 @@
 (function (GW) {
   'use strict';
   GW.CHANGES = [
+    { n: 21, t: '2026-11-24 22:20', title: 'Curved text: one label per redraw', text: 'When several curved labels need building at once (the first screen after the face starts, or when many values change together), only one is built per redraw and the rest appear a moment later. This keeps each redraw short enough to avoid “IQ!”, even with large curved text.' },
     { n: 20, t: '2026-11-24 21:55', title: 'Curved text no longer trips “IQ!”', text: 'Curved text used to rebuild every letter’s outline on every redraw, which could take so long that the watch showed “IQ!” (the memory estimate does not cover this). It now builds them once and only again when the text changes, so each redraw just paints the saved shapes.' },
     { n: 19, t: '2026-11-24 18:20', title: 'Arcs: “No fill” option', text: 'An arc can now hide its filled part (Look → “No fill”) and show only its track and end marker, for example a lone triangle that moves round a 24-hour dial. Works with every end marker; not available for segmented arcs.' },
     { n: 18, t: '2026-11-24 19:30', title: 'Floors icon (stairs up)', text: 'New Garmin-style Floors icon (a rising staircase) added to the icon library and to “Suggested for watches”; the Floors data source now uses it. The older staircase stays as “Floors (alt)”.' },
