@@ -3,6 +3,7 @@
 (function (GW) {
   'use strict';
   GW.CHANGES = [
+    { n: 20, t: '2026-11-24 21:55', title: 'Curved text no longer trips “IQ!”', text: 'Curved text used to rebuild every letter’s outline on every redraw, which could take so long that the watch showed “IQ!” (the memory estimate does not cover this). It now builds them once and only again when the text changes, so each redraw just paints the saved shapes.' },
     { n: 19, t: '2026-11-24 18:20', title: 'Arcs: “No fill” option', text: 'An arc can now hide its filled part (Look → “No fill”) and show only its track and end marker, for example a lone triangle that moves round a 24-hour dial. Works with every end marker; not available for segmented arcs.' },
     { n: 18, t: '2026-11-24 19:30', title: 'Floors icon (stairs up)', text: 'New Garmin-style Floors icon (a rising staircase) added to the icon library and to “Suggested for watches”; the Floors data source now uses it. The older staircase stays as “Floors (alt)”.' },
     { n: 17, t: '2026-11-24 17:55', title: 'Smoother gradient text', text: 'Gradient text looked banded because the watch shows only four levels per colour channel (red to orange is just three colours). The text is now cut into more, thinner bands that alternate between the two nearest colours, like the arc gradients. New “Smoothness” choice in the Inspector: Standard (8 bands), Smooth (16, the new default) or Smoothest (24). More bands look smoother but take a little longer to draw.' },

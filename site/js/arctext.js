@@ -107,13 +107,27 @@
     cg.member('    const GC_' + id + ' = [' + codes.join(', ') + '];');
     cg.member('    const GA_' + id + ' = [' + av.join(', ') + '];');
     cg.member('    const GL_' + id + ' = [\n        ' + gl.join(',\n        ') + '\n    ];');
+    cg.member('    var GK_' + id + ' = ["", null];');   // the letters' outlines for the text shown last: rebuilt only when the text changes
     cg.member('    const AC_' + id + ' = [' + [Math.round(GW.SIZE / 2), Math.round(GW.SIZE / 2), P.Rc.toFixed(2), P.phic.toFixed(2), P.dir, P.off, P.k.toFixed(1)].join(', ') + '];');
     var bgx = GW.bgExpr ? GW.bgExpr(cg.design, cg) : GW.mcColor(cg.design.bg);
-    return ['arcGly(dc, [GC_' + id + ', GA_' + id + ', GL_' + id + '], AC_' + id + ', ' + expr + ', ' + GW.mcColor(el.color) + ', ' + bgx + ');'];
+    return ['arcGly(dc, [GC_' + id + ', GA_' + id + ', GL_' + id + ', GK_' + id + '], AC_' + id + ', ' + expr + ', ' + GW.mcColor(el.color) + ', ' + bgx + ');'];
   };
   if (GW.MC_HELPERS) GW.MC_HELPERS.arcGly = {
     imports: ['Toybox.Math'],
     code: 'function arcGly(dc, tab, cfg, s, fg, bg) {\n' +
+      '        var ck = tab[3];\n' +
+      '        if (!s.equals(ck[0])) {\n' +
+      '            ck[0] = s;\n' +
+      '            ck[1] = glyphBuild(tab, cfg, s);\n' +
+      '        }\n' +
+      '        var L = ck[1];\n' +
+      '        var n = L.size();\n' +
+      '        for (var i = 0; i + 1 < n; i += 2) {\n' +
+      '            dc.setColor((L[i] == 0) ? fg : bg, Graphics.COLOR_TRANSPARENT);\n' +
+      '            dc.fillPolygon(L[i + 1]);\n' +
+      '        }\n' +
+      '    }\n\n' +
+      '    function glyphBuild(tab, cfg, s) {\n' +
       '        var codes = tab[0];\n' +
       '        var advs = tab[1];\n' +
       '        var chars = s.toCharArray();\n' +
@@ -132,6 +146,7 @@
       '            gi[i] = g;\n' +
       '            tw += (g >= 0) ? advs[g] : 8;\n' +
       '        }\n' +
+      '        var out = [];\n' +
       '        var x = 0;\n' +
       '        for (var j = 0; j < n; j++) {\n' +
       '            var g2 = gi[j];\n' +
@@ -149,30 +164,28 @@
       '                var sn = Math.sin(q);\n' +
       '                var ox = cfg[0] + cfg[2] * Math.sin(p) - (a / 2.0 * c + cfg[6] * sn);\n' +
       '                var oy = cfg[1] - cfg[2] * Math.cos(p) - (a / 2.0 * sn - cfg[6] * c);\n' +
-      '                glyphPoly(dc, d, [ox, oy, c, sn], fg, bg);\n' +
+      '                var dn = d.size();\n' +
+      '                for (var pass = 0; pass < 2; pass++) {\n' +
+      '                    var e = 0;\n' +
+      '                    while (e + 1 < dn) {\n' +
+      '                        var cnt = d[e + 1];\n' +
+      '                        if (d[e] == pass) {\n' +
+      '                            var pts = new [cnt];\n' +
+      '                            for (var m = 0; m < cnt; m++) {\n' +
+      '                                var u = (d[e + 2 + m] - 64) / 4.0;\n' +
+      '                                var v = (d[e + 2 + cnt + m] - 64) / 4.0;\n' +
+      '                                pts[m] = [(ox + u * c - v * sn).toNumber(), (oy + u * sn + v * c).toNumber()];\n' +
+      '                            }\n' +
+      '                            out.add(pass);\n' +
+      '                            out.add(pts);\n' +
+      '                        }\n' +
+      '                        e += 2 + cnt * 2;\n' +
+      '                    }\n' +
+      '                }\n' +
       '            }\n' +
       '            x += a;\n' +
       '        }\n' +
-      '    }\n\n' +
-      '    function glyphPoly(dc, d, m, fg, bg) {\n' +
-      '        var n = d.size();\n' +
-      '        for (var pass = 0; pass < 2; pass++) {\n' +
-      '            dc.setColor((pass == 0) ? fg : bg, Graphics.COLOR_TRANSPARENT);\n' +
-      '            var i = 0;\n' +
-      '            while (i + 1 < n) {\n' +
-      '                var cnt = d[i + 1];\n' +
-      '                if (d[i] == pass) {\n' +
-      '                    var pts = new [cnt];\n' +
-      '                    for (var k = 0; k < cnt; k++) {\n' +
-      '                        var u = (d[i + 2 + k] - 64) / 4.0;\n' +
-      '                        var v = (d[i + 2 + cnt + k] - 64) / 4.0;\n' +
-      '                        pts[k] = [(m[0] + u * m[2] - v * m[3]).toNumber(), (m[1] + u * m[3] + v * m[2]).toNumber()];\n' +
-      '                    }\n' +
-      '                    dc.fillPolygon(pts);\n' +
-      '                }\n' +
-      '                i += 2 + cnt * 2;\n' +
-      '            }\n' +
-      '        }\n' +
+      '        return out;\n' +
       '    }'
   };
 })(window.GW);
