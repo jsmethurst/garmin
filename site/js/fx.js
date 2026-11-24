@@ -156,7 +156,20 @@
 
   // ---------------------------------------------------------------- text: outline, transparent fill, gradient fill
   fx.textStyled = function (el) { return el.tfill === 'gradient' || el.tfill === 'none' || (!!el.tol && el.tolw !== 0); };
-  var TEXT_BANDS = 8;
+  var TEXT_BANDS = 16;
+  // The watch shows only four levels per channel, so a red-to-orange text ramp has just three colors. Using more, thinner bands whose colors alternate between the two
+  // nearest palette colors (a dither, like the arcs) makes the transition look smooth. The threshold order is a 3-bit bit-reversal so neighbours differ.
+  var TH8 = [0, 4, 2, 6, 1, 5, 3, 7];
+  fx.textBands = function (el) { return Math.max(2, Math.min(32, el.tbn || TEXT_BANDS)); };
+  fx.textCols = function (el, n) {
+    var c1 = el.tg1 || '#ff0000', c2 = el.tg2 || '#0000ff', mode = el.tgm || 'rainbow', out = [];
+    for (var i = 0; i < n; i++) {
+      var v = rgbOf(fx.mix(c1, c2, n > 1 ? i / (n - 1) : 0, mode)), th = (TH8[i % 8] + 0.5) / 8, o = [0, 0, 0];
+      for (var ch = 0; ch < 3; ch++) o[ch] = Math.min(3, Math.max(0, Math.floor(v[ch] / 85 + th))) * 85;
+      out.push(hex(o[0], o[1], o[2]));
+    }
+    return out;
+  };
   function bgOf() { var d = GW.design; return d.kind === 'datafield' && GW.dfTheme ? GW.dfTheme(d).bg : d.bg; }
   fx.textFields = function (el) {
     var f = [{ t: 'h', label: 'Fill and outline' }, { k: 'tfill', t: 'seg', label: 'Fill', opts: [['solid', 'Solid'], ['gradient', 'Gradient'], ['none', 'Transparent']] }];
@@ -168,6 +181,7 @@
         f.push({ k: 'tg1', t: 'color', label: 'From' }, { k: 'tg2', t: 'color', label: 'To' });
       } else f.push({ t: 'row', fields: [{ k: 'tg1', t: 'fxcolor', label: 'From' }, { k: 'tg2', t: 'fxcolor', label: 'To' }] });
       f.push({ k: 'tgd', t: 'seg', label: 'Direction', opts: [['v', 'Top to bottom'], ['h', 'Left to right']] });
+      f.push({ k: 'tbn', t: 'seg', num: true, label: 'Smoothness (more bands = smoother, a little slower)', opts: [[8, 'Standard'], [16, 'Smooth'], [24, 'Smoothest']] });
       if (GW.modeOf() === 'watch') f.push({ t: 'fxswitch' });
     }
     f.push({ k: 'tol', t: 'optcolor', label: 'Outline color (none = no outline)' });
@@ -180,7 +194,7 @@
     if (el.tol) GW.haloOffsets(w).forEach(function (d) { GW.drawText(ctx, font, str, el.x + d[0], el.y + d[1], j, GW.q(el.tol), el.vtop); });
     if (el.tfill === 'none') { GW.drawText(ctx, font, str, el.x, el.y, j, GW.q(bgOf()), el.vtop); return; }
     if (el.tfill !== 'gradient' || (GW.settings && !GW.settings.switchOn(el))) { GW.drawText(ctx, font, str, el.x, el.y, j, GW.q(el.color), el.vtop); return; }   // (a switch that starts off shows the plain color)
-    var b = T.text.box(el, env, ctx), cols = fx.ramp(el.tg1 || '#ff0000', el.tg2 || '#0000ff', el.tgm || 'rainbow', TEXT_BANDS), n = TEXT_BANDS, horiz = el.tgd === 'h';
+    var b = T.text.box(el, env, ctx), n = fx.textBands(el), cols = fx.textCols(el, n), horiz = el.tgd === 'h';
     for (var i = 0; i < n; i++) {
       var a0 = horiz ? b.x + b.w * i / n : b.y + b.h * i / n, a1 = horiz ? b.x + b.w * (i + 1) / n : b.y + b.h * (i + 1) / n;
       var lo = Math.floor(a0) - (i === 0 ? 4 : 0), len = Math.ceil(a1) - Math.floor(a0) + 1 + (i === 0 ? 4 : 0) + (i === n - 1 ? 4 : 0);
@@ -207,9 +221,9 @@
       out.push('dc.setColor(' + GW.mcColor(el.color) + ', Graphics.COLOR_TRANSPARENT);', 'dc.drawText(' + x + ', ' + y + ', ' + fontExpr + ', tx, ' + just + ');');
       return out;
     }
-    var g0 = out.length, n = TEXT_BANDS, horiz = el.tgd === 'h', cols = fx.ramp(el.tg1 || '#ff0000', el.tg2 || '#0000ff', el.tgm || 'rainbow', n);
+    var g0 = out.length, n = fx.textBands(el), horiz = el.tgd === 'h', cols = fx.textCols(el, n);
     var rt = el._rt && el.tgm === 'blend' && (el._rt.tg1 || el._rt.tg2), bandCol;
-    if (rt) { cg.helper('lerpCol'); bandCol = 'lerpCol(' + (el._rt.tg1 || GW.mcColor(el.tg1 || '#ff0000')) + ', ' + (el._rt.tg2 || GW.mcColor(el.tg2 || '#0000ff')) + ', i.toFloat() / ' + (n - 1) + '.0f)'; }   // the two ends follow color roles: blended on the watch
+    if (rt) { cg.helper('lerpDith'); bandCol = 'lerpDith(' + (el._rt.tg1 || GW.mcColor(el.tg1 || '#ff0000')) + ', ' + (el._rt.tg2 || GW.mcColor(el.tg2 || '#0000ff')) + ', i.toFloat() / ' + (n - 1) + '.0f, i)'; }   // the two ends follow color roles: blended on the watch
     else { cg.member('    const TXG_' + id + ' = [' + cols.map(GW.mcColor).join(', ') + '];'); bandCol = 'TXG_' + id + '[i]'; }
     out.push('var td = dc.getTextDimensions(tx, ' + fontExpr + ');', 'var tw = td[0];', 'var th = td[1];',
       'var tl = ' + (el.justify === 'L' ? x : (el.justify === 'R' ? x + ' - tw' : x + ' - tw / 2')) + ';',
