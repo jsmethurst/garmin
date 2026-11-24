@@ -455,7 +455,7 @@
       box.appendChild(h('div', { style: 'display:flex;gap:6px;margin-top:6px' }, [st, zz]));
       var c = fx.seeCost(el);
       box.appendChild(h('p', { class: 'muted small', text: 'Paints the background color back over part of the layer, so it looks like it is see-through. Works best on a plain background: whatever sits underneath this layer gets the pattern too.' + (c ? ' About ' + c + ' drawing steps each time the face redraws.' : '') }));
-      if (c > 2500) box.appendChild(h('div', { class: 'note warn', text: 'That is a lot of drawing for the watch. A bigger pattern size, or lines instead of a checkerboard, is much lighter.' }));
+      if (c > 600) box.appendChild(h('div', { class: 'note warn', text: 'That is a lot of drawing for the watch, and a face that takes too long to draw shows "IQ!". Lines, or a bigger pattern size, are much lighter than a fine checkerboard.' }));
     }
     return box;
   };

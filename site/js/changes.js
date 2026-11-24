@@ -3,6 +3,7 @@
 (function (GW) {
   'use strict';
   GW.CHANGES = [
+    { n: 16, t: '2026-11-24 12:10', title: 'See-through: lighter checkerboard, speed warning', text: 'A fine checkerboard on large text could take the watch too long to draw and show “IQ!”. The checkerboard now does far less work per redraw, and the Inspector and the export warn when a see-through layer is heavy (lines are much lighter).' },
     { n: 15, t: '2026-11-24 10:40', title: 'Changes tab', text: 'New Changes tab listing every update with its number, date and time, and what changed.' },
     { n: 14, t: '2026-11-24 10:06', title: 'See-through layers', text: 'Any layer on a watch face can be made see-through with a pattern: scanlines, vertical lines, diagonal hatch or a checkerboard. Pick how much is hidden (¼, ½ or ¾) and the pattern size (1–3 px). It paints the background colour back over part of the layer, so it works best on a plain background.' },
     { n: 13, t: '2026-11-23 15:15', title: 'Wearer switch for gradient text', text: 'The wearer can turn the text gradient on or off in Garmin Connect (Settings tab, “Switches the wearer can flip”). Off draws the text in its plain colour. The Fenix7 Red (options) layout gets the switch on its minute digits.' },
