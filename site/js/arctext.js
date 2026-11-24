@@ -75,6 +75,7 @@
   T.text.fields = function (el) {
     var f = tfields.call(this, el), i = -1;
     f.forEach(function (x, n) { if (x && x.k === 'justify') i = n; });
+    if (i >= 0 && el.curve) f.splice(i, 0, { k: 'sharp', t: 'check', label: 'Sharp edges for the curved text (no smoothing: far quicker to draw. Turn this on if the watch shows “IQ!”)' });
     if (i >= 0) f.splice(i, 0, { k: 'curve', t: 'check', label: 'Curve the text along the screen edge (the upper half bends like the top, the lower half like the bottom; any bitmap font)' });
     return f;
   };
@@ -110,12 +111,12 @@
     cg.member('    var GK_' + id + ' = ["", null];');   // the letters' outlines for the text shown last: rebuilt only when the text changes
     cg.member('    const AC_' + id + ' = [' + [Math.round(GW.SIZE / 2), Math.round(GW.SIZE / 2), P.Rc.toFixed(2), P.phic.toFixed(2), P.dir, P.off, P.k.toFixed(1)].join(', ') + '];');
     var bgx = GW.bgExpr ? GW.bgExpr(cg.design, cg) : GW.mcColor(cg.design.bg);
-    return ['arcGly(dc, [GC_' + id + ', GA_' + id + ', GL_' + id + ', GK_' + id + '], AC_' + id + ', ' + expr + ', ' + GW.mcColor(el.color) + ', ' + bgx + ');'];
+    return ['arcGly(dc, [GC_' + id + ', GA_' + id + ', GL_' + id + ', GK_' + id + '], AC_' + id + ', ' + expr + ', ' + GW.mcColor(el.color) + ', ' + bgx + ', ' + (el.sharp ? 'false' : 'true') + ');'];
   };
   if (GW.MC_HELPERS) GW.MC_HELPERS.arcGly = {
     imports: ['Toybox.Math', 'Toybox.System', 'Toybox.WatchUi'],
     members: ['    var _glyT = 0;'],
-    code: 'function arcGly(dc, tab, cfg, s, fg, bg) {\n' +
+    code: 'function arcGly(dc, tab, cfg, s, fg, bg, aa) {\n' +
       '        var ck = tab[3];\n' +
       '        if (!s.equals(ck[0])) {\n' +
       '            var now = System.getTimer();\n' +
@@ -132,9 +133,16 @@
       '            return;\n' +
       '        }\n' +
       '        var n = L.size();\n' +
+      '        var tog = (!aa) && (dc has :setAntiAlias);\n' +
+      '        if (tog) {\n' +
+      '            dc.setAntiAlias(false);\n' +
+      '        }\n' +
       '        for (var i = 0; i + 1 < n; i += 2) {\n' +
       '            dc.setColor((L[i] == 0) ? fg : bg, Graphics.COLOR_TRANSPARENT);\n' +
       '            dc.fillPolygon(L[i + 1]);\n' +
+      '        }\n' +
+      '        if (tog) {\n' +
+      '            dc.setAntiAlias(true);\n' +
       '        }\n' +
       '    }\n\n' +
       '    function glyphBuild(tab, cfg, s) {\n' +
