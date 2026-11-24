@@ -233,6 +233,8 @@
     num: function (e) { return e.sim.resp; } });
 
   // --- Device ---
+  numeric('memFree', 'Watch memory free (KB, for testing)', 'Device', { fn: 'memFreeNow', needs: ['sys'], range: [0, 128], num: function () { return 61; } });
+  numeric('memUsed', 'Watch memory used (KB, for testing)', 'Device', { fn: 'memUsedNow', needs: ['sys'], range: [0, 128], num: function () { return 63; } });
   numeric('battery', 'Battery %', 'Device', { fn: 'batteryNow', needs: ['sys'], range: [0, 100],
     num: function (e) { return e.sim.battery; } });
   numeric('batteryDays', 'Battery (days left)', 'Device', {
