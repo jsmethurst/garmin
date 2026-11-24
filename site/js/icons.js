@@ -14,7 +14,7 @@
   };
   GW.ICON_SIZES = [12, 14, 16, 18, 20, 24, 28, 32];   // the glyphs are designed on a 24 px grid
   // which icon matches which text source (used by the "Add matching icon" button; the pairs are those named in mdi_icons.json)
-  GW.ICON_FOR = { steps: 'shoe-print', stepGoal: 'flag-checkered', calories: 'fire', floors: 'stairs', intMins: 'timer', distance: 'map-marker-distance',
+  GW.ICON_FOR = { steps: 'shoe-print', stepGoal: 'flag-checkered', calories: 'fire', floors: 'stairs-up', intMins: 'timer', distance: 'map-marker-distance',
     workoutDist: 'map-marker-distance', altitude: 'image-filter-hdr', battery: 'battery', batteryDays: 'battery', bodyBat: 'flash-circle', hr: 'heart',
     stress: 'emoticon-neutral-outline', resp: 'weather-windy', spo2: 'water-percent', notif: 'bell', temp: 'thermometer', weatherDesc: 'weather-partly-cloudy',
     sunrise: 'weather-sunset-up', sunset: 'weather-sunset-down', sunNext: 'weather-sunset-up', moonIllum: 'weather-night', moonName: 'weather-night',

@@ -3,6 +3,7 @@
 (function (GW) {
   'use strict';
   GW.CHANGES = [
+    { n: 18, t: '2026-11-24 19:30', title: 'Floors icon (stairs up)', text: 'New Garmin-style Floors icon (a rising staircase) added to the icon library and to “Suggested for watches”; the Floors data source now uses it. The older staircase stays as “Floors (alt)”.' },
     { n: 17, t: '2026-11-24 17:55', title: 'Smoother gradient text', text: 'Gradient text looked banded because the watch shows only four levels per colour channel (red to orange is just three colours). The text is now cut into more, thinner bands that alternate between the two nearest colours, like the arc gradients. New “Smoothness” choice in the Inspector: Standard (8 bands), Smooth (16, the new default) or Smoothest (24). More bands look smoother but take a little longer to draw.' },
     { n: 16, t: '2026-11-24 12:10', title: 'See-through: lighter checkerboard, speed warning', text: 'A fine checkerboard on large text could take the watch too long to draw and show “IQ!”. The checkerboard now does far less work per redraw, and the Inspector and the export warn when a see-through layer is heavy (lines are much lighter).' },
     { n: 15, t: '2026-11-24 10:40', title: 'Changes tab', text: 'New Changes tab listing every update with its number, date and time, and what changed.' },

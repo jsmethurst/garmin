@@ -3,6 +3,7 @@
 
   python3 tools/gen-mdi.py            # writes site/fonts/mdi-icons.woff2 and site/js/mdiall.js
 
+After it, run tools/add-mdi-extras.py to add the few extra glyphs (Floors: stairs-up).
 Needs: pip install fonttools brotli. Only basic-plane characters (<= U+FFFF) are kept: the bitmap-font pipeline walks text one UTF-16 unit at a time.
 """
 import io, json, os, re, sys, tarfile, urllib.request
