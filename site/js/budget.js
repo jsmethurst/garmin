@@ -21,20 +21,17 @@
   }
 
   // The parts of the memory the fonts-and-pictures count leaves out: the program itself, and the letter-shape tables of curved text.
-  // Rough: the factors are a first guess and get tuned against the real "free / used memory" readings from the watch.
-  var CODE_BASE = 20 * 1024, CODE_PER_CHAR = 0.8, TABLE_GLYPH_OVERHEAD = 24, CURVE_CACHE_PER_LABEL = 1200;
+  // Calibrated on a fēnix 6 Pro: a face with 15 KB of generated source and no curved text used 18 KB in all. Curved text before the shared string table
+  // cost about 17 KB per label; the figures for the string table are a first guess until measured the same way.
+  var CODE_BASE = 2 * 1024, CODE_PER_CHAR = 1.0, TABLE_PER_CHAR = 1.5, CURVE_PER_LABEL = 1500;
   GW.budgetExtras = function (src) {
     var rows = [], view = (src && src.view) || '';
     if (view) {
-      var tabBytes = 0, tabChars = 0, labels = 0, re = /const GL_\w+ = \[([\s\S]*?)\n    \];/g, m;
-      while ((m = re.exec(view))) {
-        labels++; tabChars += m[0].length;
-        var glyphs = m[1].split(']b').length - 1, nums = (m[1].match(/\d+/g) || []).length;
-        tabBytes += nums + glyphs * TABLE_GLYPH_OVERHEAD + CURVE_CACHE_PER_LABEL;
-      }
+      var tabChars = 0, re = /const GL_\w+ = \[[\s\S]*?\n    \];/g, m, labels = (view.match(/var GK_\w+ = /g) || []).length;
+      while ((m = re.exec(view))) tabChars += m[0].length;
       var code = CODE_BASE + (view.length - tabChars) * CODE_PER_CHAR;
-      rows.unshift({ label: 'Program code and runtime (about ' + Math.round((view.length - tabChars) / 1024) + ' KB of source)', bytes: code });
-      if (labels) rows.push({ label: 'Curved text: ' + labels + (labels === 1 ? ' label' : ' labels') + ' (letter shapes and their saved copy)', bytes: tabBytes });
+      rows.push({ label: 'Program code and runtime (about ' + Math.round((view.length - tabChars) / 1024) + ' KB of source)', bytes: code });
+      if (labels) rows.push({ label: 'Curved text: ' + labels + (labels === 1 ? ' label' : ' labels') + ' (shared letter shapes and each label\'s saved copy)', bytes: tabChars * TABLE_PER_CHAR + labels * CURVE_PER_LABEL });
     }
     return rows;
   };

@@ -90,28 +90,41 @@
     var expr = parts.join(' + ');
     if (el.upper) expr = '(' + expr + ').toUpper()';
     if (el.lower && !(el.source === 'date' && el.tr)) expr = '(' + expr + ').toLower()';
-    var f = GW.customFont(GW.fontFor(el)), met = GW.fontMetrics(f), tch = GW.textChars(el) || met.chars;
-    // the letters the layer can show (and the space), each with its code, its advance and its outline; plain number tables, no character literals
-    var seen = {}, chars = (tch + ' ').split('').filter(function (ch) { if (seen[ch] || !met.glyphs[ch]) return false; return (seen[ch] = 1); });
-    var id = String(el.id).replace(/[^A-Za-z0-9]/g, ''), codes = [], av = [], gl = [];
-    chars.forEach(function (ch) {
-      var bytes = [];
-      outline(f, ch).forEach(function (pl) {
-        if (pl.pts.length > 255) throw new Error('A letter outline is too detailed for the table');
-        bytes.push(pl.hole ? 1 : 0, pl.pts.length);
-        pl.pts.forEach(function (p) { bytes.push(p[0]); }); pl.pts.forEach(function (p) { bytes.push(p[1]); });
+    var f = GW.customFont(GW.fontFor(el)), met = GW.fontMetrics(f), id = String(el.id).replace(/[^A-Za-z0-9]/g, '');
+    // One table of letter shapes per font, shared by every curved label that uses it: the letters of all those labels together.
+    // Each letter's shape is one string, two characters (0-9 : ; < = > ? @) per byte: a string takes far less watch memory than an array of numbers.
+    var key = String(f.id).replace(/[^A-Za-z0-9]/g, ''), shared = cg.curveTabs || (cg.curveTabs = {});
+    if (!shared[key]) {
+      var seen = {}, chars = [], all = (GW.design && GW.design.elements) || [];
+      all.forEach(function (o) {
+        if (o.type !== 'text' || !o.curve || o.hidden) return;
+        var of = GW.customFont(GW.fontFor(o)); if (!of || of.id !== f.id || !curved(o)) return;
+        ((GW.textChars(o) || met.chars) + ' ').split('').forEach(function (ch) { if (!seen[ch] && met.glyphs[ch]) { seen[ch] = 1; chars.push(ch); } });
       });
-      codes.push(ch.charCodeAt(0)); av.push(met.glyphs[ch].adv); gl.push('[' + (bytes.length ? bytes.join(',') : '0') + ']b');   // a letter with no ink holds one byte
-    });
+      if (!seen[' '] && met.glyphs[' ']) { chars.push(' '); }
+      var codes = [], av = [], gl = [];
+      chars.forEach(function (ch) {
+        var bytes = [];
+        outline(f, ch).forEach(function (pl) {
+          if (pl.pts.length > 255) throw new Error('A letter outline is too detailed for the table');
+          bytes.push(pl.hole ? 1 : 0, pl.pts.length);
+          pl.pts.forEach(function (p) { bytes.push(p[0]); }); pl.pts.forEach(function (p) { bytes.push(p[1]); });
+        });
+        if (!bytes.length) bytes.push(0);   // a letter with no ink holds one byte
+        codes.push(ch.charCodeAt(0)); av.push(met.glyphs[ch].adv);
+        gl.push('"' + bytes.map(function (v) { return String.fromCharCode(48 + (v >> 4), 48 + (v & 15)); }).join('') + '"');
+      });
+      shared[key] = true;
+      cg.member('    const GC_' + key + ' = [' + codes.join(', ') + '];');
+      cg.member('    const GA_' + key + ' = [' + av.join(', ') + '];');
+      cg.member('    const GL_' + key + ' = [\n        ' + gl.join(',\n        ') + '\n    ];');
+    }
     var P = place(el, T.text.string(el, GW.env()), f);
     cg.helper('arcGly');
-    cg.member('    const GC_' + id + ' = [' + codes.join(', ') + '];');
-    cg.member('    const GA_' + id + ' = [' + av.join(', ') + '];');
-    cg.member('    const GL_' + id + ' = [\n        ' + gl.join(',\n        ') + '\n    ];');
     cg.member('    var GK_' + id + ' = ["", null];');   // the letters' outlines for the text shown last: rebuilt only when the text changes
     cg.member('    const AC_' + id + ' = [' + [Math.round(GW.SIZE / 2), Math.round(GW.SIZE / 2), P.Rc.toFixed(2), P.phic.toFixed(2), P.dir, P.off, P.k.toFixed(1)].join(', ') + '];');
     var bgx = GW.bgExpr ? GW.bgExpr(cg.design, cg) : GW.mcColor(cg.design.bg);
-    return ['arcGly(dc, [GC_' + id + ', GA_' + id + ', GL_' + id + ', GK_' + id + '], AC_' + id + ', ' + expr + ', ' + GW.mcColor(el.color) + ', ' + bgx + ', ' + (el.sharp ? 'false' : 'true') + ');'];
+    return ['arcGly(dc, [GC_' + key + ', GA_' + key + ', GL_' + key + ', GK_' + id + '], AC_' + id + ', ' + expr + ', ' + GW.mcColor(el.color) + ', ' + bgx + ', ' + (el.sharp ? 'false' : 'true') + ');'];
   };
   if (GW.MC_HELPERS) GW.MC_HELPERS.arcGly = {
     imports: ['Toybox.Math', 'Toybox.System', 'Toybox.WatchUi'],
@@ -174,12 +187,13 @@
       '            gi[i] = g;\n' +
       '            tw += (g >= 0) ? advs[g] : 8;\n' +
       '            if (g >= 0) {\n' +
-      '                var dd = tab[2][g];\n' +
-      '                var dz = dd.size();\n' +
+      '                var dd = tab[2][g].toUtf8Array();\n' +
+      '                var dz = dd.size() / 2;\n' +
       '                var f = 0;\n' +
       '                while (dz > 1 && f + 1 < dz) {\n' +
-      '                    total += 2 + dd[f + 1] * 4;\n' +
-      '                    f += 2 + dd[f + 1] * 2;\n' +
+      '                    var c1 = (dd[2 * f + 2] - 48) * 16 + dd[2 * f + 3] - 48;\n' +
+      '                    total += 2 + c1 * 4;\n' +
+      '                    f += 2 + c1 * 2;\n' +
       '                }\n' +
       '            }\n' +
       '        }\n' +
@@ -193,8 +207,9 @@
       '                continue;\n' +
       '            }\n' +
       '            var a = advs[g2];\n' +
-      '            var d = tab[2][g2];\n' +
-      '            if (d.size() > 1) {\n' +
+      '            var d = tab[2][g2].toUtf8Array();\n' +
+      '            var dn = d.size() / 2;\n' +
+      '            if (dn > 1) {\n' +
       '                var phi = cfg[3] + cfg[4] * ((x + a / 2.0 - tw / 2.0) / cfg[2]) * 57.29578;\n' +
       '                var q = Math.toRadians(phi - cfg[5]);\n' +
       '                var p = Math.toRadians(phi);\n' +
@@ -202,18 +217,19 @@
       '                var sn = Math.sin(q);\n' +
       '                var ox = cfg[0] + cfg[2] * Math.sin(p) - (a / 2.0 * c + cfg[6] * sn);\n' +
       '                var oy = cfg[1] - cfg[2] * Math.cos(p) - (a / 2.0 * sn - cfg[6] * c);\n' +
-      '                var dn = d.size();\n' +
       '                for (var pass = 0; pass < 2; pass++) {\n' +
       '                    var e = 0;\n' +
       '                    while (e + 1 < dn) {\n' +
-      '                        var cnt = d[e + 1];\n' +
-      '                        if (d[e] == pass) {\n' +
+      '                        var cnt = (d[2 * e + 2] - 48) * 16 + d[2 * e + 3] - 48;\n' +
+      '                        if ((d[2 * e] - 48) * 16 + d[2 * e + 1] - 48 == pass) {\n' +
       '                            out[w] = pass;\n' +
       '                            out[w + 1] = cnt;\n' +
       '                            w += 2;\n' +
       '                            for (var m = 0; m < cnt; m++) {\n' +
-      '                                var u = (d[e + 2 + m] - 64) / 4.0;\n' +
-      '                                var v = (d[e + 2 + cnt + m] - 64) / 4.0;\n' +
+      '                                var i1 = 2 * (e + 2 + m);\n' +
+      '                                var i2 = 2 * (e + 2 + cnt + m);\n' +
+      '                                var u = ((d[i1] - 48) * 16 + d[i1 + 1] - 48 - 64) / 4.0;\n' +
+      '                                var v = ((d[i2] - 48) * 16 + d[i2 + 1] - 48 - 64) / 4.0;\n' +
       '                                var px = (ox + u * c - v * sn).toNumber() + 1024;\n' +
       '                                var py = (oy + u * sn + v * c).toNumber() + 1024;\n' +
       '                                out[w] = px & 255;\n' +

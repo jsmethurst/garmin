@@ -3,6 +3,7 @@
 (function (GW) {
   'use strict';
   GW.CHANGES = [
+    { n: 26, t: '2026-11-25 16:20', title: 'Curved text: shared letter shapes, 5× less memory', text: 'Measured on a fēnix 6 Pro, each curved label cost about 17 KB, so six ran out of memory. All curved labels in one font now share a single table of letter shapes, stored as compact text instead of number lists. The memory estimate was recalibrated with the same readings.' },
     { n: 25, t: '2026-11-25 08:05', title: 'Fuller memory estimate', text: 'The memory estimate used to count only fonts and pictures (which is why it said 2% for a face that ran out of memory). It now adds a rough size for the program itself and for curved-text letter shapes. The program figure is a first guess; it will be tuned with real readings from the watch.' },
     { n: 24, t: '2026-11-24 23:05', title: 'Memory readout for testing', text: 'Two new text sources under Device: “Watch memory free (KB)” and “Watch memory used (KB)”. They show the real numbers from the watch, so you can see how much memory a face uses and what each element costs. They are for testing; remove them for the final face.' },
     { n: 23, t: '2026-11-24 22:50', title: 'Curved text: far less memory', text: 'Your watch log showed “Out Of Memory”, caused by my earlier outline cache, which kept every letter point as a separate small array. The cache now packs the points into a few hundred bytes per label and makes the small arrays only while painting, so curved text uses a fraction of the memory.' },
