@@ -1210,10 +1210,11 @@
       var rows = [], total = 0;
       r.mem.fonts.forEach(function (f) { var b = 197 + f.glyphs * 58 + 0.084 * f.ink; total += b; rows.push(f.family + ' ' + f.px + ' px, ' + f.glyphs + ' glyphs' + (f.w ? ' (atlas ' + f.w + '×' + f.h + ')' : ' (prebuilt)') + ': ≈ ' + (b / 1024).toFixed(1) + ' KB'); });
       r.mem.images.forEach(function (m) { var b = m.w * m.h; total += b; rows.push('Picture ' + m.id + ' ' + m.w + '×' + m.h + ': ' + (b / 1024).toFixed(1) + ' KB'); });
+      if (GW.budgetExtras) GW.budgetExtras(r.src).forEach(function (x) { total += x.bytes; rows.push(x.label + ': ≈ ' + (x.bytes / 1024).toFixed(1) + ' KB'); });
       var pct = total / 1024 / lim * 100;
       if (results.length > 1) box.appendChild(h('div', { class: 'muted small', text: r.label }));
       box.appendChild(h('div', { class: 'muted small', style: 'white-space:pre-line', text: (rows.length ? rows.join('\n') : 'No fonts or pictures.') }));
-      box.appendChild(h('div', { class: 'note' + (pct > 80 ? ' warn' : ''), text: (pct > 80 ? '⚠ ' : '') + 'Fonts + pictures ≈ ' + (total / 1024).toFixed(1) + ' KB of about ' + lim + ' KB available on ' + GW.DEVICE.name + ' (' + Math.round(pct) + '%).' + (pct > 80 ? ' Close to the limit: the watch may show the "IQ!" screen. Use fewer font sizes or characters.' : '') }));
+      box.appendChild(h('div', { class: 'note' + (pct > 80 ? ' warn' : ''), text: (pct > 80 ? '⚠ ' : '') + 'Fonts, pictures and program ≈ ' + (total / 1024).toFixed(1) + ' KB of about ' + lim + ' KB available on ' + GW.DEVICE.name + ' (' + Math.round(pct) + '%).' + (pct > 80 ? ' Close to the limit: the watch may show the "IQ!" screen. Use fewer font sizes or characters.' : '') }));
     });
     box.appendChild(h('p', { class: 'muted small', text: 'This is an estimate, not a measurement: fonts are sized from the number of glyphs and their pixels (fitted to what the compiler produced for the fēnix 6; the atlas size itself does not change it), pictures at one byte per pixel. The program and live data are not counted.' }));
     return box;

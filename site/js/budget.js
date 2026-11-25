@@ -20,6 +20,25 @@
     return { label: label + ', ' + n + (n === 1 ? ' glyph' : ' glyphs'), bytes: 197 + n * 58 + 0.084 * ink };
   }
 
+  // The parts of the memory the fonts-and-pictures count leaves out: the program itself, and the letter-shape tables of curved text.
+  // Rough: the factors are a first guess and get tuned against the real "free / used memory" readings from the watch.
+  var CODE_BASE = 20 * 1024, CODE_PER_CHAR = 0.8, TABLE_GLYPH_OVERHEAD = 24, CURVE_CACHE_PER_LABEL = 1200;
+  GW.budgetExtras = function (src) {
+    var rows = [], view = (src && src.view) || '';
+    if (view) {
+      var tabBytes = 0, tabChars = 0, labels = 0, re = /const GL_\w+ = \[([\s\S]*?)\n    \];/g, m;
+      while ((m = re.exec(view))) {
+        labels++; tabChars += m[0].length;
+        var glyphs = m[1].split(']b').length - 1, nums = (m[1].match(/\d+/g) || []).length;
+        tabBytes += nums + glyphs * TABLE_GLYPH_OVERHEAD + CURVE_CACHE_PER_LABEL;
+      }
+      var code = CODE_BASE + (view.length - tabChars) * CODE_PER_CHAR;
+      rows.unshift({ label: 'Program code and runtime (about ' + Math.round((view.length - tabChars) / 1024) + ' KB of source)', bytes: code });
+      if (labels) rows.push({ label: 'Curved text: ' + labels + (labels === 1 ? ' label' : ' labels') + ' (letter shapes and their saved copy)', bytes: tabBytes });
+    }
+    return rows;
+  };
+
   // -> { total (KB), lim (KB), pct, rows: [{label, kb}], notes: [text] }
   GW.budget = function (design) {
     design = design || GW.design;
@@ -34,6 +53,7 @@
     } finally { GW.design = live; }
     (src.images || []).forEach(function (m) { var b = m.w * m.h; total += b; rows.push({ label: 'Picture ' + m.id + ' ' + m.w + '×' + m.h, kb: b / 1024 }); });
     if (src.bg) { var bb = GW.DEVICE.size * GW.DEVICE.size; total += bb; rows.push({ label: 'Background picture', kb: bb / 1024 }); }
+    GW.budgetExtras(src).forEach(function (r) { total += r.bytes; rows.push({ label: r.label, kb: r.bytes / 1024 }); });
     rows.sort(function (a, b) { return b.kb - a.kb; });
     var lim = limitKB(isField), kb = total / 1024, els = design.elements || [];
     var notes = [];
@@ -63,7 +83,7 @@
       body.appendChild(h('div', { class: 'note' + (b.pct > 80 ? ' warn' : ''), text: (b.pct > 80 ? '⚠ ' : '') + 'Fonts + pictures ≈ ' + b.total.toFixed(1) + ' KB of about ' + b.lim + ' KB on ' + GW.DEVICE.name + ' (' + Math.round(b.pct) + '%).' + (b.pct > 80 ? ' Close to the limit: the watch may show the "IQ!" screen. Remove a font size, a picture or some icons.' : (b.pct > 60 ? ' Getting full: leave room for the program itself.' : '')) }));
       if (b.rows.length) body.appendChild(h('div', { class: 'muted small', style: 'white-space:pre-line;margin-top:6px', text: b.rows.slice(0, 6).map(function (r) { return r.label + ': ≈ ' + r.kb.toFixed(1) + ' KB'; }).join('\n') + (b.rows.length > 6 ? '\n… and ' + (b.rows.length - 6) + ' more' : '') }));
       if (b.notes.length) body.appendChild(h('ul', { class: 'bud-notes muted small' }, b.notes.map(function (n) { return h('li', { text: n }); })));
-      body.appendChild(h('p', { class: 'muted small', text: 'An estimate, not a measurement: it counts fonts, icons and pictures (the program itself and live data take memory too).' }));
+      body.appendChild(h('p', { class: 'muted small', text: 'An estimate, not a measurement: it counts fonts, icons, pictures, curved-text letter shapes and a rough size for the program. Live data takes memory too. Put “Watch memory free / used” text on a test face to see the real numbers.' }));
     }
     fill();
     return box;
