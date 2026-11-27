@@ -156,11 +156,11 @@
       parts.forEach(function (p) {
         if (p.lit != null) { out.push(mcLit(p.lit)); return; }
         switch (p.tok) {
-          case 'DDDD': if (el.tr) { cg.need('ds'); cg.member('    const TR_DAY' + sx + ' = ' + trArr(TR_DAY) + ';'); out.push('TR_DAY' + sx + '[_ds.day_of_week - 1]'); } else { cg.need('dl'); out.push('_dl.day_of_week'); } break;
+          case 'DDDD': if (el.tr) { cg.need('ds'); cg.member('    const TR_DAY' + sx + ' = ' + trArr(TR_DAY) + ';'); out.push('TR_DAY' + sx + '[_ds.day_of_week - 1]'); } else { cg.need('ds'); cg.member('    const EN_DAY' + sx + ' = ' + trArr(DOW) + ';'); out.push('EN_DAY' + sx + '[_ds.day_of_week - 1]'); } break;   // own list of full names: the watch's long format gives only "Fri" on some devices
           case 'ddd': if (el.tr) { cg.need('ds'); cg.member('    const TR_D3' + sx + ' = ' + trArr(TR_D3) + ';'); out.push('TR_D3' + sx + '[_ds.day_of_week - 1]'); } else { cg.need('dm'); out.push('_dm.day_of_week'); } break;
           case 'DD': cg.need('ds'); out.push('_ds.day.format("%02d")'); break;
           case 'D': cg.need('ds'); out.push('_ds.day.toString()'); break;
-          case 'MMMM': if (el.tr) { cg.need('ds'); cg.member('    const TR_MON' + sx + ' = ' + trArr(TR_MON) + ';'); out.push('TR_MON' + sx + '[_ds.month - 1]'); } else { cg.need('dl'); out.push('_dl.month'); } break;
+          case 'MMMM': if (el.tr) { cg.need('ds'); cg.member('    const TR_MON' + sx + ' = ' + trArr(TR_MON) + ';'); out.push('TR_MON' + sx + '[_ds.month - 1]'); } else { cg.need('ds'); cg.member('    const EN_MON' + sx + ' = ' + trArr(MON) + ';'); out.push('EN_MON' + sx + '[_ds.month - 1]'); } break;
           case 'MMM': if (el.tr) { cg.need('ds'); cg.member('    const TR_M3' + sx + ' = ' + trArr(TR_M3) + ';'); out.push('TR_M3' + sx + '[_ds.month - 1]'); } else { cg.need('dm'); out.push('_dm.month'); } break;
           case 'MM': cg.need('ds'); out.push('_ds.month.format("%02d")'); break;
           case 'M': cg.need('ds'); out.push('_ds.month.toString()'); break;

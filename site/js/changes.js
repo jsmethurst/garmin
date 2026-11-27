@@ -3,6 +3,7 @@
 (function (GW) {
   'use strict';
   GW.CHANGES = [
+    { n: 29, t: '2026-11-27 23:50', title: 'Full day and month names (“FRIDAY”)', text: 'A date set to the full weekday (or full month) showed only “FRI” on your watch: the watch’s own long-name format gives the short form on some devices. The face now carries its own list of full English names, so “Friday” and “November” come out in full everywhere.' },
     { n: 28, t: '2026-11-27 23:05', title: 'Thin lines show in the preview', text: 'A 1 px straight line used to be drawn between two pixel rows in the preview, so it faded to nothing even though the watch draws it fine. It now sits on the pixel, so the preview matches the watch.' },
     { n: 27, t: '2026-11-27 13:10', title: 'Wearer show / hide switch for any layer', text: 'Select any layer (analog hands, an icon, text, an arc, a picture…) and choose “Wearer can show / hide it” at the bottom of the Inspector. The phone app then gets an on / off setting for it (“Show analog hands”), named and set to start on or off under Face → Switches. Several layers can share one switch, so one tick can hide the hands, or a whole group of rings.' },
     { n: 26, t: '2026-11-25 16:20', title: 'Curved text: shared letter shapes, 5× less memory', text: 'Measured on a fēnix 6 Pro, each curved label cost about 17 KB, so six ran out of memory. All curved labels in one font now share a single table of letter shapes, stored as compact text instead of number lists. The memory estimate was recalibrated with the same readings.' },
