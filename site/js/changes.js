@@ -3,6 +3,7 @@
 (function (GW) {
   'use strict';
   GW.CHANGES = [
+    { n: 28, t: '2026-11-27 23:05', title: 'Thin lines show in the preview', text: 'A 1 px straight line used to be drawn between two pixel rows in the preview, so it faded to nothing even though the watch draws it fine. It now sits on the pixel, so the preview matches the watch.' },
     { n: 27, t: '2026-11-27 13:10', title: 'Wearer show / hide switch for any layer', text: 'Select any layer (analog hands, an icon, text, an arc, a picture…) and choose “Wearer can show / hide it” at the bottom of the Inspector. The phone app then gets an on / off setting for it (“Show analog hands”), named and set to start on or off under Face → Switches. Several layers can share one switch, so one tick can hide the hands, or a whole group of rings.' },
     { n: 26, t: '2026-11-25 16:20', title: 'Curved text: shared letter shapes, 5× less memory', text: 'Measured on a fēnix 6 Pro, each curved label cost about 17 KB, so six ran out of memory. All curved labels in one font now share a single table of letter shapes, stored as compact text instead of number lists. The memory estimate was recalibrated with the same readings.' },
     { n: 25, t: '2026-11-25 08:05', title: 'Fuller memory estimate', text: 'The memory estimate used to count only fonts and pictures (which is why it said 2% for a face that ran out of memory). It now adds a rough size for the program itself and for curved-text letter shapes. The program figure is a first guess; it will be tuned with real readings from the watch.' },

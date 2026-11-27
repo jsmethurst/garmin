@@ -667,7 +667,7 @@
     draw: function (ctx, el) {
       var col = q(el.color);
       ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineWidth = el.pen; ctx.lineCap = 'butt';
-      if (el.kind === 'line') { ctx.beginPath(); ctx.moveTo(el.x, el.y); ctx.lineTo(el.x2, el.y2); ctx.stroke(); }
+      if (el.kind === 'line') { var lo = (el.pen % 2) ? 0.5 : 0; ctx.beginPath(); ctx.moveTo(el.x + lo, el.y + lo); ctx.lineTo(el.x2 + lo, el.y2 + lo); ctx.stroke(); }   // a 1 px line sits on the pixel centre, as on the watch (otherwise a straight line smears over two rows and vanishes)
       else if (el.kind === 'circle') { ctx.beginPath(); ctx.arc(el.x, el.y, el.r, 0, Math.PI * 2); el.fill ? ctx.fill() : ctx.stroke(); }
       else if (el.kind === 'tri') { ctx.beginPath(); triPts(el).forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); el.fill ? ctx.fill() : ctx.stroke(); }
       else if (el.kind === 'hex') { ctx.beginPath(); hexPts(el.x, el.y, el.r).forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.closePath(); el.fill ? ctx.fill() : ctx.stroke(); }
