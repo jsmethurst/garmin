@@ -364,6 +364,8 @@
       var lines = GW.ex ? GW.ex.gen(e, cg, one) : one(e);   // a field with a formula is written out once per outcome
       if (!lines || !lines.length) return;
       if (GW.ex && GW.ex.hasAny(e)) lines = GW.ex.prelude(e, cg).concat(GW.ex.hasShow(e) ? GW.ex.guard(e, cg) : [], lines);   // readings first, then the "Show this layer" formula (ends the drawing early when the layer is hidden now)
+      var vs = e.vsw && GW.settings && GW.settings.find(e.vsw, design);   // the wearer's show/hide switch: the layer draws nothing while it is off
+      if (vs && vs.kind === 'switch' && GW.settings.mode(design) !== 'none') { cg.setUse(vs.id); lines = ['if (_s_' + vs.id + ' == 0) {', '    return;', '}'].concat(lines); }
       if (GW.fx && GW.fx.seeOn(e)) lines = lines.concat(GW.fx.genSee(e, cg));   // see-through: the background color painted back over part of the layer
       var n = 'drawEl' + i;
       methods.push('    // ' + (e.name || e.type).replace(/[\r\n]/g, ' ') + '\n    function ' + n + '(dc as Dc) as Void {\n' +

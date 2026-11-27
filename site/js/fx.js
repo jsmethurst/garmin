@@ -324,24 +324,26 @@
     b.addEventListener('click', function () { GW.pickColor(b, v, function (c) { el[f.k] = c; GW.commit(true); }); });
     return ui().field(f.label, b);
   }
+  // a drop-down that ties a layer to one of the wearer's on/off switches (key: 'gsw' = the text gradient, 'vsw' = show / hide the whole layer)
+  fx.switchPick = function (el, key, newName, aria, label, offText) {
+    var h = ui().h, sel = h('select', { class: 'sel', 'aria-label': aria }), cur = el[key] && GW.settings.find(el[key]);
+    sel.appendChild(h('option', { value: '', text: offText || 'Always on' }));
+    GW.settings.switches().forEach(function (s) { var o = h('option', { value: s.id, text: 'Wearer switch: ' + s.label }); if (cur && cur.id === s.id) o.selected = true; sel.appendChild(o); });
+    sel.appendChild(h('option', { value: '__new', text: '+ New wearer switch…' }));
+    sel.addEventListener('change', function () {
+      var v = sel.value, was = el[key];
+      if (v === '__new') v = GW.settings.addSwitch(newName).id;
+      if (v) el[key] = v; else delete el[key];
+      if (was && was !== v) { var ws = GW.settings.find(was); if (ws && !GW.settings.uses(was) && !ws.keep) GW.settings.remove(was); }
+      GW.commit(true); GW.renderPanel();
+    });
+    return ui().field(label, sel);
+  };
   fx.field = function (el, f) {
     var h = ui().h;
     if (f.t === 'fxcolor') return colorBtn(el, { k: f.k, label: f.label, def: f.k === 'tg1' ? '#ff0000' : (f.k === 'tg2' ? '#0000ff' : '#ffffff') });
     if (f.t === 'fxhint') return h('p', { class: 'muted small', text: f.text });
-    if (f.t === 'fxswitch') {   // the wearer can turn the gradient off in the phone app (the text then shows its plain color)
-      var sel = h('select', { class: 'sel', 'aria-label': 'Wearer can turn the gradient off' }), cur = el.gsw && GW.settings.find(el.gsw);
-      sel.appendChild(h('option', { value: '', text: 'Always on' }));
-      GW.settings.switches().forEach(function (s) { var o = h('option', { value: s.id, text: 'Wearer switch: ' + s.label }); if (cur && cur.id === s.id) o.selected = true; sel.appendChild(o); });
-      sel.appendChild(h('option', { value: '__new', text: '+ New wearer switch…' }));
-      sel.addEventListener('change', function () {
-        var v = sel.value, was = el.gsw;
-        if (v === '__new') v = GW.settings.addSwitch('Text gradient').id;
-        if (v) el.gsw = v; else delete el.gsw;
-        if (was && was !== v) { var ws = GW.settings.find(was); if (ws && !GW.settings.uses(was) && !ws.keep) GW.settings.remove(was); }
-        GW.commit(true);
-      });
-      return ui().field('Wearer can switch it off', sel);
-    }
+    if (f.t === 'fxswitch') return fx.switchPick(el, 'gsw', 'Text gradient', 'Wearer can turn the gradient off', 'Wearer can switch it off');
     if (f.t === 'fxpresets') {
       var box = h('div', { class: 'f' }, [h('label', { text: 'Color ready-mades' })]), row = h('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;margin-top:4px' });
       fx.PRESETS.forEach(function (p) {

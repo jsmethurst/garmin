@@ -85,12 +85,14 @@
       d = d || GW.design; var s = { id: S.nextId('sw', d), kind: 'switch', label: label || 'Switch ' + (S.switches(d).length + 1), def: def === 0 ? 0 : 1, keep: true };
       S.all(d).push(s); return s;
     },
+    // a layer with a wearer show/hide switch (`vsw`) is drawn only while that switch is on (in the preview: its starting state)
+    shownBySwitch: function (el, d) { var s = el.vsw && S.find(el.vsw, d); return !s || s.kind !== 'switch' || !!s.def; },
     switchOn: function (el, d) { var s = el.gsw && S.find(el.gsw, d); return !s || s.kind !== 'switch' || !!s.def; },   // what the preview shows: the switch's starting state
     nextId: function (p, d) { var n = 1; d = d || GW.design; while (S.find(p + n, d)) n++; return p + n; },
     // how many places use a setting
     uses: function (id, d) {
       d = d || GW.design; var n = 0;
-      d.elements.forEach(function (e) { if (e.srcSet === id) n++; if (e.gsw === id) n++; if (e.set) Object.keys(e.set).forEach(function (k) { if (e.set[k] === id) n++; }); });
+      d.elements.forEach(function (e) { if (e.srcSet === id) n++; if (e.gsw === id) n++; if (e.vsw === id) n++; if (e.set) Object.keys(e.set).forEach(function (k) { if (e.set[k] === id) n++; }); });
       if (d.bgSet === id) n++;
       return n;
     },
@@ -118,6 +120,7 @@
       d.elements.forEach(function (e) {
         if (e.srcSet === id) delete e.srcSet;
         if (e.gsw === id) delete e.gsw;
+        if (e.vsw === id) delete e.vsw;
         if (e.set) { Object.keys(e.set).forEach(function (k) { if (e.set[k] === id) delete e.set[k]; }); if (!Object.keys(e.set).length) delete e.set; }
       });
       if (d.bgSet === id) delete d.bgSet;

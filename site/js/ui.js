@@ -364,7 +364,7 @@
     // ----- on / off switches -----
     p.appendChild(h('h4', { text: 'Switches the wearer can flip' }));
     var sws = GW.settings.switches(d);
-    if (!sws.length) p.appendChild(h('p', { class: 'muted small', text: 'None yet. Select a text with a gradient fill and choose “Wearer can switch it off” in the Inspector.' }));
+    if (!sws.length) p.appendChild(h('p', { class: 'muted small', text: 'None yet. Select any layer (analog hands, an icon, a text, an arc…) and choose “Wearer can show / hide it” at the bottom of the Inspector. A text gradient has its own “Wearer can switch it off”.' }));
     sws.forEach(function (s) {
       var nm = h('input', { type: 'text', value: s.label, maxlength: 30, 'aria-label': 'Name in the phone app', style: 'flex:1;min-width:110px' });
       nm.addEventListener('input', function () { s.label = nm.value; }); nm.addEventListener('change', function () { GW.commit(false); });

@@ -281,6 +281,7 @@
     return c;
   };
   ex.hidden = function (el, env) {
+    if (el.vsw && GW.settings && !GW.settings.shownBySwitch(el)) return true;   // the wearer's show/hide switch is off
     if (!ex.hasShow(el)) return false;
     var r = ex.pick(el.ex.show, env); return r.hit ? !r.v : false;
   };
@@ -525,6 +526,8 @@
     var has = ex.hasShow(el);
     box.appendChild(h('label', { text: 'Show this layer' }));
     box.appendChild(h('p', { class: 'muted small', text: has ? 'Shown only according to the formula below.' : 'Always shown. Add a formula to show it only sometimes: one weekday, a low battery, a time of day…' }));
+    box.appendChild(GW.fx.switchPick(el, 'vsw', 'Show ' + String(el.name || el.type).toLowerCase(), 'Wearer can show or hide this layer', 'Wearer can show / hide it', 'Always shown (no switch)'));
+    if (el.vsw) box.appendChild(h('p', { class: 'muted small', text: 'The phone app gets an on / off setting for this layer. Name it, and choose whether it starts on, under Face → Switches the wearer can flip. The preview shows its starting state.' }));
     var f = { k: 'show', t: 'check', label: 'Show this layer' };
     var wrap = h('div', { class: 'f' }, [h('label', { text: 'Formula for showing' })]);
     ex.wrap(el, f, wrap); box.appendChild(wrap);
