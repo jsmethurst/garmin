@@ -105,6 +105,8 @@
   GW.mcLit = mcLit;
 
   // ---------- registry ----------
+  // an option the wearer can change in the phone app (a time format, a unit) reaches the generated code as a variable: el._prm[key]
+  GW.prm = function (el, key, lit) { return (el._prm && el._prm[key]) || lit; };
   var S = GW.sources = {};
   GW.sourceList = []; // ordered for menus
   function def(id, o) { o.id = id; S[id] = o; GW.sourceList.push(o); return o; }
@@ -119,14 +121,14 @@
     mcStr: function (el, cg) {
       cg.need('clk'); cg.helper('hourStr');
       var sep = mcLit(el.sep == null ? ':' : el.sep);
-      return 'hourStr(' + ({ h24: 1, h12: 2 }[el.hmode] || 0) + ', ' + (el.lz === false ? 'false' : 'true') + ') + ' + sep +
+      return 'hourStr(' + GW.prm(el, 'hmode', ({ h24: 1, h12: 2 }[el.hmode] || 0)) + ', ' + GW.prm(el, 'lz', (el.lz === false ? 'false' : 'true')) + ') + ' + sep +
         ' + _clk.min.format("%02d")' + (el.secs ? ' + ' + sep + ' + _clk.sec.format("%02d")' : '');
     }
   });
   def('hour', {
     label: 'Hour', group: 'Time', kind: 'str', opts: ['hmode', 'lz'],
     str: function (el, env) { return hourStr(env, el.hmode, el.lz); },
-    mcStr: function (el, cg) { cg.need('clk'); cg.helper('hourStr'); return 'hourStr(' + ({ h24: 1, h12: 2 }[el.hmode] || 0) + ', ' + (el.lz === false ? 'false' : 'true') + ')'; }
+    mcStr: function (el, cg) { cg.need('clk'); cg.helper('hourStr'); return 'hourStr(' + GW.prm(el, 'hmode', ({ h24: 1, h12: 2 }[el.hmode] || 0)) + ', ' + GW.prm(el, 'lz', (el.lz === false ? 'false' : 'true')) + ')'; }
   });
   def('minute', {
     label: 'Minute', group: 'Time', kind: 'num', range: [0, 60], opts: [],
@@ -205,8 +207,8 @@
       var m = el.unit === 'mi' ? false : (el.unit === 'km' ? true : env.sim.metric);
       return (m ? env.sim.distance : env.sim.distance * 0.621371).toFixed(1);
     },
-    mcNum: function (el, cg) { cg.need('act'); cg.helper('distNow'); return 'distNow(' + ({ km: 1, mi: 2 }[el.unit] || 0) + ')'; },
-    mcStr: function (el, cg) { cg.need('act'); cg.helper('distNow'); return 'distNow(' + ({ km: 1, mi: 2 }[el.unit] || 0) + ').format("%.1f")'; }
+    mcNum: function (el, cg) { cg.need('act'); cg.helper('distNow'); return 'distNow(' + GW.prm(el, 'unit', ({ km: 1, mi: 2 }[el.unit] || 0)) + ')'; },
+    mcStr: function (el, cg) { cg.need('act'); cg.helper('distNow'); return 'distNow(' + GW.prm(el, 'unit', ({ km: 1, mi: 2 }[el.unit] || 0)) + ').format("%.1f")'; }
   });
   // elapsedDistance only has a value during a recorded activity, so this reads "--" the rest of the time (unlike "Distance today")
   def('workoutDist', {
@@ -215,7 +217,7 @@
       var m = el.unit === 'mi' ? false : (el.unit === 'km' ? true : env.sim.metric);
       return (m ? env.sim.runKm : env.sim.runKm * 0.621371).toFixed(2);
     },
-    mcStr: function (el, cg) { cg.helper('workoutDist'); return 'workoutDist(' + ({ km: 1, mi: 2 }[el.unit] || 0) + ')'; }
+    mcStr: function (el, cg) { cg.helper('workoutDist'); return 'workoutDist(' + GW.prm(el, 'unit', ({ km: 1, mi: 2 }[el.unit] || 0)) + ')'; }
   });
   numeric('moveBar', 'Move bar level (0-5)', 'Activity', { fn: 'moveNow', needs: ['act'], range: [0, 5],
     num: function (e) { return e.sim.moveBar; } });
@@ -254,16 +256,16 @@
       var c = el.unit === 'F' ? false : (el.unit === 'C' ? true : env.sim.metric);
       return String(Math.round(c ? env.sim.temp : env.sim.temp * 9 / 5 + 32));
     },
-    mcNum: function (el, cg) { cg.need('wx'); cg.helper('tempNow'); return 'tempNow(' + ({ C: 1, F: 2 }[el.unit] || 0) + ')'; },
-    mcStr: function (el, cg) { cg.helper('ns'); cg.need('wx'); cg.helper('tempNow'); return 'ns(tempNow(' + ({ C: 1, F: 2 }[el.unit] || 0) + '))'; }
+    mcNum: function (el, cg) { cg.need('wx'); cg.helper('tempNow'); return 'tempNow(' + GW.prm(el, 'unit', ({ C: 1, F: 2 }[el.unit] || 0)) + ')'; },
+    mcStr: function (el, cg) { cg.helper('ns'); cg.need('wx'); cg.helper('tempNow'); return 'ns(tempNow(' + GW.prm(el, 'unit', ({ C: 1, F: 2 }[el.unit] || 0)) + '))'; }
   });
   [['tempLow', 'Temperature, today’s low', 'tempLowNow', 'tempLow'], ['tempHigh', 'Temperature, today’s high', 'tempHighNow', 'tempHigh']].forEach(function (d) {
     numeric(d[0], d[1], 'Environment', {
       fn: d[2], needs: ['wx'], range: [-10, 40], opts: ['unit_temp'], imports: ['Toybox.Weather'],
       num: function (e) { var v = e.sim[d[3]]; return e.sim.metric ? v : v * 9 / 5 + 32; },
       str: function (el, env) { var v = env.sim[d[3]], c = el.unit === 'F' ? false : (el.unit === 'C' ? true : env.sim.metric); return String(Math.round(c ? v : v * 9 / 5 + 32)); },
-      mcNum: function (el, cg) { cg.need('wx'); cg.helper(d[2]); return d[2] + '(' + ({ C: 1, F: 2 }[el.unit] || 0) + ')'; },
-      mcStr: function (el, cg) { cg.helper('ns'); cg.need('wx'); cg.helper(d[2]); return 'ns(' + d[2] + '(' + ({ C: 1, F: 2 }[el.unit] || 0) + '))'; }
+      mcNum: function (el, cg) { cg.need('wx'); cg.helper(d[2]); return d[2] + '(' + GW.prm(el, 'unit', ({ C: 1, F: 2 }[el.unit] || 0)) + ')'; },
+      mcStr: function (el, cg) { cg.helper('ns'); cg.need('wx'); cg.helper(d[2]); return 'ns(' + d[2] + '(' + GW.prm(el, 'unit', ({ C: 1, F: 2 }[el.unit] || 0)) + '))'; }
     });
   });
   GW.WX_NAMES = ['Clear', 'Part cloudy', 'Cloudy', 'Rain', 'Snow', 'Storm', 'Fog', 'Sleet', '--'];
@@ -300,8 +302,8 @@
       var m = el.unit === 'ft' ? false : (el.unit === 'm' ? true : env.sim.metric);
       return String(Math.round(m ? env.sim.altitude : env.sim.altitude * 3.28084));
     },
-    mcNum: function (el, cg) { cg.helper('altNow'); return 'altNow(' + ({ m: 1, ft: 2 }[el.unit] || 0) + ')'; },
-    mcStr: function (el, cg) { cg.helper('ns'); cg.helper('altNow'); return 'ns(altNow(' + ({ m: 1, ft: 2 }[el.unit] || 0) + '))'; }
+    mcNum: function (el, cg) { cg.helper('altNow'); return 'altNow(' + GW.prm(el, 'unit', ({ m: 1, ft: 2 }[el.unit] || 0)) + ')'; },
+    mcStr: function (el, cg) { cg.helper('ns'); cg.helper('altNow'); return 'ns(altNow(' + GW.prm(el, 'unit', ({ m: 1, ft: 2 }[el.unit] || 0)) + '))'; }
   });
   def('sunrise', {
     label: 'Sunrise', group: 'Environment', kind: 'str', opts: [], imports: ['Toybox.Weather', 'Toybox.Time', 'Toybox.Time.Gregorian'],

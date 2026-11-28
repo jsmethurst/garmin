@@ -369,21 +369,35 @@
       var nm = h('input', { type: 'text', value: s.label, maxlength: 30, 'aria-label': 'Name in the phone app', style: 'flex:1;min-width:110px' });
       nm.addEventListener('input', function () { s.label = nm.value; }); nm.addEventListener('change', function () { GW.commit(false); });
       var st = h('select', { class: 'sel', 'aria-label': 'Starts', style: 'width:auto' }); st.appendChild(settingOpt('1', 'Starts on', !!s.def)); st.appendChild(settingOpt('0', 'Starts off', !s.def));
-      st.addEventListener('change', function () { s.def = +st.value; GW.commit(true); GW.renderPanel(); });
+      st.addEventListener('change', function () { s.def = +st.value; GW.settings.syncParams(d); GW.commit(true); GW.renderPanel(); });
       p.appendChild(h('div', { style: FLEX }, [nm, st, h('span', { class: 'muted small', text: GW.settings.uses(s.id) + ' use' + (GW.settings.uses(s.id) === 1 ? '' : 's') }),
         h('button', { class: 'btn sm danger', text: '×', title: 'Remove this switch (the layers stay as they are)', onclick: function () { s.keep = false; GW.settings.remove(s.id); GW.commit(true); GW.renderPanel(); } })]));
     });
     p.appendChild(h('button', { class: 'btn sm', text: '+ Add a switch', onclick: function () { GW.settings.addSwitch(null, 1, d); GW.commit(false); GW.renderPanel(); } }));
+
+    // ----- clock and unit options -----
+    p.appendChild(h('h4', { text: 'Clock and units the wearer can choose' }));
+    var pks = GW.settings.picks(d);
+    if (!pks.length) p.appendChild(h('p', { class: 'muted small', text: 'None yet. “Scan the face” below adds the time format (12 / 24-hour), the leading zero on the hour, and metric / imperial units for the readings on the face.' }));
+    pks.forEach(function (s) {
+      var nm = h('input', { type: 'text', value: s.label, maxlength: 30, 'aria-label': 'Name in the phone app', style: 'flex:1;min-width:110px' });
+      nm.addEventListener('input', function () { s.label = nm.value; }); nm.addEventListener('change', function () { GW.commit(false); });
+      var st = h('select', { class: 'sel', 'aria-label': 'Starts as', style: 'width:auto' });
+      s.opts.forEach(function (o, i) { st.appendChild(settingOpt(String(i), o, i === s.def)); });
+      st.addEventListener('change', function () { s.def = +st.value; GW.settings.syncParams(d); GW.commit(true); GW.renderPanel(); });
+      p.appendChild(h('div', { style: FLEX }, [nm, st, h('span', { class: 'muted small', text: GW.settings.uses(s.id) + ' use' + (GW.settings.uses(s.id) === 1 ? '' : 's') }),
+        h('button', { class: 'btn sm danger', text: '×', title: 'Remove this setting (the layers stay as they are)', onclick: function () { GW.settings.remove(s.id); GW.commit(true); GW.renderPanel(); } })]));
+    });
 
     // ----- data slots -----
     p.appendChild(h('h4', { text: 'Data the wearer can choose' }));
     var slots = GW.settings.slots(d);
     if (!slots.length) p.appendChild(h('p', { class: 'muted small', text: 'Select a reading on the face and press “Let the wearer choose what this shows…” in the Inspector. Its icon and label next to it switch with it.' }));
     slots.forEach(function (s) { renderSlot(p, s, d); });
-    p.appendChild(h('button', { class: 'btn sm', text: '⚡ Scan the face: let the wearer choose every data field', title: 'Finds every reading on the face that is not in a slot yet (steps, heart rate, battery, weather…). Each becomes a slot with its nearby icon and name, offering all the readings of its kind.', onclick: function () {
-      var made = GW.settings.autoSlots(d);
-      GW.toast(made.length ? made.length + ' data field' + (made.length === 1 ? '' : 's') + ' can now be chosen by the wearer' : 'No data field left to add (the clock and the date are not offered)');
-      if (made.length) { GW.commit(true); GW.renderPanel(); }
+    p.appendChild(h('button', { class: 'btn sm', text: '⚡ Scan the face: data fields, gauges, clock and units', title: 'Finds every reading on the face that is not in a slot yet (steps, heart rate, battery, weather…). Each becomes a slot with its nearby icon and name, offering all the readings of its kind.', onclick: function () {
+      var made = GW.settings.autoSlots(d), opts = GW.settings.autoParams(d);
+      GW.toast((made.length ? made.length + ' data field' + (made.length === 1 ? '' : 's') : 'No new data field') + (opts.length ? ', ' + opts.length + ' clock / unit setting' + (opts.length === 1 ? '' : 's') : '') + (made.length || opts.length ? ' can now be chosen by the wearer' : ' left to add'));
+      if (made.length || opts.length) { GW.commit(true); GW.renderPanel(); }
     } }), ' ');
     p.appendChild(h('button', { class: 'btn sm', text: '+ New data slot', onclick: function () { GW.settings.newSlot(null, d); GW.commit(true); GW.renderPanel(); } }));
   }

@@ -92,7 +92,7 @@
     // how many places use a setting
     uses: function (id, d) {
       d = d || GW.design; var n = 0;
-      d.elements.forEach(function (e) { if (e.srcSet === id) n++; if (e.gsw === id) n++; if (e.vsw === id) n++; if (e.set) Object.keys(e.set).forEach(function (k) { if (e.set[k] === id) n++; }); });
+      d.elements.forEach(function (e) { if (e.srcSet === id) n++; if (e.gsw === id) n++; if (e.vsw === id) n++; if (e.pk) Object.keys(e.pk).forEach(function (k) { if (e.pk[k] === id) n++; }); if (e.set) Object.keys(e.set).forEach(function (k) { if (e.set[k] === id) n++; }); });
       if (d.bgSet === id) n++;
       return n;
     },
@@ -121,6 +121,7 @@
         if (e.srcSet === id) delete e.srcSet;
         if (e.gsw === id) delete e.gsw;
         if (e.vsw === id) delete e.vsw;
+        if (e.pk) { Object.keys(e.pk).forEach(function (k) { if (e.pk[k] === id) delete e.pk[k]; }); if (!Object.keys(e.pk).length) delete e.pk; }
         if (e.set) { Object.keys(e.set).forEach(function (k) { if (e.set[k] === id) delete e.set[k]; }); if (!Object.keys(e.set).length) delete e.set; }
       });
       if (d.bgSet === id) delete d.bgSet;
@@ -137,6 +138,7 @@
         if (s.kind === 'color') return S.uses(s.id, d) > 0 || s.keep;
         if (s.kind === 'source') return S.uses(s.id, d) > 0;
         if (s.kind === 'switch') return S.uses(s.id, d) > 0 || s.keep;
+        if (s.kind === 'pick') return S.uses(s.id, d) > 0;
         return true;
       });
       if (!S.colors(d).length) d.settings = d.settings.filter(function (s) { return s.kind !== 'theme'; });
@@ -264,7 +266,7 @@
     SWAP_TEXT: ['stepGoal', 'workoutDist', 'runKmWeek', 'runKm7', 'weatherDesc', 'wxLine', 'tempCond', 'sunrise', 'sunset', 'sunNext', 'moonName'],
     swapPool: function (src) {
       var cur = GW.sources[src]; if (!cur || cur.group === 'Time' || src === 'custom') return [];
-      if (cur.kind === 'num') return GW.sourceList.filter(function (x) { return x.kind === 'num' && x.group !== 'Time' && x.id !== 'custom' && !/^mem/.test(x.id); }).map(function (x) { return x.id; });
+      if (cur.kind === 'num') return GW.sourceList.filter(function (x) { return x.kind === 'num' && x.mcNum && x.group !== 'Time' && x.id !== 'custom' && !/^mem/.test(x.id); }).map(function (x) { return x.id; });
       return S.SWAP_TEXT.indexOf(src) >= 0 ? S.SWAP_TEXT.slice() : [];
     },
     addAllChoices: function (s, d) { var st = S.startChoice(s, d); S.swapPool(st).forEach(function (c) { S.addChoice(s, c); }); return s.choices.length; },
@@ -287,7 +289,70 @@
         made.push({ slot: slot, base: base });
       });
       d.elements.forEach(function (o) { delete o._owner; });
+      // arc gauges and segment gauges: they follow the field that shows the same reading, or get a slot of their own
+      d.elements.slice().forEach(function (e) {
+        if ((e.type !== 'arc' && e.type !== 'seggauge') || e.srcSet || e.hidden || e.nofill || !GW.sources[e.source] || !GW.sources[e.source].mcNum || !S.swapPool(e.source).length) return;
+        var slot = S.slots(d).filter(function (sl) { return S.startChoice(sl, d) === e.source && S.members(sl.id, d).some(function (m) { return S.roleOf(m) === 'value'; }); })[0];
+        if (slot) { e.srcSet = slot.id; if (slot.choices.indexOf(e.source) < 0) slot.choices.unshift(e.source); return; }
+        var base = (GW.sources[e.source] || {}).label || e.source;
+        slot = S.newSlot(base + ' gauge', d); e.srcSet = slot.id; slot.choices.push(e.source); S.addAllChoices(slot, d);
+        var pool = S.swapPool(e.source); slot.choices.sort(function (a, b) { return pool.indexOf(a) - pool.indexOf(b); });
+        made.push({ slot: slot, base: base });
+      });
       return made.map(function (m) { return m.slot; });
+    },
+    // ----- clock and unit options the wearer can choose (24-hour, leading zero, metric / imperial) -----
+    // { id, kind:'pick', label, key:'hmode'|'unit', opts:['Watch setting', ...], vals:['auto', ...], def: index } (the index is also the code the watch uses: 0 = the watch's own setting);
+    // a layer follows one through el.pk = { key: settingId }; a switch can drive 'lz' (leading zero) the same way
+    picks: function (d) { return S.all(d || GW.design).filter(function (s) { return s.kind === 'pick'; }); },
+    unitClass: function (src) {
+      var o = (GW.sources[src] || {}).opts || [];
+      return o.indexOf('unit_temp') >= 0 ? ['C', 'F'] : o.indexOf('unit_dist') >= 0 ? ['km', 'mi'] : o.indexOf('unit_alt') >= 0 ? ['m', 'ft'] : null;
+    },
+    // the preview shows the settings' starting values
+    syncParams: function (d) {
+      d = d || GW.design;
+      d.elements.forEach(function (e) {
+        if (!e.pk) return;
+        Object.keys(e.pk).forEach(function (k) {
+          var s = S.find(e.pk[k], d); if (!s) return;
+          if (s.kind === 'pick') {
+            if (k === 'unit') { var uc = S.unitClass(e.source); if (uc) e.unit = s.def === 1 ? uc[0] : s.def === 2 ? uc[1] : 'auto'; }
+            else e[k] = s.vals[s.def];
+          } else if (s.kind === 'switch') e[k] = !!s.def;
+        });
+      });
+    },
+    // scan the face for clock and unit options
+    autoParams: function (d) {
+      d = d || GW.design; var made = [];
+      function common(a) { var n = {}, best = null; a.forEach(function (v) { n[v] = (n[v] || 0) + 1; if (best == null || n[v] > n[best]) best = v; }); return best; }
+      var clock = d.elements.filter(function (e) { return e.type === 'text' && (e.source === 'time' || e.source === 'hour') && !e.hidden; });
+      var clk = clock.filter(function (e) { return !(e.pk && e.pk.hmode); });
+      if (clk.length) {
+        var s1 = { id: S.nextId('pk', d), kind: 'pick', label: 'Time format', key: 'hmode', opts: ['Watch setting', '24-hour', '12-hour'], vals: ['auto', 'h24', 'h12'], def: Math.max(0, ['auto', 'h24', 'h12'].indexOf(common(clk.map(function (e) { return e.hmode || 'auto'; })))) };
+        S.all(d).push(s1); clk.forEach(function (e) { e.pk = Object.assign({}, e.pk, { hmode: s1.id }); }); made.push(s1);
+      }
+      var lzs = clock.filter(function (e) { return !(e.pk && e.pk.lz); });
+      if (lzs.length) {
+        var s2 = S.addSwitch('Leading zero on the hour', lzs.filter(function (e) { return e.lz === false; }).length > lzs.length / 2 ? 0 : 1, d); s2.keep = false;
+        lzs.forEach(function (e) { e.pk = Object.assign({}, e.pk, { lz: s2.id }); }); made.push(s2);
+      }
+      // units: one setting (watch / metric / imperial) for every reading that has a unit, and for slots that can offer one
+      var slotUnits = {};
+      S.slots(d).forEach(function (sl) { if (sl.choices.some(function (c) { return S.unitClass(c); })) slotUnits[sl.id] = 1; });
+      var ue = d.elements.filter(function (e) { return !e.hidden && !(e.pk && e.pk.unit) && ((e.source && S.unitClass(e.source) && (e.type === 'text' || e.type === 'arc' || e.type === 'seggauge')) || (e.srcSet && slotUnits[e.srcSet] && (S.roleOf(e) === 'value' || S.roleOf(e) === 'gauge'))); });
+      if (ue.length) {
+        var u = S.picks(d).filter(function (x) { return x.key === 'unit'; })[0];
+        if (!u) {
+          var cur = common(ue.map(function (e) { var uc = S.unitClass(e.source); return !uc || e.unit == null || e.unit === 'auto' ? 0 : (e.unit === uc[0] ? 1 : 2); }));
+          u = { id: S.nextId('pk', d), kind: 'pick', label: 'Units', key: 'unit', opts: ['Watch setting', 'Metric (°C, km, m)', 'Imperial (°F, mi, ft)'], vals: [0, 1, 2], def: cur || 0 };
+          S.all(d).push(u); made.push(u);
+        }
+        ue.forEach(function (e) { e.pk = Object.assign({}, e.pk, { unit: u.id }); });
+      }
+      S.syncParams(d);
+      return made;
     },
     removeMember: function (s, el) { delete el.srcSet; },
     // the text that names a reading, and what goes before / after its value: for the reading shown now they are the layers' own text
@@ -380,7 +445,7 @@
         var parts = [];
         vs.forEach(function (x, i) {
           var src = GW.sources[s.choices[i]]; (src.imports || []).forEach(cg.imp); (src.perms || []).forEach(cg.perm);
-          parts.push('        ' + (i ? 'else ' : '') + 'if (k == ' + i + ') {\n            return ' + src.mcStr(x, cg) + ';\n        }');
+          parts.push('        ' + (i ? 'else ' : '') + 'if (k == ' + i + ') {\n            return ' + src.mcStr(withPrm(x, cg, d), cg) + ';\n        }');
         });
         var body = parts.join('\n'), h = 0; for (var q = 0; q < body.length; q++) h = (h * 31 + body.charCodeAt(q)) >>> 0;
         var fn = 'rd' + h.toString(36);
@@ -399,6 +464,25 @@
       try {
         return one(Object.assign({}, el, { source: pid, prefix: '', suffix: '', text: '' }));
       } finally { delete GW.sources[pid]; }
+    }
+    if (el.type === 'arc' || el.type === 'seggauge') {
+      var gv = s.choices.map(function (c) { return S.variant(el, s, c, start, d); }), gparts = [];
+      if (!gv.every(function (x, i) { return GW.sources[s.choices[i]] && GW.sources[s.choices[i]].mcNum; })) return null;
+      cg.helper('prog');
+      gv.forEach(function (x0, i) {
+        var c = s.choices[i], src = GW.sources[c], x = withPrm(x0, cg, d); (src.imports || []).forEach(cg.imp); (src.perms || []).forEach(cg.perm);
+        var rg = src.range || [0, 100], mn = x.min != null ? x.min : (src.mcGoal ? 0 : rg[0]), mx;
+        if (x.max != null) mx = String(x.max);
+        else if (c === 'calories' && x.type === 'seggauge') { cg.need('act'); mx = '((_act has :calorieGoal && _act.calorieGoal != null) ? _act.calorieGoal : ' + Math.round(x.calFallback || 2200) + ')'; }
+        else mx = src.mcGoal ? src.mcGoal(x, cg) : String(rg[1]);
+        gparts.push('        ' + (i ? 'else ' : '') + 'if (k == ' + i + ') {\n            return prog(' + src.mcNum(x, cg) + ', ' + mn + ', ' + mx + ');\n        }');
+      });
+      var gb = gparts.join('\n'), gh = 0; for (var gq = 0; gq < gb.length; gq++) gh = (gh * 31 + gb.charCodeAt(gq)) >>> 0;
+      var gfn = 'gp' + gh.toString(36), gpid = '__slotg_' + s.id + '_' + cg.n_sv;
+      cg.member('    function ' + gfn + '(k as Number) as Float {\n' + gb + '\n        return 0.0f;\n    }');
+      cg.setUse(s.id);
+      GW.sources[gpid] = { kind: 'num', group: 'Slot', label: s.label, range: [0, 1], mcNum: function () { return gfn + '(' + v + ')'; } };
+      try { return one(Object.assign({}, el, { source: gpid, min: 0, max: 1 })); } finally { delete GW.sources[gpid]; }
     }
     if (el.type === 'icon') {
       var rows = [], base = null;
@@ -420,8 +504,19 @@
     return null;
   }
   function T_icon_gen(e, cg) { return GW.types.icon.gen(e, cg); }
+  // options the wearer can choose (24-hour, leading zero, units) arrive in the layer's code as variables
+  function withPrm(e, cg, d) {
+    if (!e.pk) return e;
+    var p = {}, any = false;
+    Object.keys(e.pk).forEach(function (k) {
+      var st = S.find(e.pk[k], d); if (!st) return;
+      if (st.kind === 'pick') p[k] = '_s_' + st.id; else if (st.kind === 'switch') p[k] = '(_s_' + st.id + ' == 1)'; else return;
+      cg.setUse(st.id); any = true;
+    });
+    return any ? Object.assign({}, e, { _prm: p }) : e;
+  }
   GW.genWithSettings = function (el, t, cg, d) {
-    var one = function (e) { e = withRt(e, cg, d); return colored(e, t.gen(e, cg), cg, d); };
+    var one = function (e) { e = withPrm(withRt(e, cg, d), cg, d); return colored(e, t.gen(e, cg), cg, d); };
     var s = el.srcSet && S.find(el.srcSet, d);
     if (!s || s.kind !== 'source' || !s.choices || s.choices.length < 2 || !S.roleOf(el)) return one(el);
     var start = S.startChoice(s, d);
@@ -448,8 +543,9 @@
     var all = S.all(d), roles = all.filter(function (s) { return s.kind === 'color' && used[s.id]; });
     var slots = all.filter(function (s) { return s.kind === 'source' && used[s.id]; });
     var switches = all.filter(function (s) { return s.kind === 'switch' && used[s.id]; });
+    var picks = all.filter(function (s) { return s.kind === 'pick' && used[s.id]; });
     var useTheme = mode === 'theme' && th && th.themes.length && roles.length;
-    if (!roles.length && !slots.length && !switches.length) return null;
+    if (!roles.length && !slots.length && !switches.length && !picks.length) return null;
     var members = [], load = [], props = [], sets = [], strings = {};
     function entryList(id, labels) { return labels.map(function (l, i) { return '            <listEntry value="' + i + '">@Strings.' + l + '</listEntry>'; }).join('\n'); }
     roles.forEach(function (s) {
@@ -483,6 +579,14 @@
       strings['S_' + s.id] = s.label || s.id;
       var labs = s.choices.map(function (c, i) { strings['S_' + s.id + '_' + i] = (GW.sources[c] || { label: c }).label; return 'S_' + s.id + '_' + i; });
       sets.push('    <setting propertyKey="@Properties.' + s.id + '" title="@Strings.S_' + s.id + '">\n        <settingConfig type="list">\n' + entryList(s.id, labs) + '\n        </settingConfig>\n    </setting>');
+    });
+    picks.forEach(function (s) {
+      members.push('    var _s_' + s.id + ' = ' + (s.def || 0) + ';');
+      load.push('            v = Application.Properties.getValue("' + s.id + '");', '            if (v instanceof Number) {', '                _s_' + s.id + ' = v;', '            }');
+      props.push('    <property id="' + s.id + '" type="number">' + (s.def || 0) + '</property>');
+      strings['S_' + s.id] = s.label || s.id;
+      var plabs = s.opts.map(function (o, i) { strings['S_' + s.id + '_' + i] = o; return 'S_' + s.id + '_' + i; });
+      sets.push('    <setting propertyKey="@Properties.' + s.id + '" title="@Strings.S_' + s.id + '">\n        <settingConfig type="list">\n' + entryList(s.id, plabs) + '\n        </settingConfig>\n    </setting>');
     });
     switches.forEach(function (s) {
       members.push('    var _s_' + s.id + ' = ' + (s.def ? 1 : 0) + ';');
