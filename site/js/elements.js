@@ -28,6 +28,7 @@
   GW.textChars = function (el) {
     var s = GW.sources[el.source], D = '0123456789', c;
     if (!s) return null;
+    if (s.chars !== undefined) return s.chars == null ? null : s.chars + (el.prefix || '') + (el.suffix || '') + ' ';   // a data slot's text: all its readings' characters
     switch (el.source) {
       case 'custom': c = el.text == null ? '' : el.text; break;
       case 'time': c = D + (el.sep || ''); break;

@@ -380,6 +380,11 @@
     var slots = GW.settings.slots(d);
     if (!slots.length) p.appendChild(h('p', { class: 'muted small', text: 'Select a reading on the face and press “Let the wearer choose what this shows…” in the Inspector. Its icon and label next to it switch with it.' }));
     slots.forEach(function (s) { renderSlot(p, s, d); });
+    p.appendChild(h('button', { class: 'btn sm', text: '⚡ Scan the face: let the wearer choose every data field', title: 'Finds every reading on the face that is not in a slot yet (steps, heart rate, battery, weather…). Each becomes a slot with its nearby icon and name, offering all the readings of its kind.', onclick: function () {
+      var made = GW.settings.autoSlots(d);
+      GW.toast(made.length ? made.length + ' data field' + (made.length === 1 ? '' : 's') + ' can now be chosen by the wearer' : 'No data field left to add (the clock and the date are not offered)');
+      if (made.length) { GW.commit(true); GW.renderPanel(); }
+    } }), ' ');
     p.appendChild(h('button', { class: 'btn sm', text: '+ New data slot', onclick: function () { GW.settings.newSlot(null, d); GW.commit(true); GW.renderPanel(); } }));
   }
   function renderSlot(p, s, d) {
@@ -443,6 +448,7 @@
       row.push(h('button', { class: 'btn sm', text: '×', disabled: c === start, title: c === start ? 'The reading shown now cannot be removed' : 'Remove', onclick: function () { GW.settings.removeChoice(s, c); GW.commit(true); GW.renderPanel(); } }));
       box.appendChild(h('div', { style: FLEX }, row));
     });
+    if (GW.settings.swapPool(start).some(function (c) { return s.choices.indexOf(c) < 0; })) box.appendChild(h('button', { class: 'btn sm', text: '+ Add every reading of this kind', title: 'Offers every reading that can stand in for this one. Each adds a little to the face’s memory use; the Face tab shows the total.', onclick: function () { GW.settings.addAllChoices(s, d); GW.commit(true); GW.renderPanel(); } }));
     var pool = h('select', { class: 'sel', 'aria-label': 'Add a reading' });
     pool.appendChild(settingOpt('', '+ Add a reading…'));
     GW.sourceGroups.forEach(function (g) {

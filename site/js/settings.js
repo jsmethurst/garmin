@@ -240,6 +240,7 @@
           d.elements.forEach(function (o) {
             if (o === el || o.srcSet || o.hidden) return;
             var r = S.roleOf(o); if (r !== 'icon' && r !== 'label') return;
+            if (o._owner && o._owner !== el) return;   // (during a scan) it sits closer to another reading
             var ob; try { ob = box(o); } catch (x) { return; }
             var gx = Math.max(0, Math.max(ob.x - (b.x + b.w), b.x - (ob.x + ob.w))), gy = Math.max(0, Math.max(ob.y - (b.y + b.h), b.y - (ob.y + ob.h))), g = gx + gy;
             if (gx <= lim[r] && gy <= lim[r] && (!best[r] || g < best[r].g)) best[r] = { e: o, g: g };
@@ -257,6 +258,36 @@
         }
       }
       return added;
+    },
+    // readings that can stand in for a reading of this kind: numbers swap with numbers, short texts with short texts
+    // (the clock, the date, fixed texts and the memory test readings are not offered)
+    SWAP_TEXT: ['stepGoal', 'workoutDist', 'runKmWeek', 'runKm7', 'weatherDesc', 'wxLine', 'tempCond', 'sunrise', 'sunset', 'sunNext', 'moonName'],
+    swapPool: function (src) {
+      var cur = GW.sources[src]; if (!cur || cur.group === 'Time' || src === 'custom') return [];
+      if (cur.kind === 'num') return GW.sourceList.filter(function (x) { return x.kind === 'num' && x.group !== 'Time' && x.id !== 'custom' && !/^mem/.test(x.id); }).map(function (x) { return x.id; });
+      return S.SWAP_TEXT.indexOf(src) >= 0 ? S.SWAP_TEXT.slice() : [];
+    },
+    addAllChoices: function (s, d) { var st = S.startChoice(s, d); S.swapPool(st).forEach(function (c) { S.addChoice(s, c); }); return s.choices.length; },
+    // scan the face: every data reading that is not yet in a slot becomes a slot (with its nearby icon and name) offering all readings of its kind
+    autoSlots: function (d) {
+      d = d || GW.design; var made = [], used = {};
+      S.slots(d).forEach(function (s) { S.members(s.id, d).forEach(function (e) { if (e.source) used[e.source + '@' + e.x + ',' + e.y] = 1; }); });
+      var vals = d.elements.filter(function (e) { return e.type === 'text' && !e.srcSet && !e.hidden && S.roleOf(e) === 'value' && S.swapPool(e.source).length; });
+      function gap(a, b) { var A, B; try { A = box(a); B = box(b); } catch (x) { return 1e9; } var gx = Math.max(0, Math.max(B.x - (A.x + A.w), A.x - (B.x + B.w))), gy = Math.max(0, Math.max(B.y - (A.y + A.h), A.y - (B.y + B.h))); return gx + gy; }
+      d.elements.forEach(function (o) {                      // each icon / name belongs to the reading nearest to it
+        var r = S.roleOf(o); if (o.srcSet || o.hidden || (r !== 'icon' && r !== 'label') || !vals.length) return;
+        var best = null, bg = 1e9; vals.forEach(function (v) { var g = gap(o, v); if (g < bg) { bg = g; best = v; } }); o._owner = (r === 'label' && bg > 6) ? {} : best;   // a name has to sit right beside its reading; a farther one stays as it is
+      });
+      d.elements.slice().forEach(function (e) {
+        if (e.type !== 'text' || e.srcSet || e.hidden || S.roleOf(e) !== 'value' || !S.swapPool(e.source).length) return;
+        var base = (GW.sources[e.source] || {}).label || e.source, n = made.filter(function (m) { return m.base === base; }).length;
+        var slot = S.newSlot(base + (n ? ' ' + (n + 1) : ' field'), d);
+        S.addMember(slot, e, d); S.addAllChoices(slot, d);
+        var pool = S.swapPool(e.source); slot.choices.sort(function (a, b) { return pool.indexOf(a) - pool.indexOf(b); });   // the same order in every slot, so slots share their code
+        made.push({ slot: slot, base: base });
+      });
+      d.elements.forEach(function (o) { delete o._owner; });
+      return made.map(function (m) { return m.slot; });
     },
     removeMember: function (s, el) { delete el.srcSet; },
     // the text that names a reading, and what goes before / after its value: for the reading shown now they are the layers' own text
@@ -334,6 +365,61 @@
     keys.forEach(function (k) { var s = e.set[k] && S.find(e.set[k], d); if (s && s.kind === 'color') { rt[k] = '_s_' + s.id; cg.setUse(s.id); any = true; } });
     return any ? Object.assign({}, e, { _rt: rt }) : e;
   }
+  // A slot with many readings would repeat the whole drawing code once per reading. Instead the layer is drawn once and
+  // a small function (texts) or a few lists (icons) gives the part that differs: the text for the reading, or the glyph and its place.
+  function compactSlot(el, s, start, d, cg, one) {
+    var r = S.roleOf(el), v = '_s_' + s.id;
+    cg.n_sv = (cg.n_sv || 0) + 1;
+    if (el.type === 'text' && (r === 'value' || r === 'label' || r === 'unit')) {
+      var vs = s.choices.map(function (c) { return S.variant(el, s, c, start, d); }), pid = '__slot_' + s.id + '_' + cg.n_sv, nid0 = s.id + '_' + cg.n_sv;
+      if (r === 'value' && !vs.every(function (x, i) { return GW.sources[s.choices[i]] && GW.sources[s.choices[i]].mcStr; })) return null;
+      var expr, arr = function (a) { return '[' + a.map(function (t) { return GW.mcLit(t || ''); }).join(', ') + ']'; };
+      if (r === 'value') {
+        // the reading itself comes from one shared function (the same list of readings gives the same function, whichever slot it is in);
+        // the little text before / after each reading comes from two short lists
+        var parts = [];
+        vs.forEach(function (x, i) {
+          var src = GW.sources[s.choices[i]]; (src.imports || []).forEach(cg.imp); (src.perms || []).forEach(cg.perm);
+          parts.push('        ' + (i ? 'else ' : '') + 'if (k == ' + i + ') {\n            return ' + src.mcStr(x, cg) + ';\n        }');
+        });
+        var body = parts.join('\n'), h = 0; for (var q = 0; q < body.length; q++) h = (h * 31 + body.charCodeAt(q)) >>> 0;
+        var fn = 'rd' + h.toString(36);
+        cg.member('    function ' + fn + '(k as Number) as String {\n' + body + '\n        return "";\n    }');
+        var pf = vs.map(function (x) { return x.prefix || ''; }), sf = vs.map(function (x) { return x.suffix || ''; });
+        expr = fn + '(' + v + ')';
+        if (pf.some(Boolean)) { cg.member('    const PF_' + nid0 + ' = ' + arr(pf) + ';'); expr = 'PF_' + nid0 + '[' + v + '] + ' + expr; }
+        if (sf.some(Boolean)) { cg.member('    const SF_' + nid0 + ' = ' + arr(sf) + ';'); expr = expr + ' + SF_' + nid0 + '[' + v + ']'; }
+      } else {
+        cg.member('    const LB_' + nid0 + ' = ' + arr(vs.map(function (x) { return x.text; })) + ';');
+        expr = 'LB_' + nid0 + '[' + v + ']';
+      }
+      cg.setUse(s.id);
+      var chars = []; vs.forEach(function (x) { var c0 = GW.textChars(x); if (c0 == null) chars = null; else if (chars) chars.push(c0); });
+      GW.sources[pid] = { kind: 'str', group: 'Slot', label: s.label, mcStr: function () { return '(' + expr + ')'; }, chars: chars ? chars.join('') : null };
+      try {
+        return one(Object.assign({}, el, { source: pid, prefix: '', suffix: '', text: '' }));
+      } finally { delete GW.sources[pid]; }
+    }
+    if (el.type === 'icon') {
+      var rows = [], base = null;
+      for (var i = 0; i < s.choices.length; i++) {
+        var lines = T_icon_gen(S.variant(el, s, s.choices[i], start, d), cg);
+        var m = lines && lines.length === 2 && /^dc\.drawText\((-?\d+), (-?\d+), (.+), "\\u([0-9A-F]+)", (.+)\);$/.exec(lines[1]);
+        if (!m) return null;
+        if (!base) base = { c: lines[0], f: m[3], j: m[5] }; else if (base.f !== m[3] || base.j !== m[5]) return null;
+        rows.push([m[1], m[2], m[4]]);
+      }
+      var nid = s.id + '_' + cg.n_sv; cg.setUse(s.id);
+      var same = function (k) { return rows.every(function (x) { return x[k] === rows[0][k]; }); }, ixe = same(0) ? rows[0][0] : 'IX_' + nid + '[' + v + ']', iye = same(1) ? rows[0][1] : 'IY_' + nid + '[' + v + ']';
+      if (!same(0)) cg.member('    const IX_' + nid + ' = [' + rows.map(function (x) { return x[0]; }).join(', ') + '];');
+      if (!same(1)) cg.member('    const IY_' + nid + ' = [' + rows.map(function (x) { return x[1]; }).join(', ') + '];');
+      cg.member('    const IG_' + nid + ' = [' + rows.map(function (x) { return '"\\u' + x[2] + '"'; }).join(', ') + '];');
+      var line = 'dc.drawText(' + ixe + ', ' + iye + ', ' + base.f + ', IG_' + nid + '[' + v + '], ' + base.j + ');';
+      return colored(el, [base.c, line], cg, d);
+    }
+    return null;
+  }
+  function T_icon_gen(e, cg) { return GW.types.icon.gen(e, cg); }
   GW.genWithSettings = function (el, t, cg, d) {
     var one = function (e) { e = withRt(e, cg, d); return colored(e, t.gen(e, cg), cg, d); };
     var s = el.srcSet && S.find(el.srcSet, d);
@@ -342,6 +428,7 @@
     s._def = Math.max(0, s.choices.indexOf(start));
     cg.setUse(s.id);
     var out = [];
+    if (s.choices.length >= 4) { var cm = compactSlot(el, s, start, d, cg, one); if (cm) return cm; }   // many readings: draw once, look the reading up (not one copy of the drawing per reading)
     s.choices.forEach(function (c, i) {
       var ls = one(S.variant(el, s, c, start, d)); if (!ls || !ls.length) return;
       out.push('if (_s_' + s.id + ' == ' + i + ') {'); ls.forEach(function (l) { out.push('    ' + l); }); out.push('}');
